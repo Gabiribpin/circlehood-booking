@@ -9,6 +9,8 @@ import {
   Palette,
   Settings,
   LogOut,
+  Users,
+  Megaphone,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -16,6 +18,8 @@ const NAV_ITEMS = [
   { href: '/services', label: 'Servicos', icon: Scissors },
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
   { href: '/schedule', label: 'Horarios', icon: Clock },
+  { href: '/contacts', label: 'Contatos', icon: Users },
+  { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/my-page', label: 'Minha Pagina', icon: Palette },
   { href: '/settings', label: 'Configuracoes', icon: Settings },
 ];

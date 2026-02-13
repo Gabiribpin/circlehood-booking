@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { PhoneInput } from '@/components/ui/phone-input';
 import {
   Loader2,
   Sparkles,
@@ -147,22 +148,28 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
+                <PhoneInput
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+351 912 345 678"
+                  onChange={(value) => setPhone(value || '')}
+                  placeholder="Digite seu telefone"
+                  defaultCountry="IE"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Telefone de contato (qualquer país)
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input
-                  id="whatsapp"
+                <PhoneInput
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  placeholder="+351912345678"
+                  onChange={(value) => setWhatsapp(value || '')}
+                  placeholder="Digite seu WhatsApp"
+                  defaultCountry="IE"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Para clientes entrarem em contato via WhatsApp
+                </p>
               </div>
 
               <div className="space-y-2">
