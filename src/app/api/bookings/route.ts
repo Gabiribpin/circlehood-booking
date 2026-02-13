@@ -15,9 +15,9 @@ export async function POST(request: NextRequest) {
     notes,
   } = body;
 
-  if (!professional_id || !service_id || !booking_date || !start_time || !client_name) {
+  if (!professional_id || !service_id || !booking_date || !start_time || !client_name || !client_phone) {
     return NextResponse.json(
-      { error: 'Missing required fields' },
+      { error: 'Missing required fields. WhatsApp is mandatory.' },
       { status: 400 }
     );
   }

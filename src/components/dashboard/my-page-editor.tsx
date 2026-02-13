@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PhoneInput } from '@/components/ui/phone-input';
+import { ImageUpload } from '@/components/dashboard/image-upload';
 import {
   Loader2,
   Sparkles,
@@ -22,6 +23,7 @@ import {
   MessageCircle,
   Instagram,
   Phone,
+  Camera,
 } from 'lucide-react';
 import type { Professional, Service } from '@/types/database';
 
@@ -45,6 +47,8 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   const [whatsapp, setWhatsapp] = useState(professional.whatsapp || '');
   const [instagram, setInstagram] = useState(professional.instagram || '');
   const [address, setAddress] = useState(professional.address || '');
+  const [profileImageUrl, setProfileImageUrl] = useState(professional.profile_image_url || '');
+  const [coverImageUrl, setCoverImageUrl] = useState(professional.cover_image_url || '');
   const [saving, setSaving] = useState(false);
   const [generatingBio, setGeneratingBio] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -59,11 +63,31 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
         whatsapp: whatsapp || null,
         instagram: instagram || null,
         address: address || null,
+        profile_image_url: profileImageUrl || null,
+        cover_image_url: coverImageUrl || null,
       })
       .eq('id', professional.id);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    router.refresh();
+  }
+
+  async function handleProfileImageUpload(url: string) {
+    setProfileImageUrl(url);
+    await supabase
+      .from('professionals')
+      .update({ profile_image_url: url })
+      .eq('id', professional.id);
+    router.refresh();
+  }
+
+  async function handleCoverImageUpload(url: string) {
+    setCoverImageUrl(url);
+    await supabase
+      .from('professionals')
+      .update({ cover_image_url: url })
+      .eq('id', professional.id);
     router.refresh();
   }
 
@@ -119,6 +143,67 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
               <CardTitle className="text-base">Informações da página</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label>Imagens</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-2">Foto de perfil</p>
+                    <div className="relative w-20 h-20">
+                      <Avatar className="w-20 h-20 border-2">
+                        <AvatarImage src={profileImageUrl || undefined} />
+                        <AvatarFallback className="text-sm">{initials}</AvatarFallback>
+                      </Avatar>
+                      <ImageUpload
+                        currentImageUrl={profileImageUrl}
+                        onUploadComplete={handleProfileImageUpload}
+                        bucket="avatars"
+                        maxSizeMB={0.5}
+                      >
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2 gap-1"
+                        >
+                          <Camera className="h-3 w-3" />
+                          Upload
+                        </Button>
+                      </ImageUpload>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-2">Imagem de capa</p>
+                    <div className="w-full h-20 border-2 rounded-md overflow-hidden bg-gradient-to-br from-primary/80 to-primary/40">
+                      {coverImageUrl && (
+                        <img
+                          src={coverImageUrl}
+                          alt="Cover"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <ImageUpload
+                      currentImageUrl={coverImageUrl}
+                      onUploadComplete={handleCoverImageUpload}
+                      bucket="covers"
+                      maxSizeMB={0.5}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2 gap-1"
+                      >
+                        <Camera className="h-3 w-3" />
+                        Upload
+                      </Button>
+                    </ImageUpload>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="bio">Bio</Label>
@@ -213,17 +298,52 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
             <CardContent className="p-0">
               <div className="border rounded-lg overflow-hidden bg-background">
                 {/* Mini hero */}
-                <div className="h-24 bg-gradient-to-br from-primary/80 to-primary/40" />
-                <div className="px-4 -mt-10 relative z-10">
-                  <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
-                    <AvatarImage
-                      src={professional.profile_image_url || undefined}
-                      alt={professional.business_name}
+                <div className="h-24 bg-gradient-to-br from-primary/80 to-primary/40 relative group">
+                  {coverImageUrl && (
+                    <img
+                      src={coverImageUrl}
+                      alt="Cover"
+                      className="w-full h-full object-cover"
                     />
-                    <AvatarFallback className="text-lg font-bold bg-primary text-primary-foreground">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <ImageUpload
+                      currentImageUrl={coverImageUrl}
+                      onUploadComplete={handleCoverImageUpload}
+                      bucket="covers"
+                      maxSizeMB={0.5}
+                    >
+                      <div className="flex items-center gap-2 text-white bg-black/50 px-3 py-2 rounded-md cursor-pointer hover:bg-black/70 transition-colors">
+                        <Camera className="h-4 w-4" />
+                        <span className="text-xs font-medium">Alterar capa</span>
+                      </div>
+                    </ImageUpload>
+                  </div>
+                </div>
+                <div className="px-4 -mt-10 relative z-10">
+                  <div className="relative group w-fit">
+                    <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
+                      <AvatarImage
+                        src={profileImageUrl || undefined}
+                        alt={professional.business_name}
+                      />
+                      <AvatarFallback className="text-lg font-bold bg-primary text-primary-foreground">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <ImageUpload
+                        currentImageUrl={profileImageUrl}
+                        onUploadComplete={handleProfileImageUpload}
+                        bucket="avatars"
+                        maxSizeMB={0.5}
+                      >
+                        <div className="cursor-pointer">
+                          <Camera className="h-6 w-6 text-white" />
+                        </div>
+                      </ImageUpload>
+                    </div>
+                  </div>
                   <div className="mt-2 pb-4">
                     <h2 className="text-lg font-bold">{professional.business_name}</h2>
                     <div className="flex flex-wrap items-center gap-2 mt-1">

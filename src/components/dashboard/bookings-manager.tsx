@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CalendarDays, Phone, Mail } from 'lucide-react';
+import { CalendarDays, Phone, Mail, MessageCircle } from 'lucide-react';
 
 interface BookingWithService {
   id: string;
@@ -82,20 +82,33 @@ function BookingCard({
                 {booking.notes}
               </p>
             )}
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-3 mt-2">
               {booking.client_phone && (
-                <a
-                  href={`tel:${booking.client_phone}`}
-                  className="text-xs text-primary flex items-center gap-1 hover:underline"
-                >
-                  <Phone className="h-3 w-3" />
-                  {booking.client_phone}
-                </a>
+                <>
+                  <a
+                    href={`https://wa.me/${booking.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Olá ${booking.client_name}! Confirmando seu agendamento: ${booking.services?.name} em ${booking.booking_date.split('-').reverse().join('/')} às ${booking.start_time.slice(0, 5)}. Até lá!`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-1 rounded-md flex items-center gap-1 hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`tel:${booking.client_phone}`}
+                    className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {booking.client_phone}
+                  </a>
+                </>
               )}
               {booking.client_email && (
                 <a
                   href={`mailto:${booking.client_email}`}
-                  className="text-xs text-primary flex items-center gap-1 hover:underline"
+                  className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors"
                 >
                   <Mail className="h-3 w-3" />
                   {booking.client_email}
@@ -103,25 +116,46 @@ function BookingCard({
               )}
             </div>
           </div>
-          {booking.status === 'confirmed' && (
-            <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
+            {booking.status === 'confirmed' && booking.client_phone && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onStatusChange(booking.id, 'completed')}
+                className="gap-1 bg-green-50 dark:bg-green-900/10 hover:bg-green-100 dark:hover:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900"
+                asChild
               >
-                Concluir
+                <a
+                  href={`https://wa.me/${booking.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `Olá ${booking.client_name}! Lembrando que você tem um agendamento amanhã: ${booking.services?.name} às ${booking.start_time.slice(0, 5)}. Te espero!`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  Lembrete
+                </a>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={() => onStatusChange(booking.id, 'cancelled')}
-              >
-                Cancelar
-              </Button>
-            </div>
-          )}
+            )}
+            {booking.status === 'confirmed' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onStatusChange(booking.id, 'completed')}
+                >
+                  Concluir
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => onStatusChange(booking.id, 'cancelled')}
+                >
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

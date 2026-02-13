@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Circle,
   Rocket,
+  Euro,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -58,6 +59,9 @@ export default async function DashboardPage() {
     { count: totalServices },
     { data: todayUpcoming },
     { count: workingHoursCount },
+    { data: todayRevenue },
+    { data: weekRevenue },
+    { data: monthRevenue },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -96,7 +100,40 @@ export default async function DashboardPage() {
       .select('*', { count: 'exact', head: true })
       .eq('professional_id', professional.id)
       .eq('is_available', true),
+    supabase
+      .from('bookings')
+      .select('services(price)')
+      .eq('professional_id', professional.id)
+      .eq('booking_date', today)
+      .eq('status', 'confirmed'),
+    supabase
+      .from('bookings')
+      .select('services(price)')
+      .eq('professional_id', professional.id)
+      .gte('booking_date', weekStart)
+      .lte('booking_date', weekEnd)
+      .eq('status', 'confirmed'),
+    supabase
+      .from('bookings')
+      .select('services(price)')
+      .eq('professional_id', professional.id)
+      .gte('booking_date', monthStart)
+      .lte('booking_date', monthEnd)
+      .eq('status', 'confirmed'),
   ]);
+
+  // Calculate revenue
+  const calculateRevenue = (data: any[] | null) => {
+    if (!data) return 0;
+    return data.reduce((sum, booking) => {
+      const price = (booking.services as { price: number } | null)?.price || 0;
+      return sum + price;
+    }, 0);
+  };
+
+  const todayRevenueTotal = calculateRevenue(todayRevenue);
+  const weekRevenueTotal = calculateRevenue(weekRevenue);
+  const monthRevenueTotal = calculateRevenue(monthRevenue);
 
   const trialDaysLeft = Math.max(
     0,
@@ -194,62 +231,122 @@ export default async function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CalendarDays className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Hoje</p>
-                <p className="text-2xl font-bold">{todayBookings || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        {/* Bookings Stats */}
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Agendamentos</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Hoje</p>
+                    <p className="text-2xl font-bold">{todayBookings || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CalendarRange className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Semana</p>
-                <p className="text-2xl font-bold">{weekBookings || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <CalendarRange className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Semana</p>
+                    <p className="text-2xl font-bold">{weekBookings || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Mês</p>
-                <p className="text-2xl font-bold">{monthBookings || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Mês</p>
+                    <p className="text-2xl font-bold">{monthBookings || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Serviços</p>
-                <p className="text-2xl font-bold">{totalServices || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Serviços</p>
+                    <p className="text-2xl font-bold">{totalServices || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Revenue Stats */}
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Receita</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Hoje</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      €{todayRevenueTotal.toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Semana</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      €{weekRevenueTotal.toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Mês</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      €{monthRevenueTotal.toFixed(0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
       {/* Status badge */}

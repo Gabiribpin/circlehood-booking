@@ -44,14 +44,18 @@ export function BookingForm({ data, onChange }: BookingFormProps) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="clientPhone">Telefone</Label>
+        <Label htmlFor="clientPhone">WhatsApp *</Label>
         <Input
           id="clientPhone"
           type="tel"
           value={data.clientPhone}
           onChange={(e) => update('clientPhone', e.target.value)}
           placeholder="+351 912 345 678"
+          required
         />
+        <p className="text-xs text-muted-foreground">
+          Necessário para confirmar seu agendamento
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Observacoes</Label>

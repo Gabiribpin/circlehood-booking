@@ -31,6 +31,13 @@ async function getProfessional(slug: string) {
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
+  const { data: workingHours } = await supabase
+    .from('working_hours')
+    .select('*')
+    .eq('professional_id', professional.id)
+    .eq('is_available', true)
+    .order('day_of_week', { ascending: true });
+
   const trialExpired =
     professional.subscription_status === 'trial' &&
     new Date(professional.trial_ends_at) < new Date();
@@ -38,6 +45,7 @@ async function getProfessional(slug: string) {
   return {
     professional: professional as Professional,
     services: (services || []) as Service[],
+    workingHours: workingHours || [],
     trialExpired,
   };
 }
@@ -79,7 +87,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const { professional, services, trialExpired } = data;
+  const { professional, services, workingHours, trialExpired } = data;
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,6 +100,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
             services={services}
             professionalId={professional.id}
             currency={professional.currency}
+            workingHours={workingHours}
           />
         )}
         <ContactFooter professional={professional} />

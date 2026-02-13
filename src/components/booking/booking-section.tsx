@@ -14,10 +14,19 @@ import {
 } from 'lucide-react';
 import type { Service } from '@/types/database';
 
+interface WorkingHour {
+  id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+}
+
 interface BookingSectionProps {
   services: Service[];
   professionalId: string;
   currency: string;
+  workingHours: WorkingHour[];
 }
 
 function formatPrice(price: number, currency: string) {
@@ -30,7 +39,16 @@ export function BookingSection({
   services,
   professionalId,
   currency,
+  workingHours,
 }: BookingSectionProps) {
+  // Get available days of week from working hours
+  const availableDays = new Set(workingHours.map(wh => wh.day_of_week));
+
+  // Function to disable unavailable days
+  const disableUnavailableDays = (date: Date) => {
+    const dayOfWeek = date.getDay();
+    return !availableDays.has(dayOfWeek);
+  };
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
@@ -68,7 +86,10 @@ export function BookingSection({
   }
 
   async function handleSubmit() {
-    if (!selectedService || !selectedDate || !selectedSlot || !formData.clientName) return;
+    if (!selectedService || !selectedDate || !selectedSlot || !formData.clientName || !formData.clientPhone) {
+      setError('Por favor, preencha todos os campos obrigatórios, incluindo o WhatsApp.');
+      return;
+    }
 
     setSubmitting(true);
     setError('');
@@ -170,7 +191,10 @@ export function BookingSection({
               mode="single"
               selected={selectedDate}
               onSelect={selectDate}
-              disabled={{ before: new Date() }}
+              disabled={[
+                { before: new Date() },
+                disableUnavailableDays
+              ]}
             />
           </CardContent>
         </Card>
@@ -216,7 +240,7 @@ export function BookingSection({
             <Button
               className="w-full"
               onClick={handleSubmit}
-              disabled={!formData.clientName || submitting}
+              disabled={!formData.clientName || !formData.clientPhone || submitting}
             >
               {submitting && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
