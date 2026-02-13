@@ -26,12 +26,12 @@ export async function POST(request: NextRequest) {
           role: 'user',
           content: `Gere uma bio profissional curta (2-3 frases, maximo 200 caracteres) para um profissional autonomo.
 Dados:
-- Nome do negocio: ${businessName}
+- Nome do negócio: ${businessName}
 - Categoria: ${category || 'Profissional autonomo'}
 - Cidade: ${city || ''}
 - Pais: ${country || ''}
 
-A bio deve ser em portugues, acolhedora, profissional e destacar o diferencial. Nao use emojis. Responda APENAS com o texto da bio, sem aspas.`,
+A bio deve ser em portugues, acolhedora, profissional e destacar o diferencial. Não use emojis. Responda APENAS com o texto da bio, sem aspas.`,
         },
       ],
     });

@@ -49,7 +49,7 @@ export function TimeSlots({
   if (slots.length === 0) {
     return (
       <p className="text-center text-sm text-muted-foreground py-8">
-        Nenhum horario disponivel nesta data.
+        Nenhum horario disponível nesta data.
       </p>
     );
   }

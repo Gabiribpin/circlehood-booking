@@ -98,7 +98,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Minha Pagina</h1>
+        <h1 className="text-2xl font-bold">Minha Página</h1>
         <Button asChild variant="outline" size="sm" className="gap-2">
           <a
             href={`/${professional.slug}`}
@@ -116,7 +116,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Informacoes da pagina</CardTitle>
+              <CardTitle className="text-base">Informações da página</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -141,7 +141,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Conte um pouco sobre voce e seu trabalho..."
+                  placeholder="Conte um pouco sobre você e seu trabalho..."
                   rows={4}
                 />
               </div>
@@ -183,12 +183,12 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Endereco</Label>
+                <Label htmlFor="address">Endereço</Label>
                 <Input
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Rua, numero, cidade"
+                  placeholder="Rua, número, cidade"
                 />
               </div>
 
@@ -249,7 +249,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
 
                 {/* Mini services */}
                 <div className="p-4">
-                  <h3 className="text-sm font-semibold mb-2">Servicos</h3>
+                  <h3 className="text-sm font-semibold mb-2">Serviços</h3>
                   {services.filter((s) => s.is_active).length === 0 ? (
                     <p className="text-xs text-muted-foreground">Nenhum servico ativo.</p>
                   ) : (
@@ -276,7 +276,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                         ))}
                       {services.filter((s) => s.is_active).length > 3 && (
                         <p className="text-[10px] text-muted-foreground text-center">
-                          +{services.filter((s) => s.is_active).length - 3} servicos
+                          +{services.filter((s) => s.is_active).length - 3} serviços
                         </p>
                       )}
                     </div>

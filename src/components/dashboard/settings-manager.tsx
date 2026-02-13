@@ -56,7 +56,7 @@ export function SettingsManager({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Configuracoes</h1>
+      <h1 className="text-2xl font-bold">Configurações</h1>
 
       {success && (
         <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
@@ -74,7 +74,7 @@ export function SettingsManager({
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <p className="text-sm text-yellow-700 dark:text-yellow-400">
-              Checkout cancelado. Voce pode assinar a qualquer momento.
+              Checkout cancelado. Você pode assinar a qualquer momento.
             </p>
           </CardContent>
         </Card>
@@ -100,7 +100,7 @@ export function SettingsManager({
               {isActive
                 ? 'Pro - Ativo'
                 : isTrial && !trialExpired
-                  ? `Teste gratis (${trialDaysLeft}d restantes)`
+                  ? `Teste grátis (${trialDaysLeft}d restantes)`
                   : isTrial && trialExpired
                     ? 'Teste expirado'
                     : professional.subscription_status === 'cancelled'
@@ -112,7 +112,7 @@ export function SettingsManager({
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Plano</span>
             <span className="text-sm font-medium">
-              {isActive ? 'Pro' : 'Gratis'}
+              {isActive ? 'Pro' : 'Grátis'}
             </span>
           </div>
 
@@ -143,11 +143,11 @@ export function SettingsManager({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <p className="text-sm font-medium text-destructive">
-                Seu periodo de teste expirou
+                Seu período de teste expirou
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sua pagina publica mostra um aviso e novos agendamentos estao bloqueados.
+              Sua página pública mostra um aviso e novos agendamentos estao bloqueados.
               Assine o plano Pro para continuar recebendo clientes.
             </p>
           </CardContent>
@@ -160,9 +160,9 @@ export function SettingsManager({
           {!isActive ? (
             <>
               <div className="text-center mb-4">
-                <p className="text-2xl font-bold">&euro;25<span className="text-sm font-normal text-muted-foreground">/mes</span></p>
+                <p className="text-2xl font-bold">&euro;25<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pagina profissional + agendamento ilimitado
+                  Página profissional + agendamento ilimitado
                 </p>
               </div>
               <Button
@@ -204,7 +204,7 @@ export function SettingsManager({
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Negocio</span>
+            <span className="text-sm text-muted-foreground">Negócio</span>
             <span className="text-sm font-medium">{professional.business_name}</span>
           </div>
           <div className="flex items-center justify-between">

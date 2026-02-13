@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -51,10 +50,6 @@ export default function RegisterPage() {
   const [businessName, setBusinessName] = useState('');
   const [slug, setSlug] = useState('');
   const [category, setCategory] = useState('');
-  const [bio, setBio] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [instagram, setInstagram] = useState('');
   const [city, setCity] = useState('Dublin');
 
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
@@ -118,7 +113,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (!slugAvailable) {
-      setError('Escolha um link disponivel para sua pagina.');
+      setError('Escolha um link disponível para sua página.');
       setLoading(false);
       return;
     }
@@ -133,10 +128,6 @@ export default function RegisterPage() {
           slug,
           businessName,
           category: category || null,
-          bio: bio || null,
-          phone: phone || null,
-          whatsapp: whatsapp || null,
-          instagram: instagram || null,
           city,
         }),
       });
@@ -175,11 +166,11 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-8">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Crie sua pagina profissional</CardTitle>
+          <CardTitle className="text-2xl font-bold">Crie sua página profissional</CardTitle>
           <CardDescription>
             {step === 1
               ? 'Comece criando sua conta'
-              : 'Agora, configure seu negocio'}
+              : 'Agora, configure seu negócio'}
           </CardDescription>
           <div className="flex justify-center gap-2 pt-2">
             <div className={`h-2 w-16 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
@@ -224,7 +215,7 @@ export default function RegisterPage() {
                 Continuar
               </Button>
               <p className="text-sm text-muted-foreground text-center">
-                Ja tem conta?{' '}
+                Já tem conta?{' '}
                 <Link href="/login" className="text-primary underline hover:no-underline">
                   Fazer login
                 </Link>
@@ -241,7 +232,7 @@ export default function RegisterPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="businessName">Nome do negocio *</Label>
+                <Label htmlFor="businessName">Nome do negócio *</Label>
                 <Input
                   id="businessName"
                   placeholder="Ex: Maria's Nails"
@@ -252,7 +243,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug">Link da sua pagina *</Label>
+                <Label htmlFor="slug">Link da sua página *</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
                     book.circlehood-tech.com/
@@ -261,7 +252,7 @@ export default function RegisterPage() {
                     id="slug"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="seu-negocio"
+                    placeholder="seu-negócio"
                     required
                     minLength={3}
                   />
@@ -274,15 +265,26 @@ export default function RegisterPage() {
                   )}
                 </div>
                 {slugAvailable === false && (
-                  <p className="text-xs text-destructive">Este link ja esta em uso.</p>
+                  <p className="text-xs text-destructive">Este link já está em uso.</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade *</Label>
+                <Input
+                  id="city"
+                  placeholder="Ex: Dublin, Lisboa, São Paulo"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione sua area" />
+                    <SelectValue placeholder="Selecione sua área" />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
@@ -294,63 +296,16 @@ export default function RegisterPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio / Descricao</Label>
-                <Textarea
-                  id="bio"
-                  placeholder="Conte um pouco sobre voce e seu trabalho..."
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    placeholder="+353 87 123 4567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input
-                    id="whatsapp"
-                    placeholder="+353 87 123 4567"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="instagram">Instagram</Label>
-                  <Input
-                    id="instagram"
-                    placeholder="@seuperfil"
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    placeholder="Dublin"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
-                </div>
+              <div className="bg-muted/50 p-3 rounded-md">
+                <p className="text-xs text-muted-foreground">
+                  💡 Você poderá adicionar bio, telefone, redes sociais e foto depois no painel!
+                </p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Criar minha pagina
+                Criar minha página
               </Button>
               <Button
                 type="button"

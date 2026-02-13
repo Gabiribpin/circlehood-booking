@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (trialExpired || inactive) {
       return NextResponse.json(
-        { error: 'Agendamento indisponivel. O profissional precisa ativar o plano.' },
+        { error: 'Agendamento indisponível. O profissional precisa ativar o plano.' },
         { status: 403 }
       );
     }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
   if (conflicts && conflicts.length > 0) {
     return NextResponse.json(
-      { error: 'Horario indisponivel. Escolha outro horario.' },
+      { error: 'Horario indisponível. Escolha outro horario.' },
       { status: 409 }
     );
   }

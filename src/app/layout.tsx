@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CircleHood Booking — Sua pagina profissional de agendamentos",
+  title: "CircleHood Booking — Sua página profissional de agendamentos",
   description:
-    "Crie sua pagina profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.",
+    "Crie sua página profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.",
 };
 
 export default function RootLayout({

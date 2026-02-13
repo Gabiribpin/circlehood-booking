@@ -24,13 +24,13 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'user',
-          content: `Gere uma descricao curta e vendedora (1-2 frases, maximo 120 caracteres) para um servico profissional.
+          content: `Gere uma descrição curta e vendedora (1-2 frases, maximo 120 caracteres) para um servico profissional.
 Dados:
 - Servico: ${serviceName}
-- Negocio: ${businessName || ''}
+- Negócio: ${businessName || ''}
 - Categoria: ${category || ''}
 
-A descricao deve ser em portugues, atrativa, e destacar beneficios para o cliente. Nao use emojis. Responda APENAS com o texto, sem aspas.`,
+A descrição deve ser em portugues, atrativa, e destacar beneficios para o cliente. Não use emojis. Responda APENAS com o texto, sem aspas.`,
         },
       ],
     });
@@ -41,7 +41,7 @@ A descricao deve ser em portugues, atrativa, e destacar beneficios para o client
     return NextResponse.json({ description });
   } catch {
     return NextResponse.json(
-      { error: 'Falha ao gerar descricao. Tente novamente.' },
+      { error: 'Falha ao gerar descrição. Tente novamente.' },
       { status: 500 }
     );
   }

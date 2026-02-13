@@ -86,9 +86,9 @@ export default function LoginPage() {
               Entrar
             </Button>
             <p className="text-sm text-muted-foreground text-center">
-              Ainda nao tem conta?{' '}
+              Ainda não tem conta?{' '}
               <Link href="/register" className="text-primary underline hover:no-underline">
-                Cadastre-se gratis
+                Cadastre-se grátis
               </Link>
             </p>
           </CardFooter>

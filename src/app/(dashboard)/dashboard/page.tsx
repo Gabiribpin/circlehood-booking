@@ -8,9 +8,13 @@ import {
   Users,
   ExternalLink,
   CalendarRange,
+  CheckCircle2,
+  Circle,
+  Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -53,6 +57,7 @@ export default async function DashboardPage() {
     { count: monthBookings },
     { count: totalServices },
     { data: todayUpcoming },
+    { count: workingHoursCount },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -86,6 +91,11 @@ export default async function DashboardPage() {
       .eq('booking_date', today)
       .eq('status', 'confirmed')
       .order('start_time', { ascending: true }),
+    supabase
+      .from('working_hours')
+      .select('*', { count: 'exact', head: true })
+      .eq('professional_id', professional.id)
+      .eq('is_available', true),
   ]);
 
   const trialDaysLeft = Math.max(
@@ -96,6 +106,21 @@ export default async function DashboardPage() {
     )
   );
 
+  // Onboarding checklist
+  const hasServices = (totalServices || 0) > 0;
+  const hasSchedule = (workingHoursCount || 0) > 0;
+  const hasProfile = !!(professional.bio && professional.bio.length > 10);
+
+  const onboardingSteps = [
+    { id: 1, label: 'Criar conta', completed: true, href: null },
+    { id: 2, label: 'Adicionar primeiro serviço', completed: hasServices, href: '/services' },
+    { id: 3, label: 'Configurar horários', completed: hasSchedule, href: '/schedule' },
+    { id: 4, label: 'Personalizar sua página', completed: hasProfile, href: '/my-page' },
+  ];
+
+  const completedSteps = onboardingSteps.filter(step => step.completed).length;
+  const showOnboarding = completedSteps < onboardingSteps.length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -105,7 +130,7 @@ export default async function DashboardPage() {
           </h1>
           {professional.subscription_status === 'trial' && (
             <p className="text-sm text-muted-foreground mt-1">
-              Periodo de teste: {trialDaysLeft} dias restantes
+              Período de teste: {trialDaysLeft} dias restantes
             </p>
           )}
         </div>
@@ -116,10 +141,57 @@ export default async function DashboardPage() {
             rel="noopener noreferrer"
           >
             <ExternalLink className="h-4 w-4" />
-            Ver minha pagina
+            Ver minha página
           </a>
         </Button>
       </div>
+
+      {/* Onboarding Checklist */}
+      {showOnboarding && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Rocket className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Comece a receber clientes</CardTitle>
+              </div>
+              <Badge variant="secondary">{completedSteps}/{onboardingSteps.length}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {onboardingSteps.map((step) => (
+                <div key={step.id} className="flex items-center gap-3">
+                  {step.completed ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+                  )}
+                  {step.href && !step.completed ? (
+                    <Link
+                      href={step.href}
+                      className="text-sm hover:underline"
+                    >
+                      {step.label}
+                    </Link>
+                  ) : (
+                    <span className={`text-sm ${step.completed ? 'text-muted-foreground' : ''}`}>
+                      {step.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {completedSteps === onboardingSteps.length - 1 && (
+              <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-md">
+                <p className="text-sm text-green-700 dark:text-green-400">
+                  🎉 Quase lá! Complete o último passo e compartilhe seu link para começar a receber agendamentos!
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -158,7 +230,7 @@ export default async function DashboardPage() {
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Mes</p>
+                <p className="text-xs text-muted-foreground">Mês</p>
                 <p className="text-2xl font-bold">{monthBookings || 0}</p>
               </div>
             </div>
@@ -172,7 +244,7 @@ export default async function DashboardPage() {
                 <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Servicos</p>
+                <p className="text-xs text-muted-foreground">Serviços</p>
                 <p className="text-2xl font-bold">{totalServices || 0}</p>
               </div>
             </div>
@@ -186,7 +258,7 @@ export default async function DashboardPage() {
           <span className="text-sm font-medium">Status da assinatura</span>
           <Badge variant="secondary">
             {professional.subscription_status === 'trial'
-              ? `Teste gratis (${trialDaysLeft}d)`
+              ? `Teste grátis (${trialDaysLeft}d)`
               : professional.subscription_status === 'active'
                 ? 'Ativo'
                 : 'Expirado'}
@@ -207,10 +279,10 @@ export default async function DashboardPage() {
                 Nenhum agendamento para hoje.
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Compartilhe sua pagina para receber agendamentos!
+                Compartilhe sua página para receber agendamentos!
               </p>
               <Button asChild variant="outline" className="mt-4" size="sm">
-                <Link href="/services">Adicionar servicos</Link>
+                <Link href="/services">Adicionar serviços</Link>
               </Button>
             </div>
           ) : (
@@ -252,15 +324,11 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Quick link */}
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-sm font-medium mb-2">Seu link:</p>
-          <code className="text-sm bg-muted px-3 py-2 rounded-md block break-all">
-            book.circlehood-tech.com/{professional.slug}
-          </code>
-        </CardContent>
-      </Card>
+      {/* Share link with QR code */}
+      <ShareLinkCard
+        slug={professional.slug}
+        businessName={professional.business_name}
+      />
     </div>
   );
 }

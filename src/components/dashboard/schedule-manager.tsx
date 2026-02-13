@@ -115,11 +115,11 @@ export function ScheduleManager({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Horarios</h1>
+      <h1 className="text-2xl font-bold">Horários</h1>
 
       <Tabs defaultValue="hours">
         <TabsList>
-          <TabsTrigger value="hours">Horarios</TabsTrigger>
+          <TabsTrigger value="hours">Horários</TabsTrigger>
           <TabsTrigger value="blocked">Dias bloqueados</TabsTrigger>
         </TabsList>
 
@@ -159,7 +159,7 @@ export function ScheduleManager({
                         }
                         className="w-28 sm:w-32"
                       />
-                      <span className="text-muted-foreground text-sm">ate</span>
+                      <span className="text-muted-foreground text-sm">até</span>
                       <Input
                         type="time"
                         value={day.endTime}
@@ -172,7 +172,7 @@ export function ScheduleManager({
                   )}
                   {!day.isAvailable && (
                     <span className="text-sm text-muted-foreground pl-13 sm:pl-0">
-                      Indisponivel
+                      Indisponível
                     </span>
                   )}
                 </div>
@@ -185,7 +185,7 @@ export function ScheduleManager({
                 {savingHours && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                Salvar horarios
+                Salvar horários
               </Button>
             </CardContent>
           </Card>

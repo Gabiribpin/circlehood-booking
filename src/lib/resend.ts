@@ -61,7 +61,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
           <h2>Novo agendamento recebido!</h2>
-          <p>Voce recebeu um novo agendamento:</p>
+          <p>Você recebeu um novo agendamento:</p>
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px 0; color: #666;">Cliente</td><td style="padding: 8px 0; font-weight: 600;">${clientName}</td></tr>
             <tr><td style="padding: 8px 0; color: #666;">Servico</td><td style="padding: 8px 0; font-weight: 600;">${serviceName}</td></tr>

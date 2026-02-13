@@ -13,7 +13,7 @@ import {
 const FEATURES = [
   {
     icon: Globe,
-    title: 'Sua pagina profissional',
+    title: 'Sua página profissional',
     description: 'Link personalizado tipo book.circlehood-tech.com/seu-nome. Coloque na bio do Instagram e pronto.',
   },
   {
@@ -24,22 +24,22 @@ const FEATURES = [
   {
     icon: MessageCircle,
     title: 'WhatsApp integrado',
-    description: 'Botao direto pro seu WhatsApp na pagina. Facil para os clientes falarem com voce.',
+    description: 'Botao direto pro seu WhatsApp na página. Facil para os clientes falarem com você.',
   },
   {
     icon: Sparkles,
     title: 'Bio gerada por IA',
-    description: 'Nossa IA cria uma descricao profissional do seu negocio em segundos.',
+    description: 'Nossa IA cria uma descrição profissional do seu negócio em segundos.',
   },
 ];
 
 const BENEFITS = [
-  'Pagina pronta em minutos',
+  'Página pronta em minutos',
   'Funciona no celular perfeitamente',
   'Receba agendamentos 24/7',
   'Sem necessidade de site proprio',
   'Suporte em portugues',
-  'Teste gratis por 14 dias',
+  'Teste grátis por 14 dias',
 ];
 
 export default function LandingPage() {
@@ -54,7 +54,7 @@ export default function LandingPage() {
               <Link href="/login">Entrar</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/register">Comecar gratis</Link>
+              <Link href="/register">Comecar grátis</Link>
             </Button>
           </div>
         </div>
@@ -64,24 +64,24 @@ export default function LandingPage() {
       <section className="py-20 sm:py-28 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            Sua pagina profissional com agendamento online
+            Sua página profissional com agendamento online
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Crie seu mini-site em minutos. Seus clientes veem seus servicos, precos e agendam direto — sem WhatsApp ping-pong.
+            Crie seu mini-site em minutos. Seus clientes veem seus serviços, precos e agendam direto — sem WhatsApp ping-pong.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="gap-2">
               <Link href="/register">
-                Criar minha pagina gratis
+                Criar minha página grátis
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/babycake">Ver exemplo</Link>
+              <Link href="/demo">Ver exemplo</Link>
             </Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            14 dias gratis. Sem cartao de credito.
+            14 dias grátis. Sem cartao de credito.
           </p>
         </div>
       </section>
@@ -90,7 +90,7 @@ export default function LandingPage() {
       <section className="py-16 px-4 bg-muted/30">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
-            Tudo que voce precisa num so lugar
+            Tudo que você precisa num so lugar
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {FEATURES.map((feature) => (
@@ -115,7 +115,7 @@ export default function LandingPage() {
             Perfeito para profissionais autonomos
           </h2>
           <p className="text-muted-foreground mb-8">
-            Cabeleireiras, nail techs, barbeiros, esteticistas, personal trainers, cleaners — se voce atende com horario marcado, o CircleHood e pra voce.
+            Cabeleireiras, nail techs, barbeiros, esteticistas, personal trainers, cleaners — se você atende com horario marcado, o CircleHood e pra você.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-md mx-auto">
             {BENEFITS.map((benefit) => (
@@ -135,14 +135,14 @@ export default function LandingPage() {
             Simples e acessivel
           </h2>
           <p className="text-center text-muted-foreground mb-10">
-            Comece gratis, assine quando estiver pronto.
+            Comece grátis, assine quando estiver pronto.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {/* Free / Trial */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg">Teste Gratis</h3>
+                  <h3 className="font-semibold text-lg">Teste Grátis</h3>
                   <p className="text-sm text-muted-foreground">14 dias sem compromisso</p>
                 </div>
                 <div className="flex items-baseline gap-1">
@@ -151,8 +151,8 @@ export default function LandingPage() {
                 </div>
                 <ul className="space-y-2">
                   {[
-                    'Pagina profissional',
-                    'Ate 5 servicos',
+                    'Página profissional',
+                    'Até 5 serviços',
                     'Agendamento online',
                     'WhatsApp integrado',
                   ].map((item) => (
@@ -163,7 +163,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/register">Comecar gratis</Link>
+                  <Link href="/register">Comecar grátis</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -182,12 +182,12 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold">&euro;25</span>
-                  <span className="text-muted-foreground text-sm">/mes</span>
+                  <span className="text-muted-foreground text-sm">/mês</span>
                 </div>
                 <ul className="space-y-2">
                   {[
-                    'Pagina profissional',
-                    'Servicos ilimitados',
+                    'Página profissional',
+                    'Serviços ilimitados',
                     'Agendamento ilimitado',
                     'WhatsApp integrado',
                     'Bio gerada por IA',
@@ -200,7 +200,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button asChild className="w-full">
-                  <Link href="/register">Comecar 14 dias gratis</Link>
+                  <Link href="/register">Comecar 14 dias grátis</Link>
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
                   Sem cartao para o teste. Cancele quando quiser.
@@ -214,14 +214,14 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-20 px-4 text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-          Pronto para ter sua pagina profissional?
+          Pronto para ter sua página profissional?
         </h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Em 5 minutos voce cria sua pagina, adiciona servicos e ja pode compartilhar o link com seus clientes.
+          Em 5 minutos você cria sua página, adiciona serviços e já pode compartilhar o link com seus clientes.
         </p>
         <Button asChild size="lg" className="gap-2">
           <Link href="/register">
-            Criar minha pagina agora
+            Criar minha página agora
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>

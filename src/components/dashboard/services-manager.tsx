@@ -142,7 +142,7 @@ export function ServicesManager({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Servicos</h1>
+        <h1 className="text-2xl font-bold">Serviços</h1>
         <Button onClick={openCreate} size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
           Adicionar servico
@@ -245,7 +245,7 @@ export function ServicesManager({
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="description">Descricao</Label>
+                <Label htmlFor="description">Descrição</Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -322,7 +322,7 @@ export function ServicesManager({
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Tem certeza que deseja excluir &ldquo;{deletingService?.name}&rdquo;?
-            Esta acao nao pode ser desfeita.
+            Está ação não pode ser desfeita.
           </p>
           <DialogFooter>
             <Button

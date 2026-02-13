@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { MobileNav } from '@/components/dashboard/mobile-nav';
 import {
   LayoutDashboard,
   Scissors,
@@ -15,13 +16,13 @@ import {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { href: '/services', label: 'Servicos', icon: Scissors },
+  { href: '/services', label: 'Serviços', icon: Scissors },
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
-  { href: '/schedule', label: 'Horarios', icon: Clock },
+  { href: '/schedule', label: 'Horários', icon: Clock },
   { href: '/contacts', label: 'Contatos', icon: Users },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
-  { href: '/my-page', label: 'Minha Pagina', icon: Palette },
-  { href: '/settings', label: 'Configuracoes', icon: Settings },
+  { href: '/my-page', label: 'Minha Página', icon: Palette },
+  { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 export default async function DashboardLayout({
@@ -80,7 +81,7 @@ export default async function DashboardLayout({
               rel="noopener noreferrer"
               className="block px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Ver minha pagina publica &rarr;
+              Ver minha página pública &rarr;
             </a>
           )}
           <form action="/api/auth/signout" method="POST">
@@ -104,20 +105,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-50">
-          <div className="flex justify-around py-2">
-            {NAV_ITEMS.slice(0, 5).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[10px]">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
+        <MobileNav professionalSlug={professional?.slug} />
 
         <main className="flex-1 p-4 sm:p-6 md:p-8 pb-20 md:pb-8">
           {children}

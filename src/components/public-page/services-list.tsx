@@ -17,7 +17,7 @@ export function ServicesList({ services, currency }: ServicesListProps) {
   if (services.length === 0) {
     return (
       <section className="px-4 sm:px-6 py-6">
-        <h2 className="text-lg font-semibold mb-4">Servicos</h2>
+        <h2 className="text-lg font-semibold mb-4">Serviços</h2>
         <p className="text-muted-foreground text-sm">Nenhum servico cadastrado ainda.</p>
       </section>
     );
@@ -25,7 +25,7 @@ export function ServicesList({ services, currency }: ServicesListProps) {
 
   return (
     <section className="px-4 sm:px-6 py-6">
-      <h2 className="text-lg font-semibold mb-4">Servicos</h2>
+      <h2 className="text-lg font-semibold mb-4">Serviços</h2>
       <div className="space-y-3">
         {services.map((service) => (
           <Card key={service.id}>

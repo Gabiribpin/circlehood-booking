@@ -43,7 +43,7 @@ const statusConfig: Record<
   confirmed: { label: 'Confirmado', variant: 'default' },
   cancelled: { label: 'Cancelado', variant: 'destructive' },
   completed: { label: 'Concluido', variant: 'secondary' },
-  no_show: { label: 'Nao compareceu', variant: 'outline' },
+  no_show: { label: 'Não compareceu', variant: 'outline' },
 };
 
 function BookingCard({

@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const data = await getProfessional(slug);
 
   if (!data) {
-    return { title: 'Pagina nao encontrada' };
+    return { title: 'Página não encontrada' };
   }
 
   const { professional } = data;
