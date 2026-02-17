@@ -1,11 +1,10 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { Hero } from '@/components/public-page/hero';
-import { ServicesList } from '@/components/public-page/services-list';
 import { BookingSection } from '@/components/booking/booking-section';
 import { TrialBanner } from '@/components/public-page/trial-banner';
-import { ContactFooter } from '@/components/public-page/contact-footer';
+import { SectionRenderer } from '@/components/public-page/section-renderer';
 import type { Professional, Service } from '@/types/database';
+import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -38,6 +37,14 @@ async function getProfessional(slug: string) {
     .eq('is_available', true)
     .order('day_of_week', { ascending: true });
 
+  // Buscar seções customizadas da página
+  const { data: sections } = await supabase
+    .from('page_sections')
+    .select('*')
+    .eq('professional_id', professional.id)
+    .eq('is_visible', true)
+    .order('order_index', { ascending: true });
+
   const trialExpired =
     professional.subscription_status === 'trial' &&
     new Date(professional.trial_ends_at) < new Date();
@@ -46,6 +53,7 @@ async function getProfessional(slug: string) {
     professional: professional as Professional,
     services: (services || []) as Service[],
     workingHours: workingHours || [],
+    sections: (sections || []) as PageSection[],
     trialExpired,
   };
 }
@@ -87,23 +95,64 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const { professional, services, workingHours, trialExpired } = data;
+  const { professional, services, workingHours, sections, trialExpired } = data;
 
+  // Se não houver seções customizadas, usar layout padrão
+  if (!sections || sections.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-lg mx-auto pb-8">
+          {/* Fallback para layout padrão - componentes antigos */}
+          <div className="text-center py-12 px-4">
+            <h1 className="text-3xl font-bold mb-4">{professional.business_name}</h1>
+            {professional.bio && <p className="text-gray-600 mb-6">{professional.bio}</p>}
+          </div>
+          {trialExpired && <TrialBanner />}
+          {!trialExpired && (
+            <BookingSection
+              services={services}
+              professionalId={professional.id}
+              currency={professional.currency}
+              workingHours={workingHours}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Renderizar com seções customizadas
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto pb-8">
-        <Hero professional={professional} />
-        {trialExpired && <TrialBanner />}
-        <ServicesList services={services} currency={professional.currency} />
-        {!trialExpired && (
-          <BookingSection
-            services={services}
-            professionalId={professional.id}
-            currency={professional.currency}
-            workingHours={workingHours}
-          />
+      <div className="max-w-5xl mx-auto">
+        {trialExpired && (
+          <div className="max-w-lg mx-auto">
+            <TrialBanner />
+          </div>
         )}
-        <ContactFooter professional={professional} />
+
+        {/* Renderizar seções em ordem */}
+        {sections.map((section) => (
+          <SectionRenderer
+            key={section.id}
+            section={section}
+            professional={professional}
+            services={services}
+            currency={professional.currency}
+          />
+        ))}
+
+        {/* Booking Section - sempre no final se não estiver no trial expirado */}
+        {!trialExpired && (
+          <div className="max-w-lg mx-auto py-8 px-4">
+            <BookingSection
+              services={services}
+              professionalId={professional.id}
+              currency={professional.currency}
+              workingHours={workingHours}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
