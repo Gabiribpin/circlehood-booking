@@ -42,3 +42,10 @@ next-env.d.ts
 
 # supabase temp
 supabase/.temp/
+
+# Credential and migration helper files
+CREDENCIAIS_PROJETO.md
+EXECUTAR_*.md
+EXECUTE_*.md
+MIGRATION_RAPIDA.sql
+execute-migration.js

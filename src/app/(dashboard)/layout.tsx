@@ -15,6 +15,8 @@ import {
   QrCode,
   BarChart3,
   FileEdit,
+  ImageIcon,
+  MessageSquare,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -27,6 +29,8 @@ const NAV_ITEMS = [
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
+  { href: '/gallery', label: 'Galeria', icon: ImageIcon },
+  { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
   { href: '/my-page', label: 'Minha Página', icon: Palette },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];

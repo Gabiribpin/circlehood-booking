@@ -14,6 +14,8 @@ import {
   QrCode,
   BarChart3,
   FileEdit,
+  ImageIcon,
+  MessageSquare,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -45,6 +47,8 @@ const MENU_ITEMS = [
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
+  { href: '/gallery', label: 'Galeria', icon: ImageIcon },
+  { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 

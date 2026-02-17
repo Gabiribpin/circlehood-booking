@@ -66,23 +66,63 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'Página não encontrada' };
   }
 
-  const { professional } = data;
+  const { professional, services } = data;
+
+  const title = `${professional.business_name} | Agendamento Online`;
+  const description =
+    professional.bio ||
+    `Agende ${professional.category || 'serviços'} com ${professional.business_name} em ${professional.city}. ${services.length} serviços disponíveis.`;
+
+  const url = `https://book.circlehood-tech.com/${professional.slug}`;
 
   return {
-    title: `${professional.business_name} | CircleHood Booking`,
-    description:
-      professional.bio ||
-      `Agende com ${professional.business_name} em ${professional.city}`,
+    title,
+    description,
+    keywords: [
+      professional.business_name,
+      professional.category,
+      professional.city,
+      'agendamento online',
+      'booking',
+      'dublin',
+      ...services.slice(0, 5).map((s) => s.name),
+    ].filter(Boolean),
     openGraph: {
-      title: professional.business_name,
-      description:
-        professional.bio ||
-        `${professional.category || 'Profissional'} em ${professional.city}`,
+      title,
+      description,
       type: 'website',
-      url: `https://book.circlehood-tech.com/${professional.slug}`,
+      url,
+      siteName: 'CircleHood Booking',
+      locale: 'pt_BR',
       ...(professional.profile_image_url && {
-        images: [{ url: professional.profile_image_url }],
+        images: [
+          {
+            url: professional.profile_image_url,
+            width: 1200,
+            height: 630,
+            alt: professional.business_name,
+          },
+        ],
       }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(professional.profile_image_url && {
+        images: [professional.profile_image_url],
+      }),
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+      },
+    },
+    alternates: {
+      canonical: url,
     },
   };
 }
@@ -121,10 +161,51 @@ export default async function PublicProfilePage({ params }: PageProps) {
     );
   }
 
+  // JSON-LD Structured Data
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: professional.business_name,
+    description: professional.bio || '',
+    url: `https://book.circlehood-tech.com/${professional.slug}`,
+    telephone: professional.phone || '',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: professional.city || 'Dublin',
+      addressCountry: 'IE',
+    },
+    ...(professional.profile_image_url && {
+      image: professional.profile_image_url,
+    }),
+    ...(services.length > 0 && {
+      hasOfferCatalog: {
+        '@type': 'OfferCatalog',
+        name: 'Services',
+        itemListElement: services.slice(0, 10).map((service, index) => ({
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: service.name,
+            description: service.description || '',
+          },
+          price: service.price,
+          priceCurrency: professional.currency || 'EUR',
+        })),
+      },
+    }),
+  };
+
   // Renderizar com seções customizadas
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto">
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
+      <div className="min-h-screen bg-background">
+        <div className="max-w-5xl mx-auto">
         {trialExpired && (
           <div className="max-w-lg mx-auto">
             <TrialBanner />
@@ -153,7 +234,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
             />
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
