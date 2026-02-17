@@ -13,6 +13,7 @@ import {
   Megaphone,
   QrCode,
   BarChart3,
+  FileEdit,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -43,6 +44,7 @@ const MENU_ITEMS = [
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CircleHood Booking - Gestão de Tarefas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .sprint {
+            margin-bottom: 40px;
+        }
+        
+        .sprint-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .sprint-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .sprint-header h2 {
+            font-size: 1.5em;
+        }
+        
+        .sprint-progress {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .tasks {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .task {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .task:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+        
+        .task.completed {
+            background: #f8f9fa;
+            border-color: #28a745;
+        }
+        
+        .task-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 24px;
+        }
+        
+        input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+        
+        .task-content {
+            flex: 1;
+        }
+        
+        .task-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .task.completed .task-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+        
+        .task-description {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        
+        .task-priority {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .priority-high {
+            background: #ffe5e5;
+            color: #dc3545;
+        }
+        
+        .priority-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .priority-low {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .actions {
+            padding: 30px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 CircleHood Booking</h1>
+            <p>Plataforma de Agendamento para Microempreendedores em Dublin</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="totalTasks">0</h3>
+                <p>Total de Tarefas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completedTasks">0</h3>
+                <p>Concluídas</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pendingTasks">0</h3>
+                <p>Pendentes</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="progressPercent">0%</h3>
+                <p>Progresso</p>
+            </div>
+        </div>
+        
+        <div style="padding: 0 30px;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+            </div>
+        </div>
+        
+        <div class="content" id="sprintsContainer"></div>
+        
+        <div class="actions">
+            <button class="btn" onclick="resetProgress()">🔄 Resetar Progresso</button>
+            <button class="btn btn-secondary" onclick="exportProgress()">📥 Exportar Dados</button>
+        </div>
+        
+        <div class="footer">
+            <p>💜 Desenvolvido com amor para CircleHood Tech | Última atualização: <span id="lastUpdate">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        const sprints = [
+            {
+                id: 'sprint-atual',
+                title: '✅ SPRINT ATUAL - Funcionalidades Básicas (100% Completo)',
+                tasks: [
+                    { id: 1, title: 'Autenticação de Usuários', description: 'Login, registro, recuperação de senha com Supabase Auth', priority: 'high', completed: true },
+                    { id: 2, title: 'Dashboard do Profissional', description: 'Painel administrativo completo com estatísticas', priority: 'high', completed: true },
+                    { id: 3, title: 'Gestão de Serviços', description: 'CRUD de serviços com preços em EUR', priority: 'high', completed: true },
+                    { id: 4, title: 'Configuração de Horários', description: 'Working hours por dia da semana', priority: 'high', completed: true },
+                    { id: 5, title: 'Página Pública de Agendamento', description: 'Landing page personalizada com slug único', priority: 'high', completed: true },
+                    { id: 6, title: 'Sistema de Bookings', description: 'Agendamento completo com validação de horários', priority: 'high', completed: true },
+                    { id: 7, title: 'Upload de Imagens', description: 'Avatar e cover com compressão automática', priority: 'high', completed: true },
+                    { id: 8, title: 'Estatísticas de Receita', description: 'Cards de receita (hoje, semana, mês) em EUR', priority: 'medium', completed: true },
+                    { id: 9, title: 'WhatsApp Obrigatório', description: 'Campo obrigatório no agendamento', priority: 'high', completed: true },
+                    { id: 10, title: 'Notificações WhatsApp', description: 'Mensagens de confirmação e lembrete via wa.me', priority: 'high', completed: true },
+                    { id: 11, title: 'Calendário Inteligente', description: 'Desabilita dias sem working_hours', priority: 'medium', completed: true },
+                    { id: 12, title: 'Sistema de Pagamentos Stripe', description: 'Trial 14 dias + assinatura mensal', priority: 'high', completed: true },
+                    { id: 13, title: 'IA para Conteúdo', description: 'Geração automática de bio e descrições de serviços', priority: 'low', completed: true }
+                ]
+            },
+            {
+                id: 'sprint-whatsapp',
+                title: '✅ SPRINT 3 - WhatsApp Inteligente & Gestão de Contatos (100% Testado)',
+                tasks: [
+                    { id: 14, title: 'Importação de Contatos', description: 'Upload de arquivo CSV com contatos - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 15, title: 'Gestão de Contatos', description: 'CRUD completo: adicionar, editar, deletar, buscar - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 16, title: 'Lista de Contatos', description: 'Visualização de todos os contatos importados - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 17, title: 'Campanhas Segmentadas', description: 'Criar mensagens personalizadas por segmento de clientes - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 18, title: 'Templates Multilíngues', description: 'Mensagens pré-configuradas em PT, EN, ES - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 19, title: 'Preview de Campanhas', description: 'Visualizar mensagens antes de enviar - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 20, title: 'Envio de Campanhas', description: 'Sistema de envio de campanhas via WhatsApp - TESTADO E FUNCIONANDO', priority: 'high', completed: true }
+                ]
+            },
+            {
+                id: 'sprint-qrcode',
+                title: '✅ SPRINT 4 - QR Code & Marketing (100% Completo)',
+                tasks: [
+                    { id: 21, title: 'Database Migration', description: 'Tabelas qr_codes e qr_scans criadas com RLS e storage bucket - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 22, title: 'Utility Functions', description: 'qr-generator.ts, canvas-utils.ts, export-utils.ts criados e testados', priority: 'high', completed: true },
+                    { id: 23, title: 'Marketing Dashboard', description: 'Página /marketing com tabs (QR, Cartão, Posts, Flyers) - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 24, title: 'QR Code Generator', description: 'Customização completa (cores, tamanhos), preview em tempo real, download PNG/SVG - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 25, title: 'Salvar QR Designs', description: 'Sistema de salvar designs no banco de dados - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 26, title: 'Business Card Generator', description: 'Cartões digitais 1050x600px com gradientes customizáveis - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 27, title: 'Social Post Generator', description: 'Instagram Stories (1080x1920) e Facebook Post (1200x1200) - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 28, title: 'Flyer Generator', description: 'Flyers A4 e A5 em alta resolução (300dpi) para impressão - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 29, title: 'Navigation Integration', description: 'Marketing adicionado ao menu desktop e mobile - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 30, title: 'Deploy e Testes', description: 'Deploy na Vercel completo, todos os generators testados - TESTADO E FUNCIONANDO', priority: 'high', completed: true }
+                ]
+            },
+            {
+                id: 'sprint-analytics',
+                title: '✅ SPRINT 5 - Analytics & Relatórios (100% Completo)',
+                tasks: [
+                    { id: 31, title: 'Database Migration', description: 'Materialized view daily_metrics para pré-agregação de métricas diárias - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 32, title: 'View Client Classification', description: 'View para classificação automática de clientes (new, occasional, recurring) - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 33, title: 'Analytics Cache Table', description: 'Sistema de cache com TTL de 1 hora para queries pesadas - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 34, title: 'PostgreSQL Functions', description: 'Funções get_revenue_timeseries, get_services_ranking, get_peak_hours - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 35, title: 'API Endpoint Overview', description: 'GET /api/analytics/overview com métricas gerais e cache - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 36, title: 'API Endpoint Revenue', description: 'GET /api/analytics/revenue com time series (day/week/month) - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 37, title: 'API Endpoint Services Ranking', description: 'GET /api/analytics/services/ranking com top serviços - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 38, title: 'API Endpoint Clients', description: 'GET /api/analytics/clients com segmentação e engajamento - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 39, title: 'Analytics Dashboard Page', description: 'Página /analytics com tabs (Revenue, Services, Clients) - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 40, title: 'Revenue Chart Component', description: 'Gráficos Recharts com line/bar charts e granularidade - TESTADO E FUNCIONANDO', priority: 'high', completed: true },
+                    { id: 41, title: 'Services Ranking Component', description: 'Tabela de ranking de serviços por receita - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 42, title: 'Clients Overview Component', description: 'Dashboard de clientes com classificação e engajamento - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 43, title: 'CSV Export Functionality', description: 'Export de todos os relatórios para CSV - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 44, title: 'Period Selector', description: 'Filtros de período (day, week, month, year, custom) - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 45, title: 'Overview Cards', description: 'Cards com Total Revenue, Bookings, Average Ticket, Clients - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 46, title: 'Navigation Integration', description: 'Analytics adicionado ao menu desktop e mobile - TESTADO E FUNCIONANDO', priority: 'low', completed: true },
+                    { id: 47, title: 'Performance Indexes', description: 'Índices otimizados para bookings analytics queries - TESTADO E FUNCIONANDO', priority: 'medium', completed: true },
+                    { id: 48, title: 'Deploy e Testes', description: 'Deploy completo na Vercel, migration executada - TESTADO E FUNCIONANDO', priority: 'high', completed: true }
+                ]
+            },
+            {
+                id: 'sprint-landing',
+                title: '🎨 SPRINT 6 - Landing Page Editor (PRÓXIMO)',
+                tasks: [
+                    { id: 49, title: 'Editor Visual de Landing Page', description: 'Arrastar e soltar seções (sobre, serviços, galeria, depoimentos)', priority: 'high', completed: false },
+                    { id: 50, title: 'Temas Pré-definidos', description: 'Salão de beleza, barbearia, massagem, etc', priority: 'medium', completed: false },
+                    { id: 51, title: 'Galeria de Fotos', description: 'Upload múltiplo de fotos de trabalhos realizados', priority: 'medium', completed: false },
+                    { id: 52, title: 'Before/After Slider', description: 'Slider de comparação antes/depois dos trabalhos', priority: 'medium', completed: false },
+                    { id: 53, title: 'Seção de Depoimentos', description: 'Clientes podem deixar reviews com estrelas', priority: 'medium', completed: false },
+                    { id: 54, title: 'SEO Básico', description: 'Meta tags, description, Open Graph para compartilhamento', priority: 'low', completed: false },
+                    { id: 55, title: 'Domínio Personalizado', description: 'Permitir uso de domínio próprio (ex: meunegocio.com)', priority: 'low', completed: false }
+                ]
+            },
+            {
+                id: 'sprint-melhorias',
+                title: '⚡ SPRINT 7 - Melhorias & Automações',
+                tasks: [
+                    { id: 56, title: 'Vercel Cron Jobs', description: 'Configurar cron jobs para automações periódicas', priority: 'high', completed: false },
+                    { id: 57, title: 'Lembretes Automáticos', description: 'Enviar lembrete 24h antes via WhatsApp automaticamente', priority: 'high', completed: false },
+                    { id: 58, title: 'Confirmação Automática', description: 'Enviar confirmação assim que agendamento é criado', priority: 'high', completed: false },
+                    { id: 59, title: 'Reagendamento pelo Cliente', description: 'Cliente pode cancelar/reagendar via link único e seguro', priority: 'medium', completed: false },
+                    { id: 60, title: 'Lista de Espera', description: 'Se horário está cheio, cliente entra em fila de espera', priority: 'medium', completed: false },
+                    { id: 61, title: 'Notificação Automática de Vagas', description: 'Quando abrir vaga, notifica primeiro da lista de espera', priority: 'medium', completed: false },
+                    { id: 62, title: 'Pacotes de Serviços', description: 'Combos: ex: Corte + Barba com desconto', priority: 'medium', completed: false },
+                    { id: 63, title: 'Programa de Fidelidade', description: 'A cada 10 serviços, ganha 1 grátis com cartão digital', priority: 'low', completed: false },
+                    { id: 64, title: 'Bloqueio de Horários (já existe)', description: 'Profissional pode bloquear datas/horários para férias - JÁ IMPLEMENTADO', priority: 'medium', completed: true }
+                ]
+            },
+            {
+                id: 'sprint-integracao',
+                title: '🔗 SPRINT 8 - Integrações',
+                tasks: [
+                    { id: 65, title: 'Google Calendar Sync', description: 'Sincronizar agendamentos com Google Calendar para evitar double booking', priority: 'high', completed: false },
+                    { id: 66, title: 'WhatsApp Business API', description: 'Integrar com WhatsApp Business API oficial para automação total', priority: 'high', completed: false },
+                    { id: 67, title: 'Instagram Integration', description: 'Postar automaticamente no Instagram Stories quando tiver vaga', priority: 'medium', completed: false },
+                    { id: 68, title: 'Email Marketing', description: 'Integrar com Mailchimp/SendGrid para campanhas de email', priority: 'low', completed: false },
+                    { id: 69, title: 'Pagamentos via Revolut', description: 'Alternativa ao Stripe para profissionais do Brasil', priority: 'medium', completed: false },
+                    { id: 70, title: 'Google Maps Integration', description: 'Mapa interativo na página pública com endereço do profissional', priority: 'low', completed: false }
+                ]
+            },
+            {
+                id: 'sprint-mobile',
+                title: '📱 SPRINT 9 - Aplicativo Mobile (Futuro)',
+                tasks: [
+                    { id: 71, title: 'Setup React Native', description: 'Configurar projeto React Native com Expo', priority: 'low', completed: false },
+                    { id: 72, title: 'Autenticação Mobile', description: 'Login e registro no app com Supabase Auth', priority: 'low', completed: false },
+                    { id: 73, title: 'Dashboard Mobile', description: 'Dashboard do profissional adaptado para mobile', priority: 'low', completed: false },
+                    { id: 74, title: 'Push Notifications', description: 'Notificações push para novos agendamentos', priority: 'low', completed: false },
+                    { id: 75, title: 'Modo Offline', description: 'Funcionar sem internet e sincronizar depois', priority: 'low', completed: false },
+                    { id: 76, title: 'Publicar na App Store', description: 'Submeter app para iOS App Store', priority: 'low', completed: false },
+                    { id: 77, title: 'Publicar na Play Store', description: 'Submeter app para Google Play Store', priority: 'low', completed: false }
+                ]
+            }
+        ];
+
+        function loadProgress() {
+            const saved = localStorage.getItem('circlehood-progress');
+            if (saved) {
+                const progress = JSON.parse(saved);
+                sprints.forEach(sprint => {
+                    sprint.tasks.forEach(task => {
+                        const savedTask = progress.find(t => t.id === task.id);
+                        if (savedTask) {
+                            task.completed = savedTask.completed;
+                        }
+                    });
+                });
+            }
+        }
+
+        function saveProgress() {
+            const progress = [];
+            sprints.forEach(sprint => {
+                sprint.tasks.forEach(task => {
+                    progress.push({ id: task.id, completed: task.completed });
+                });
+            });
+            localStorage.setItem('circlehood-progress', JSON.stringify(progress));
+            localStorage.setItem('circlehood-last-update', new Date().toLocaleString('pt-BR'));
+        }
+
+        function renderSprints() {
+            const container = document.getElementById('sprintsContainer');
+            container.innerHTML = '';
+            
+            sprints.forEach(sprint => {
+                const completedCount = sprint.tasks.filter(t => t.completed).length;
+                const totalCount = sprint.tasks.length;
+                const progress = Math.round((completedCount / totalCount) * 100);
+                
+                const sprintDiv = document.createElement('div');
+                sprintDiv.className = 'sprint';
+                
+                const sprintHeader = document.createElement('div');
+                sprintHeader.className = 'sprint-header';
+                sprintHeader.innerHTML = `
+                    <h2>${sprint.title}</h2>
+                    <span class="sprint-progress">${completedCount}/${totalCount} (${progress}%)</span>
+                `;
+                
+                const tasksDiv = document.createElement('div');
+                tasksDiv.className = 'tasks';
+                
+                sprint.tasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = `task ${task.completed ? 'completed' : ''}`;
+                    taskDiv.innerHTML = `
+                        <div class="task-header">
+                            <div class="checkbox-container">
+                                <input type="checkbox" 
+                                       ${task.completed ? 'checked' : ''} 
+                                       onchange="toggleTask(${task.id})"
+                                       id="task-${task.id}">
+                            </div>
+                            <div class="task-content">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-description">${task.description}</div>
+                                <span class="task-priority priority-${task.priority}">
+                                    ${task.priority === 'high' ? '🔥 Alta' : 
+                                      task.priority === 'medium' ? '⚡ Média' : 
+                                      '💡 Baixa'}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                    tasksDiv.appendChild(taskDiv);
+                });
+                
+                sprintDiv.appendChild(sprintHeader);
+                sprintDiv.appendChild(tasksDiv);
+                container.appendChild(sprintDiv);
+            });
+            
+            updateStats();
+        }
+
+        function toggleTask(taskId) {
+            sprints.forEach(sprint => {
+                const task = sprint.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = !task.completed;
+                }
+            });
+            saveProgress();
+            renderSprints();
+        }
+
+        function updateStats() {
+            let total = 0;
+            let completed = 0;
+            
+            sprints.forEach(sprint => {
+                total += sprint.tasks.length;
+                completed += sprint.tasks.filter(t => t.completed).length;
+            });
+            
+            const pending = total - completed;
+            const progress = Math.round((completed / total) * 100);
+            
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('pendingTasks').textContent = pending;
+            document.getElementById('progressPercent').textContent = progress + '%';
+            
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = progress + '%';
+            progressFill.textContent = progress + '%';
+            
+            const lastUpdate = localStorage.getItem('circlehood-last-update') || 'Nunca';
+            document.getElementById('lastUpdate').textContent = lastUpdate;
+        }
+
+        function resetProgress() {
+            if (confirm('Tem certeza que deseja resetar todo o progresso? Esta ação não pode ser desfeita.')) {
+                localStorage.removeItem('circlehood-progress');
+                localStorage.removeItem('circlehood-last-update');
+                location.reload();
+            }
+        }
+
+        function exportProgress() {
+            const progress = {
+                exportDate: new Date().toLocaleString('pt-BR'),
+                sprints: sprints.map(sprint => ({
+                    title: sprint.title,
+                    tasks: sprint.tasks.map(task => ({
+                        title: task.title,
+                        description: task.description,
+                        priority: task.priority,
+                        completed: task.completed
+                    }))
+                }))
+            };
+            
+            const dataStr = JSON.stringify(progress, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = 'circlehood-progress-' + 
+                new Date().toISOString().split('T')[0] + '.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        // Inicializar
+        loadProgress();
+        renderSprints();
+    </script>
+</body>
+</html>

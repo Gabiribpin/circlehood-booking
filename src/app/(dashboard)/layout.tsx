@@ -14,6 +14,7 @@ import {
   Megaphone,
   QrCode,
   BarChart3,
+  FileEdit,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/my-page', label: 'Minha Página', icon: Palette },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
