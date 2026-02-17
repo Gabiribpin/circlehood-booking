@@ -11,6 +11,7 @@ import {
   Clock,
   Users,
   Megaphone,
+  QrCode,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const MENU_ITEMS = [
   { href: '/schedule', label: 'Horários', icon: Clock },
   { href: '/contacts', label: 'Contatos', icon: Users },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
+  { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
