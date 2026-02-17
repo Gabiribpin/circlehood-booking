@@ -13,6 +13,7 @@ import {
   Users,
   Megaphone,
   QrCode,
+  BarChart3,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/contacts', label: 'Contatos', icon: Users },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/my-page', label: 'Minha Página', icon: Palette },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];

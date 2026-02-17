@@ -12,6 +12,7 @@ import {
   Users,
   Megaphone,
   QrCode,
+  BarChart3,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ const MENU_ITEMS = [
   { href: '/contacts', label: 'Contatos', icon: Users },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
