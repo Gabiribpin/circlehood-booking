@@ -4,7 +4,7 @@ import { sendBulkEmails } from '@/lib/integrations/email-marketing'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
 
@@ -13,7 +13,7 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { id } = params
+  const { id } = await params
 
   // Buscar campanha
   const { data: campaign, error: campaignError } = await supabase
@@ -73,8 +73,8 @@ export async function POST(
 
     // Preparar destinatários com personalização
     const recipients = contacts
-      .filter(c => c.email && c.email.trim() !== '')
-      .map(contact => ({
+      .filter((c: any) => c.email && c.email.trim() !== '')
+      .map((contact: any) => ({
         email: contact.email,
         name: contact.name || 'Cliente',
         personalization: {

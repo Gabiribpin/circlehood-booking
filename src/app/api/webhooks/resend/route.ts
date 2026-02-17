@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Incrementar contadores da campanha
-    const incrementField = {
+    const eventFieldMap: Record<string, string> = {
       'email.delivered': 'total_delivered',
       'email.opened': 'total_opened',
       'email.clicked': 'total_clicked',
       'email.bounced': 'total_bounced',
       'email.complained': 'total_complained'
-    }[type]
+    }
+    const incrementField = eventFieldMap[type]
 
     if (incrementField) {
       // Buscar campanha atual
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (campaign) {
-        const currentValue = campaign[incrementField] || 0
+        const currentValue = (campaign as any)[incrementField] || 0
 
         await supabase
           .from('email_campaigns')

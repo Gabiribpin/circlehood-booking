@@ -57,7 +57,7 @@ export function GoogleMap({
       const position = { lat: latitude, lng: longitude }
 
       // Criar mapa
-      const map = new google.maps.Map(mapRef.current, {
+      const map = new window.google.maps.Map(mapRef.current, {
         center: position,
         zoom,
         mapTypeControl: false,
@@ -73,11 +73,11 @@ export function GoogleMap({
       })
 
       // Criar marcador customizado
-      new google.maps.Marker({
+      new window.google.maps.Marker({
         position,
         map,
         title: name,
-        animation: google.maps.Animation.DROP,
+        animation: window.google.maps.Animation.DROP,
         icon: {
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -86,13 +86,13 @@ export function GoogleMap({
               <path d="M24 14C19.6 14 16 17.6 16 22C16 27 24 34 24 34C24 34 32 27 32 22C32 17.6 28.4 14 24 14ZM24 24.5C22.6 24.5 21.5 23.4 21.5 22C21.5 20.6 22.6 19.5 24 19.5C25.4 19.5 26.5 20.6 26.5 22C26.5 23.4 25.4 24.5 24 24.5Z" fill="white"/>
             </svg>
           `),
-          scaledSize: new google.maps.Size(48, 48),
-          anchor: new google.maps.Point(24, 24)
+          scaledSize: new window.google.maps.Size(48, 48),
+          anchor: new window.google.maps.Point(24, 24)
         }
       })
 
       // InfoWindow com endereço
-      const infoWindow = new google.maps.InfoWindow({
+      const infoWindow = new window.google.maps.InfoWindow({
         content: `
           <div style="padding: 10px; font-family: system-ui, sans-serif;">
             <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">${name}</h3>
@@ -102,7 +102,7 @@ export function GoogleMap({
       })
 
       // Abrir InfoWindow ao clicar no marcador
-      const marker = new google.maps.Marker({
+      const marker = new window.google.maps.Marker({
         position,
         map
       })
