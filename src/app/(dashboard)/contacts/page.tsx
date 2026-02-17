@@ -27,6 +27,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Edit, Upload, Search, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface Contact {
   id: string;
@@ -46,6 +47,7 @@ export default function ContactsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   // Form states
   const [name, setName] = useState('');
@@ -273,22 +275,13 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <div className="relative">
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-              id="csv-upload"
-            />
-            <Button
-              variant="outline"
-              onClick={() => document.getElementById('csv-upload')?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Importar CSV
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/contacts/import')}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Importar Contatos
+          </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
             if (!open) resetForm();
