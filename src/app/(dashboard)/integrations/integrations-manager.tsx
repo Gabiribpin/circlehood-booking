@@ -51,28 +51,28 @@ const INTEGRATION_CONFIGS = {
     description: 'Posts automáticos de vagas e promoções',
     icon: Instagram,
     color: 'pink',
-    canConnect: false, // Coming soon
-  },
-  google_maps: {
-    name: 'Google Maps',
-    description: 'Mapa interativo na sua página pública',
-    icon: MapPin,
-    color: 'red',
-    canConnect: true,
+    canConnect: true, // ✅ Sprint 8 Fase 2
   },
   email_marketing: {
     name: 'Email Marketing',
     description: 'Campanhas profissionais via Resend',
     icon: Mail,
     color: 'purple',
-    canConnect: false, // Coming soon
+    canConnect: true, // ✅ Sprint 8 Fase 2
+  },
+  google_maps: {
+    name: 'Google Maps',
+    description: 'Mapa interativo na sua página pública',
+    icon: MapPin,
+    color: 'red',
+    canConnect: true, // ✅ Sprint 8 Fase 2
   },
   revolut: {
     name: 'Revolut Business',
-    description: 'Pagamentos alternativos (1-2% taxa)',
+    description: 'Pagamentos alternativos (1.2% + €0.20)',
     icon: CreditCard,
     color: 'gray',
-    canConnect: false, // Coming soon
+    canConnect: true, // ✅ Sprint 8 Fase 2
   },
 };
 
@@ -89,9 +89,14 @@ export function IntegrationsManager({ professional, integrations }: Integrations
   const handleConnect = async (type: string) => {
     if (type === 'google_calendar') {
       window.location.href = '/api/integrations/google-calendar/connect';
+    } else if (type === 'instagram') {
+      window.location.href = '/api/integrations/instagram/connect';
+    } else if (type === 'email_marketing') {
+      window.location.href = '/email-campaigns';
+    } else if (type === 'revolut') {
+      window.location.href = '/settings?tab=payment';
     } else if (type === 'google_maps') {
-      // TODO: Implementar modal de busca de endereço
-      alert('Google Maps - Em breve!');
+      window.location.href = '/settings?tab=location';
     }
   };
 
