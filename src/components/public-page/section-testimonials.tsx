@@ -21,8 +21,8 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
   const fetchTestimonials = async () => {
     try {
       const res = await fetch(`/api/testimonials?professionalId=${professionalId}`);
-      const data = await res.json();
-      setTestimonials((data.testimonials || []).slice(0, this.data.maxToShow));
+      const result = await res.json();
+      setTestimonials((result.testimonials || []).slice(0, data.maxToShow));
     } catch (error) {
       console.error('Error fetching testimonials:', error);
     } finally {

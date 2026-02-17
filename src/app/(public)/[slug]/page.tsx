@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       'booking',
       'dublin',
       ...services.slice(0, 5).map((s) => s.name),
-    ].filter(Boolean),
+    ].filter((k): k is string => Boolean(k)),
     openGraph: {
       title,
       description,

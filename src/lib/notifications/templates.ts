@@ -203,7 +203,7 @@ export function formatTemplate(
   language: 'pt' | 'en' | 'es',
   data: Record<string, any>
 ): string {
-  const template = NOTIFICATION_TEMPLATES[type]?.[language]?.[channel];
+  const template = (NOTIFICATION_TEMPLATES as any)[type]?.[language]?.[channel];
 
   if (!template) {
     console.error(`Template not found: ${type}/${channel}/${language}`);

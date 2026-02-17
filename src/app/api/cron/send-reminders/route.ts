@@ -146,11 +146,11 @@ export async function POST(request: NextRequest) {
           name: booking.contact_name,
           date: new Date(booking.booking_date).toLocaleDateString('pt-BR'),
           time: booking.booking_time.substring(0, 5),
-          service: booking.services?.name || 'Serviço',
-          price: booking.services?.price || '0',
+          service: (booking.services as any)?.name || 'Serviço',
+          price: (booking.services as any)?.price || '0',
           location:
-            booking.professionals?.address ||
-            `${booking.professionals?.city || 'Dublin'}`,
+            (booking.professionals as any)?.address ||
+            `${(booking.professionals as any)?.city || 'Dublin'}`,
           reschedule_link: rescheduleLink,
         });
 

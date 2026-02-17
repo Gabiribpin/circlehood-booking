@@ -109,7 +109,7 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
             <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
             <Tooltip
-              formatter={(value: any, name: string) => {
+              formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
                   return [`R$ ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Revenue' : 'Avg Ticket'];
                 }
@@ -148,7 +148,7 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
             <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
             <Tooltip
-              formatter={(value: any, name: string) => {
+              formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
                   return [`R$ ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Revenue' : 'Avg Ticket'];
                 }
