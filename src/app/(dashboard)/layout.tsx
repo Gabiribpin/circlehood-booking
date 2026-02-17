@@ -17,6 +17,7 @@ import {
   FileEdit,
   ImageIcon,
   MessageSquare,
+  Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/automations', label: 'Automações', icon: Zap },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/gallery', label: 'Galeria', icon: ImageIcon },
   { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },

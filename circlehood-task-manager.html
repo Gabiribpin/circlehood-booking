@@ -390,55 +390,63 @@
             },
             {
                 id: 'sprint-landing',
-                title: '🎨 SPRINT 6 - Landing Page Editor (PRÓXIMO)',
+                title: '✅ SPRINT 6 - Landing Page Editor (100% Completo)',
                 tasks: [
-                    { id: 49, title: 'Editor Visual de Landing Page', description: 'Arrastar e soltar seções (sobre, serviços, galeria, depoimentos)', priority: 'high', completed: false },
-                    { id: 50, title: 'Temas Pré-definidos', description: 'Salão de beleza, barbearia, massagem, etc', priority: 'medium', completed: false },
-                    { id: 51, title: 'Galeria de Fotos', description: 'Upload múltiplo de fotos de trabalhos realizados', priority: 'medium', completed: false },
-                    { id: 52, title: 'Before/After Slider', description: 'Slider de comparação antes/depois dos trabalhos', priority: 'medium', completed: false },
-                    { id: 53, title: 'Seção de Depoimentos', description: 'Clientes podem deixar reviews com estrelas', priority: 'medium', completed: false },
-                    { id: 54, title: 'SEO Básico', description: 'Meta tags, description, Open Graph para compartilhamento', priority: 'low', completed: false },
-                    { id: 55, title: 'Domínio Personalizado', description: 'Permitir uso de domínio próprio (ex: meunegocio.com)', priority: 'low', completed: false }
+                    { id: 19, title: 'Criar database migration para page_sections', description: 'Tabelas: page_sections, gallery_images, testimonials com RLS', priority: 'high', completed: true },
+                    { id: 20, title: 'Criar API endpoints para page_sections', description: 'CRUD completo para gerenciar seções customizadas', priority: 'high', completed: true },
+                    { id: 21, title: 'Criar API para gallery upload', description: 'Upload de imagens simples ou before/after no Storage', priority: 'high', completed: true },
+                    { id: 22, title: 'Criar API endpoints para testimonials', description: 'CRUD para depoimentos de clientes com ratings', priority: 'high', completed: true },
+                    { id: 23, title: 'Criar página editor /my-page-editor', description: 'Dashboard para gerenciar seções da landing page', priority: 'high', completed: true },
+                    { id: 24, title: 'Implementar drag & drop de seções', description: 'Usando @dnd-kit para reordenar seções visualmente', priority: 'high', completed: true },
+                    { id: 25, title: 'Criar configuradores de seções', description: 'Forms customizados por tipo de seção (hero, about, etc)', priority: 'medium', completed: true },
+                    { id: 26, title: 'Atualizar página pública [slug]', description: 'Renderizar seções customizadas dinamicamente com fallback', priority: 'high', completed: true },
+                    { id: 27, title: 'Criar componentes de seções públicas', description: 'SectionRenderer + componentes específicos por tipo', priority: 'high', completed: true },
+                    { id: 28, title: 'Implementar sistema de temas', description: 'Temas: default, modern, elegant, minimalist para cada seção', priority: 'medium', completed: true },
+                    { id: 29, title: 'Implementar gallery com upload múltiplo', description: 'Upload de fotos com categorias e metadata (título, descrição)', priority: 'medium', completed: true },
+                    { id: 30, title: 'Implementar Before/After slider', description: 'Slider interativo com touch/mouse para comparação de fotos', priority: 'medium', completed: true },
+                    { id: 31, title: 'Implementar sistema de testimonials', description: 'CRUD de depoimentos com star rating (1-5) e exibição pública', priority: 'medium', completed: true },
+                    { id: 32, title: 'Implementar SEO dinâmico', description: 'Open Graph, Twitter Cards, JSON-LD structured data (LocalBusiness)', priority: 'high', completed: true },
+                    { id: 33, title: 'Deploy e testes Sprint 6', description: 'Push GitHub, Vercel auto-deploy, testes de integração', priority: 'high', completed: true }
                 ]
             },
             {
                 id: 'sprint-melhorias',
-                title: '⚡ SPRINT 7 - Melhorias & Automações',
+                title: '⚡ SPRINT 7 - Melhorias & Automações (PRÓXIMO)',
                 tasks: [
-                    { id: 56, title: 'Vercel Cron Jobs', description: 'Configurar cron jobs para automações periódicas', priority: 'high', completed: false },
-                    { id: 57, title: 'Lembretes Automáticos', description: 'Enviar lembrete 24h antes via WhatsApp automaticamente', priority: 'high', completed: false },
-                    { id: 58, title: 'Confirmação Automática', description: 'Enviar confirmação assim que agendamento é criado', priority: 'high', completed: false },
-                    { id: 59, title: 'Reagendamento pelo Cliente', description: 'Cliente pode cancelar/reagendar via link único e seguro', priority: 'medium', completed: false },
-                    { id: 60, title: 'Lista de Espera', description: 'Se horário está cheio, cliente entra em fila de espera', priority: 'medium', completed: false },
-                    { id: 61, title: 'Notificação Automática de Vagas', description: 'Quando abrir vaga, notifica primeiro da lista de espera', priority: 'medium', completed: false },
-                    { id: 62, title: 'Pacotes de Serviços', description: 'Combos: ex: Corte + Barba com desconto', priority: 'medium', completed: false },
-                    { id: 63, title: 'Programa de Fidelidade', description: 'A cada 10 serviços, ganha 1 grátis com cartão digital', priority: 'low', completed: false },
-                    { id: 64, title: 'Bloqueio de Horários (já existe)', description: 'Profissional pode bloquear datas/horários para férias - JÁ IMPLEMENTADO', priority: 'medium', completed: true }
+                    { id: 34, title: 'Vercel Cron Jobs', description: 'Configurar cron jobs para automações periódicas', priority: 'high', completed: false },
+                    { id: 35, title: 'Lembretes Automáticos', description: 'Enviar lembrete 24h antes via WhatsApp automaticamente', priority: 'high', completed: false },
+                    { id: 36, title: 'Confirmação Automática', description: 'Enviar confirmação assim que agendamento é criado', priority: 'high', completed: false },
+                    { id: 37, title: 'Reagendamento pelo Cliente', description: 'Cliente pode cancelar/reagendar via link único e seguro', priority: 'medium', completed: false },
+                    { id: 38, title: 'Lista de Espera', description: 'Se horário está cheio, cliente entra em fila de espera', priority: 'medium', completed: false },
+                    { id: 39, title: 'Notificação Automática de Vagas', description: 'Quando abrir vaga, notifica primeiro da lista de espera', priority: 'medium', completed: false },
+                    { id: 40, title: 'Pacotes de Serviços', description: 'Combos: ex: Corte + Barba com desconto', priority: 'medium', completed: false },
+                    { id: 41, title: 'Programa de Fidelidade', description: 'A cada 10 serviços, ganha 1 grátis com cartão digital', priority: 'low', completed: false },
+                    { id: 42, title: 'Bloqueio de Horários (já existe)', description: 'Profissional pode bloquear datas/horários para férias - JÁ IMPLEMENTADO', priority: 'medium', completed: true }
                 ]
             },
             {
                 id: 'sprint-integracao',
                 title: '🔗 SPRINT 8 - Integrações',
                 tasks: [
-                    { id: 65, title: 'Google Calendar Sync', description: 'Sincronizar agendamentos com Google Calendar para evitar double booking', priority: 'high', completed: false },
-                    { id: 66, title: 'WhatsApp Business API', description: 'Integrar com WhatsApp Business API oficial para automação total', priority: 'high', completed: false },
-                    { id: 67, title: 'Instagram Integration', description: 'Postar automaticamente no Instagram Stories quando tiver vaga', priority: 'medium', completed: false },
-                    { id: 68, title: 'Email Marketing', description: 'Integrar com Mailchimp/SendGrid para campanhas de email', priority: 'low', completed: false },
-                    { id: 69, title: 'Pagamentos via Revolut', description: 'Alternativa ao Stripe para profissionais do Brasil', priority: 'medium', completed: false },
-                    { id: 70, title: 'Google Maps Integration', description: 'Mapa interativo na página pública com endereço do profissional', priority: 'low', completed: false }
+                    { id: 43, title: 'Google Calendar Sync', description: 'Sincronizar agendamentos com Google Calendar para evitar double booking', priority: 'high', completed: false },
+                    { id: 44, title: 'WhatsApp Business API', description: 'Integrar com WhatsApp Business API oficial para automação total', priority: 'high', completed: false },
+                    { id: 45, title: 'Instagram Integration', description: 'Postar automaticamente no Instagram Stories quando tiver vaga', priority: 'medium', completed: false },
+                    { id: 46, title: 'Email Marketing', description: 'Integrar com Mailchimp/SendGrid para campanhas de email', priority: 'low', completed: false },
+                    { id: 47, title: 'Pagamentos via Revolut', description: 'Alternativa ao Stripe para profissionais do Brasil', priority: 'medium', completed: false },
+                    { id: 48, title: 'Google Maps Integration', description: 'Mapa interativo na página pública com endereço do profissional', priority: 'low', completed: false }
                 ]
             },
             {
                 id: 'sprint-mobile',
                 title: '📱 SPRINT 9 - Aplicativo Mobile (Futuro)',
                 tasks: [
-                    { id: 71, title: 'Setup React Native', description: 'Configurar projeto React Native com Expo', priority: 'low', completed: false },
-                    { id: 72, title: 'Autenticação Mobile', description: 'Login e registro no app com Supabase Auth', priority: 'low', completed: false },
-                    { id: 73, title: 'Dashboard Mobile', description: 'Dashboard do profissional adaptado para mobile', priority: 'low', completed: false },
-                    { id: 74, title: 'Push Notifications', description: 'Notificações push para novos agendamentos', priority: 'low', completed: false },
-                    { id: 75, title: 'Modo Offline', description: 'Funcionar sem internet e sincronizar depois', priority: 'low', completed: false },
-                    { id: 76, title: 'Publicar na App Store', description: 'Submeter app para iOS App Store', priority: 'low', completed: false },
-                    { id: 77, title: 'Publicar na Play Store', description: 'Submeter app para Google Play Store', priority: 'low', completed: false }
+                    { id: 49, title: 'Setup React Native', description: 'Configurar projeto React Native com Expo', priority: 'low', completed: false },
+                    { id: 50, title: 'Autenticação Mobile', description: 'Login e registro no app com Supabase Auth', priority: 'low', completed: false },
+                    { id: 51, title: 'Dashboard Mobile', description: 'Dashboard do profissional adaptado para mobile', priority: 'low', completed: false },
+                    { id: 52, title: 'Push Notifications', description: 'Notificações push para novos agendamentos', priority: 'low', completed: false },
+                    { id: 53, title: 'Modo Offline', description: 'Funcionar sem internet e sincronizar depois', priority: 'low', completed: false },
+                    { id: 54, title: 'Publicar na App Store', description: 'Submeter app para iOS App Store', priority: 'low', completed: false },
+                    { id: 55, title: 'Publicar na Play Store', description: 'Submeter app para Google Play Store', priority: 'low', completed: false }
                 ]
             }
         ];
