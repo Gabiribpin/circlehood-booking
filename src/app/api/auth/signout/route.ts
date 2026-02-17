@@ -13,7 +13,8 @@ export async function POST(request: Request) {
   });
 
   const url = new URL('/login', request.url);
-  return NextResponse.redirect(url);
+  // Use 303 to force GET method on redirect (prevents 405 on /login)
+  return NextResponse.redirect(url, 303);
 }
 
 export async function GET(request: Request) {
