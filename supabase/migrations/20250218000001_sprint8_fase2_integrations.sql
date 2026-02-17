@@ -94,9 +94,9 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
 );
 
 -- Índices para performance
-CREATE INDEX idx_email_campaigns_professional ON email_campaigns(professional_id);
-CREATE INDEX idx_email_campaigns_status ON email_campaigns(status);
-CREATE INDEX idx_email_campaigns_scheduled ON email_campaigns(scheduled_for) WHERE scheduled_for IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_professional ON email_campaigns(professional_id);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status ON email_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_scheduled ON email_campaigns(scheduled_for) WHERE scheduled_for IS NOT NULL;
 
 -- Tabela de destinatários individuais (para tracking granular)
 CREATE TABLE IF NOT EXISTS email_campaign_recipients (
@@ -125,8 +125,8 @@ CREATE TABLE IF NOT EXISTS email_campaign_recipients (
   created_at timestamp DEFAULT now()
 );
 
-CREATE INDEX idx_email_recipients_campaign ON email_campaign_recipients(campaign_id);
-CREATE INDEX idx_email_recipients_message_id ON email_campaign_recipients(resend_message_id);
+CREATE INDEX IF NOT EXISTS idx_email_recipients_campaign ON email_campaign_recipients(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_recipients_message_id ON email_campaign_recipients(resend_message_id);
 
 -- RLS Policies
 ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
@@ -233,10 +233,10 @@ CREATE TABLE IF NOT EXISTS instagram_posts (
   created_at timestamp DEFAULT now()
 );
 
-CREATE INDEX idx_instagram_posts_professional ON instagram_posts(professional_id);
-CREATE INDEX idx_instagram_posts_type ON instagram_posts(post_type);
-CREATE INDEX idx_instagram_posts_status ON instagram_posts(status);
-CREATE INDEX idx_instagram_posts_trigger ON instagram_posts(trigger_type);
+CREATE INDEX IF NOT EXISTS idx_instagram_posts_professional ON instagram_posts(professional_id);
+CREATE INDEX IF NOT EXISTS idx_instagram_posts_type ON instagram_posts(post_type);
+CREATE INDEX IF NOT EXISTS idx_instagram_posts_status ON instagram_posts(status);
+CREATE INDEX IF NOT EXISTS idx_instagram_posts_trigger ON instagram_posts(trigger_type);
 
 -- RLS
 ALTER TABLE instagram_posts ENABLE ROW LEVEL SECURITY;
@@ -358,9 +358,9 @@ CREATE TABLE IF NOT EXISTS revolut_payments (
   updated_at timestamp DEFAULT now()
 );
 
-CREATE INDEX idx_revolut_payments_professional ON revolut_payments(professional_id);
-CREATE INDEX idx_revolut_payments_order ON revolut_payments(revolut_order_id);
-CREATE INDEX idx_revolut_payments_status ON revolut_payments(status);
+CREATE INDEX IF NOT EXISTS idx_revolut_payments_professional ON revolut_payments(professional_id);
+CREATE INDEX IF NOT EXISTS idx_revolut_payments_order ON revolut_payments(revolut_order_id);
+CREATE INDEX IF NOT EXISTS idx_revolut_payments_status ON revolut_payments(status);
 
 -- RLS
 ALTER TABLE revolut_payments ENABLE ROW LEVEL SECURITY;
