@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       const from = parseEvolutionPhone(body.data.key.remoteJid);
       const messageId = body.data.key.id;
 
-      processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
+      await processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
       return NextResponse.json({ status: 'ok' });
     }
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ status: 'ok' });
         }
 
-        processWhatsAppMessage(from, text, messageId, 'meta');
+        await processWhatsAppMessage(from, text, messageId, 'meta');
       }
       return NextResponse.json({ status: 'ok' });
     }
