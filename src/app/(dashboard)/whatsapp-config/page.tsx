@@ -10,11 +10,23 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+type Provider = 'meta' | 'evolution';
+
 export default function WhatsAppConfigPage() {
-  const [config, setConfig] = useState({
+  const [provider, setProvider] = useState<Provider>('meta');
+
+  const [metaConfig, setMetaConfig] = useState({
     phoneNumberId: '',
     accessToken: '',
     verifyToken: '',
+    businessPhone: '',
+    isActive: false,
+  });
+
+  const [evolutionConfig, setEvolutionConfig] = useState({
+    evolutionApiUrl: '',
+    evolutionApiKey: '',
+    evolutionInstance: '',
     businessPhone: '',
     isActive: false,
   });
@@ -32,7 +44,6 @@ export default function WhatsAppConfigPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Carregar configuração existente ao abrir a página
   useEffect(() => {
     async function loadConfig() {
       const supabase = createClient();
@@ -46,10 +57,21 @@ export default function WhatsAppConfigPage() {
         .single();
 
       if (data) {
-        setConfig({
+        const savedProvider: Provider = data.provider ?? 'meta';
+        setProvider(savedProvider);
+
+        setMetaConfig({
           phoneNumberId: data.phone_number_id ?? '',
           accessToken: data.access_token ?? '',
           verifyToken: data.verify_token ?? '',
+          businessPhone: data.business_phone ?? '',
+          isActive: data.is_active ?? false,
+        });
+
+        setEvolutionConfig({
+          evolutionApiUrl: data.evolution_api_url ?? '',
+          evolutionApiKey: data.evolution_api_key ?? '',
+          evolutionInstance: data.evolution_instance ?? '',
           businessPhone: data.business_phone ?? '',
           isActive: data.is_active ?? false,
         });
@@ -72,23 +94,44 @@ export default function WhatsAppConfigPage() {
       return;
     }
 
-    if (!config.phoneNumberId || !config.accessToken || !config.verifyToken || !config.businessPhone) {
-      setMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
-      setSaving(false);
-      return;
+    // Validações por provider
+    if (provider === 'meta') {
+      if (!metaConfig.phoneNumberId || !metaConfig.accessToken || !metaConfig.verifyToken || !metaConfig.businessPhone) {
+        setMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
+        setSaving(false);
+        return;
+      }
+    } else {
+      if (!evolutionConfig.evolutionApiUrl || !evolutionConfig.evolutionApiKey || !evolutionConfig.evolutionInstance || !evolutionConfig.businessPhone) {
+        setMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
+        setSaving(false);
+        return;
+      }
     }
 
-    const payload = {
-      user_id: user.id,
-      phone_number_id: config.phoneNumberId,
-      access_token: config.accessToken,
-      verify_token: config.verifyToken,
-      business_phone: config.businessPhone,
-      is_active: config.isActive,
-      updated_at: new Date().toISOString(),
-    };
+    const payload =
+      provider === 'meta'
+        ? {
+            user_id: user.id,
+            provider: 'meta',
+            phone_number_id: metaConfig.phoneNumberId,
+            access_token: metaConfig.accessToken,
+            verify_token: metaConfig.verifyToken,
+            business_phone: metaConfig.businessPhone,
+            is_active: metaConfig.isActive,
+            updated_at: new Date().toISOString(),
+          }
+        : {
+            user_id: user.id,
+            provider: 'evolution',
+            evolution_api_url: evolutionConfig.evolutionApiUrl,
+            evolution_api_key: evolutionConfig.evolutionApiKey,
+            evolution_instance: evolutionConfig.evolutionInstance,
+            business_phone: evolutionConfig.businessPhone,
+            is_active: evolutionConfig.isActive,
+            updated_at: new Date().toISOString(),
+          };
 
-    // Upsert: cria se não existe, atualiza se já existe
     const { error } = await supabase
       .from('whatsapp_config')
       .upsert(payload, { onConflict: 'user_id' });
@@ -110,9 +153,14 @@ export default function WhatsAppConfigPage() {
     );
   }
 
+  const webhookUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/api/whatsapp/webhook`
+      : 'https://seudominio.com/api/whatsapp/webhook';
+
   return (
     <div className="container max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-2">⚙️ Configuração WhatsApp Business</h1>
+      <h1 className="text-3xl font-bold mb-2">⚙️ Configuração WhatsApp</h1>
       <p className="text-gray-500 mb-6">Conecta o teu número ao bot de agendamento automático</p>
 
       <Tabs defaultValue="setup" className="space-y-6">
@@ -125,70 +173,175 @@ export default function WhatsAppConfigPage() {
         {/* ─── Tab 1: Conexão ─── */}
         <TabsContent value="setup">
           <Card className="p-6 space-y-5">
-            <h2 className="text-xl font-semibold">1️⃣ Credenciais da API</h2>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="businessPhone">Número do WhatsApp Business *</Label>
-                <Input
-                  id="businessPhone"
-                  placeholder="+353 85 123 4567"
-                  value={config.businessPhone}
-                  onChange={(e) => setConfig({ ...config, businessPhone: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phoneNumberId">Phone Number ID *</Label>
-                <Input
-                  id="phoneNumberId"
-                  placeholder="Ex: 123456789012345"
-                  value={config.phoneNumberId}
-                  onChange={(e) => setConfig({ ...config, phoneNumberId: e.target.value })}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Encontras em Meta for Developers → WhatsApp → API Setup
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="accessToken">Access Token *</Label>
-                <Input
-                  id="accessToken"
-                  type="password"
-                  placeholder="Token permanente do WhatsApp Business API"
-                  value={config.accessToken}
-                  onChange={(e) => setConfig({ ...config, accessToken: e.target.value })}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Token de acesso permanente (não o temporário de 24h)
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="verifyToken">Verify Token *</Label>
-                <Input
-                  id="verifyToken"
-                  placeholder="Palavra secreta que defines tu (ex: circlehood_webhook_2024)"
-                  value={config.verifyToken}
-                  onChange={(e) => setConfig({ ...config, verifyToken: e.target.value })}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Usa este token ao configurar o Webhook no Meta Developer Portal
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-3 pt-2">
-                <Switch
-                  id="active"
-                  checked={config.isActive}
-                  onCheckedChange={(checked) => setConfig({ ...config, isActive: checked })}
-                />
-                <Label htmlFor="active" className="cursor-pointer">
-                  {config.isActive ? '🟢 Bot ativo' : '🔴 Bot inativo'}
-                </Label>
+            {/* Seletor de Provider */}
+            <div>
+              <Label className="mb-2 block">Provider WhatsApp</Label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setProvider('meta')}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    provider === 'meta'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  📘 Meta Business API
+                  <p className="text-xs font-normal mt-1 opacity-70">Oficial do Facebook</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvider('evolution')}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                    provider === 'evolution'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  🟢 Evolution API
+                  <p className="text-xs font-normal mt-1 opacity-70">Open source, sem aprovação</p>
+                </button>
               </div>
             </div>
+
+            {/* ── Campos Meta ── */}
+            {provider === 'meta' && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Credenciais Meta Business</h2>
+
+                <div>
+                  <Label htmlFor="businessPhone">Número do WhatsApp Business *</Label>
+                  <Input
+                    id="businessPhone"
+                    placeholder="+353 85 123 4567"
+                    value={metaConfig.businessPhone}
+                    onChange={(e) => setMetaConfig({ ...metaConfig, businessPhone: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phoneNumberId">Phone Number ID *</Label>
+                  <Input
+                    id="phoneNumberId"
+                    placeholder="Ex: 123456789012345"
+                    value={metaConfig.phoneNumberId}
+                    onChange={(e) => setMetaConfig({ ...metaConfig, phoneNumberId: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Meta for Developers → WhatsApp → API Setup</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="accessToken">Access Token *</Label>
+                  <Input
+                    id="accessToken"
+                    type="password"
+                    placeholder="Token permanente do WhatsApp Business API"
+                    value={metaConfig.accessToken}
+                    onChange={(e) => setMetaConfig({ ...metaConfig, accessToken: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="verifyToken">Verify Token *</Label>
+                  <Input
+                    id="verifyToken"
+                    placeholder="Ex: circlehood_webhook_2024"
+                    value={metaConfig.verifyToken}
+                    onChange={(e) => setMetaConfig({ ...metaConfig, verifyToken: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    id="active-meta"
+                    checked={metaConfig.isActive}
+                    onCheckedChange={(checked) => setMetaConfig({ ...metaConfig, isActive: checked })}
+                  />
+                  <Label htmlFor="active-meta" className="cursor-pointer">
+                    {metaConfig.isActive ? '🟢 Bot ativo' : '🔴 Bot inativo'}
+                  </Label>
+                </div>
+
+                <div className="p-4 bg-blue-50 rounded-lg space-y-2">
+                  <p className="text-sm font-semibold text-blue-800">📋 URL do Webhook para o Meta:</p>
+                  <code className="text-xs bg-white border rounded px-2 py-1 block text-blue-700 break-all">
+                    {webhookUrl}
+                  </code>
+                </div>
+              </div>
+            )}
+
+            {/* ── Campos Evolution ── */}
+            {provider === 'evolution' && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">Credenciais Evolution API</h2>
+
+                <div>
+                  <Label htmlFor="evolutionApiUrl">URL da Evolution API *</Label>
+                  <Input
+                    id="evolutionApiUrl"
+                    placeholder="https://sua-evolution-api.com"
+                    value={evolutionConfig.evolutionApiUrl}
+                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionApiUrl: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">URL base da sua instância Evolution API</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="evolutionApiKey">API Key *</Label>
+                  <Input
+                    id="evolutionApiKey"
+                    type="password"
+                    placeholder="Sua API Key da Evolution API"
+                    value={evolutionConfig.evolutionApiKey}
+                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionApiKey: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="evolutionInstance">Nome da Instância *</Label>
+                  <Input
+                    id="evolutionInstance"
+                    placeholder="Ex: circlehood"
+                    value={evolutionConfig.evolutionInstance}
+                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionInstance: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Nome da instância criada no painel da Evolution API</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="businessPhoneEvolution">Número do WhatsApp *</Label>
+                  <Input
+                    id="businessPhoneEvolution"
+                    placeholder="+55 11 99999-9999"
+                    value={evolutionConfig.businessPhone}
+                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, businessPhone: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    id="active-evolution"
+                    checked={evolutionConfig.isActive}
+                    onCheckedChange={(checked) => setEvolutionConfig({ ...evolutionConfig, isActive: checked })}
+                  />
+                  <Label htmlFor="active-evolution" className="cursor-pointer">
+                    {evolutionConfig.isActive ? '🟢 Bot ativo' : '🔴 Bot inativo'}
+                  </Label>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg space-y-2">
+                  <p className="text-sm font-semibold text-green-800">📋 Configure o Webhook na Evolution API:</p>
+                  <code className="text-xs bg-white border rounded px-2 py-1 block text-green-700 break-all">
+                    {webhookUrl}
+                  </code>
+                  <p className="text-xs text-green-700">
+                    No painel da Evolution API → sua instância → Webhook → cole esta URL e ative o evento <strong>messages.upsert</strong>
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Feedback */}
             {message && (
@@ -206,29 +359,6 @@ export default function WhatsAppConfigPage() {
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saving ? 'A salvar...' : 'Salvar Configuração'}
             </Button>
-
-            {/* URL do Webhook */}
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg space-y-2">
-              <p className="text-sm font-semibold text-blue-800">📋 URL do Webhook para o Meta:</p>
-              <code className="text-xs bg-white border rounded px-2 py-1 block text-blue-700 break-all">
-                {typeof window !== 'undefined' ? window.location.origin : 'https://seudominio.com'}
-                /api/whatsapp/webhook
-              </code>
-              <p className="text-xs text-blue-600">
-                Cola esta URL no Meta Developer Portal → Webhooks → Callback URL
-              </p>
-            </div>
-
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-700 font-semibold mb-2">📚 Como configurar:</p>
-              <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-                <li>Acessa <strong>developers.facebook.com</strong> e cria um app</li>
-                <li>Adiciona o produto <strong>WhatsApp Business</strong></li>
-                <li>Copia o <strong>Phone Number ID</strong> e gera o <strong>Access Token</strong></li>
-                <li>Em Webhooks, cola a URL acima e o teu <strong>Verify Token</strong></li>
-                <li>Subscreve ao evento <strong>messages</strong></li>
-              </ol>
-            </div>
           </Card>
         </TabsContent>
 
@@ -271,7 +401,7 @@ export default function WhatsAppConfigPage() {
               <Textarea
                 id="instructions"
                 rows={5}
-                placeholder={`Exemplo:\n- Seja sempre educado e use emojis\n- Mencione promoções quando relevante\n- Pergunte se o cliente tem preferência especial`}
+                placeholder={`Exemplo:\n- Seja sempre educado e use emojis\n- Mencione promoções quando relevante`}
                 value={aiSettings.instructions}
                 onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
               />
@@ -291,21 +421,9 @@ export default function WhatsAppConfigPage() {
             <div className="space-y-3">
               <Label>Automações</Label>
               {[
-                {
-                  key: 'autoReminders' as const,
-                  title: 'Lembretes automáticos',
-                  desc: 'Envia lembrete 24h antes do agendamento',
-                },
-                {
-                  key: 'autoBirthdays' as const,
-                  title: 'Mensagens de aniversário',
-                  desc: 'Parabeniza clientes automaticamente',
-                },
-                {
-                  key: 'autoWaitlist' as const,
-                  title: 'Lista de espera',
-                  desc: 'Notifica quando surgir vaga disponível',
-                },
+                { key: 'autoReminders' as const, title: 'Lembretes automáticos', desc: 'Envia lembrete 24h antes do agendamento' },
+                { key: 'autoBirthdays' as const, title: 'Mensagens de aniversário', desc: 'Parabeniza clientes automaticamente' },
+                { key: 'autoWaitlist' as const, title: 'Lista de espera', desc: 'Notifica quando surgir vaga disponível' },
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div>
@@ -314,9 +432,7 @@ export default function WhatsAppConfigPage() {
                   </div>
                   <Switch
                     checked={aiSettings[item.key]}
-                    onCheckedChange={(checked) =>
-                      setAiSettings({ ...aiSettings, [item.key]: checked })
-                    }
+                    onCheckedChange={(checked) => setAiSettings({ ...aiSettings, [item.key]: checked })}
                   />
                 </div>
               ))}
