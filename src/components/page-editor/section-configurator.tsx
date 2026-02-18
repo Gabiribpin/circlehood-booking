@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Save } from 'lucide-react';
 import { AutoTranslateButton } from './auto-translate-button';
+import { BeforeAfterSlider } from './before-after-slider';
 
 interface SectionConfiguratorProps {
   section: any;
@@ -190,35 +191,92 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                 placeholder="Galeria de Trabalhos"
               />
             </div>
+
+            {/* Tipo de Galeria */}
             <div className="space-y-2">
-              <Label>Layout</Label>
-              <Select value={data.layout || 'grid'} onValueChange={(value) => updateData('layout', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="grid">Grade</SelectItem>
-                  <SelectItem value="masonry">Masonry</SelectItem>
-                  <SelectItem value="carousel">Carrossel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Colunas</Label>
+              <Label>Tipo de Galeria</Label>
               <Select
-                value={String(data.columns || 3)}
-                onValueChange={(value) => updateData('columns', parseInt(value))}
+                value={data.galleryType || 'normal'}
+                onValueChange={(value) => updateData('galleryType', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2">2 Colunas</SelectItem>
-                  <SelectItem value="3">3 Colunas</SelectItem>
-                  <SelectItem value="4">4 Colunas</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="before-after">Before / After</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Opções da galeria Normal */}
+            {(data.galleryType || 'normal') === 'normal' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Layout</Label>
+                  <Select value={data.layout || 'grid'} onValueChange={(value) => updateData('layout', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="grid">Grade</SelectItem>
+                      <SelectItem value="masonry">Masonry</SelectItem>
+                      <SelectItem value="carousel">Carrossel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Colunas</Label>
+                  <Select
+                    value={String(data.columns || 3)}
+                    onValueChange={(value) => updateData('columns', parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 Colunas</SelectItem>
+                      <SelectItem value="3">3 Colunas</SelectItem>
+                      <SelectItem value="4">4 Colunas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {/* Opções Before / After */}
+            {data.galleryType === 'before-after' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Imagem ANTES (URL)</Label>
+                  <Input
+                    value={data.beforeImage || ''}
+                    onChange={(e) => updateData('beforeImage', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Imagem DEPOIS (URL)</Label>
+                  <Input
+                    value={data.afterImage || ''}
+                    onChange={(e) => updateData('afterImage', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                {/* Preview do slider */}
+                {data.beforeImage && data.afterImage && (
+                  <div className="space-y-2">
+                    <Label>Preview</Label>
+                    <BeforeAfterSlider
+                      beforeImage={data.beforeImage}
+                      afterImage={data.afterImage}
+                      className="rounded-lg overflow-hidden"
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 
