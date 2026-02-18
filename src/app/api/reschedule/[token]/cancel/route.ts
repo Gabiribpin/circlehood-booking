@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { notifyWaitlist } from '@/lib/automations/waitlist-notification';
 
 export async function POST(
   request: NextRequest,
@@ -55,6 +56,11 @@ export async function POST(
         used_at: new Date().toISOString(),
       })
       .eq('id', tokenData.id);
+
+    // Notificar lista de espera automaticamente
+    notifyWaitlist(tokenData.bookings.id, tokenData.bookings.professional_id).catch(
+      (err) => console.error('notifyWaitlist error:', err)
+    );
 
     // Notificar profissional
     await supabase.from('notification_queue').insert({
