@@ -10,6 +10,7 @@ import {
   Menu,
   Clock,
   Users,
+  UserCheck,
   Megaphone,
   QrCode,
   BarChart3,
@@ -18,6 +19,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  Phone,
 } from 'lucide-react';
 import {
   Sheet,
@@ -43,12 +45,14 @@ const MAIN_ITEMS = [
 const MENU_ITEMS = [
   { href: '/schedule', label: 'Horários', icon: Clock },
   { href: '/contacts', label: 'Contatos', icon: Users },
+  { href: '/clients', label: 'Clientes', icon: UserCheck },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/gallery', label: 'Galeria', icon: ImageIcon },
   { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
+  { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 

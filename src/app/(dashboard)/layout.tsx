@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Users,
+  UserCheck,
   Megaphone,
   QrCode,
   BarChart3,
@@ -19,6 +20,7 @@ import {
   MessageSquare,
   Zap,
   Plug,
+  Phone,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -27,11 +29,13 @@ const NAV_ITEMS = [
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
   { href: '/schedule', label: 'Horários', icon: Clock },
   { href: '/contacts', label: 'Contatos', icon: Users },
+  { href: '/clients', label: 'Clientes', icon: UserCheck },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/automations', label: 'Automações', icon: Zap },
   { href: '/integrations', label: 'Integrações', icon: Plug },
+  { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/gallery', label: 'Galeria', icon: ImageIcon },
   { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
