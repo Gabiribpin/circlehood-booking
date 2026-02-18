@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/expire-waitlist",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "0 20 * * *"
     }
   ]
 }
