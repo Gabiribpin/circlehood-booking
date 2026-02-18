@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
+import { AlertsWidget } from './components/alerts-widget';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -229,6 +230,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Alertas CRM */}
+      <AlertsWidget />
 
       {/* Stats */}
       <div className="space-y-4">
