@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { detectLanguage } from './language-detector';
 import { classifyIntent } from './intent-classifier';
 
@@ -11,11 +12,16 @@ interface ConversationContext {
 
 export class AIBot {
   private anthropic: Anthropic;
+  private supabase;
 
   constructor() {
     this.anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!
     });
+    this.supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
   }
 
   async processMessage(phone: string, message: string, businessId: string) {
@@ -131,13 +137,76 @@ Depois confirme todos os detalhes antes de finalizar.`;
     phone: string,
     businessId: string
   ): Promise<ConversationContext> {
-    // Buscar do banco de dados
-    // Por enquanto, retornar mock
+    // 1. Buscar ou criar conversa
+    const { data: conversation, error: convError } = await this.supabase
+      .from('whatsapp_conversations')
+      .upsert(
+        { user_id: businessId, customer_phone: phone },
+        { onConflict: 'user_id,customer_phone', ignoreDuplicates: false }
+      )
+      .select('id, language')
+      .single();
+
+    if (convError || !conversation) {
+      console.error('Error fetching/creating conversation:', convError);
+      return { userId: phone, language: '', history: [], businessInfo: {} };
+    }
+
+    // 2. Buscar últimas 10 mensagens (mais antigas primeiro para contexto)
+    const { data: messages } = await this.supabase
+      .from('whatsapp_messages')
+      .select('direction, content')
+      .eq('conversation_id', conversation.id)
+      .order('sent_at', { ascending: false })
+      .limit(10);
+
+    const history: Array<{ role: 'user' | 'assistant'; content: string }> = (
+      messages ?? []
+    )
+      .reverse()
+      .map((m) => ({
+        role: m.direction === 'inbound' ? 'user' : 'assistant',
+        content: m.content,
+      }));
+
+    // 3. Buscar info do negócio (professional + services + working_hours)
+    const { data: professional } = await this.supabase
+      .from('professionals')
+      .select('id, business_name, bio, city')
+      .eq('user_id', businessId)
+      .single();
+
+    const { data: services } = await this.supabase
+      .from('services')
+      .select('name, price, duration_minutes')
+      .eq('professional_id', professional?.id ?? '')
+      .eq('is_active', true);
+
+    const { data: workingHours } = await this.supabase
+      .from('working_hours')
+      .select('day_of_week, start_time, end_time')
+      .eq('professional_id', professional?.id ?? '')
+      .eq('is_available', true);
+
+    const schedule = (workingHours ?? []).reduce(
+      (acc: Record<string, { start: string; end: string }>, wh) => {
+        acc[wh.day_of_week] = { start: wh.start_time, end: wh.end_time };
+        return acc;
+      },
+      {}
+    );
+
     return {
       userId: phone,
-      language: '',
-      history: [],
-      businessInfo: {}
+      language: conversation.language ?? '',
+      history,
+      businessInfo: {
+        business_name: professional?.business_name ?? '',
+        description: professional?.bio ?? '',
+        services: services ?? [],
+        schedule,
+        location: professional?.city ?? '',
+      },
     };
   }
 
@@ -147,6 +216,50 @@ Depois confirme todos os detalhes antes de finalizar.`;
     userMessage: string,
     botResponse: string
   ) {
-    // Salvar no banco de dados
+    // 1. Buscar ID da conversa (já deve existir após getConversationContext)
+    const { data: conversation, error: convError } = await this.supabase
+      .from('whatsapp_conversations')
+      .select('id')
+      .eq('user_id', businessId)
+      .eq('customer_phone', phone)
+      .single();
+
+    if (convError || !conversation) {
+      console.error('saveToHistory: conversation not found', convError);
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    // 2. Inserir mensagem do cliente (inbound) e resposta do bot (outbound)
+    const { error: msgError } = await this.supabase
+      .from('whatsapp_messages')
+      .insert([
+        {
+          conversation_id: conversation.id,
+          direction: 'inbound',
+          content: userMessage,
+          status: 'received',
+          sent_at: now,
+        },
+        {
+          conversation_id: conversation.id,
+          direction: 'outbound',
+          content: botResponse,
+          status: 'sent',
+          sent_at: now,
+        },
+      ]);
+
+    if (msgError) {
+      console.error('saveToHistory: error inserting messages', msgError);
+      return;
+    }
+
+    // 3. Atualizar last_message_at na conversa
+    await this.supabase
+      .from('whatsapp_conversations')
+      .update({ last_message_at: now })
+      .eq('id', conversation.id);
   }
 }
