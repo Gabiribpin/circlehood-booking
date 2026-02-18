@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Save, Eye, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Save, Eye, RefreshCw, LayoutTemplate } from 'lucide-react';
 import { SortableSectionItem } from '@/components/page-editor/sortable-section-item';
 import { SectionConfigurator } from '@/components/page-editor/section-configurator';
 import { useToast } from '@/hooks/use-toast';
+import { TEMPLATES_LIST } from '@/lib/page-templates/templates';
 
 interface PageSection {
   id: string;
@@ -29,7 +31,36 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
   const [sections, setSections] = useState<PageSection[]>(initialSections);
   const [selectedSection, setSelectedSection] = useState<PageSection | null>(null);
   const [saving, setSaving] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const sectionsEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const handleAddFromTemplate = (templateKey: string) => {
+    const template = TEMPLATES_LIST.find((t) => t.key === templateKey);
+    if (!template) return;
+
+    const newSection: PageSection = {
+      id: `temp-${Date.now()}`,
+      section_type: template.section_type,
+      order_index: sections.length + 1,
+      data: template.data,
+      is_visible: template.is_visible,
+      theme: template.theme,
+    };
+
+    setSections((prev) => [...prev, newSection]);
+    setTemplatesOpen(false);
+
+    // Scroll até a nova seção após o render
+    setTimeout(() => {
+      sectionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+
+    toast({
+      title: `${template.icon} ${template.name} adicionado!`,
+      description: 'Clique em "Salvar Ordem" para persistir a nova seção.',
+    });
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -165,7 +196,18 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
             </SortableContext>
           </DndContext>
 
-          <div className="mt-4 pt-4 border-t">
+          {/* Marcador para scroll até nova seção */}
+          <div ref={sectionsEndRef} />
+
+          <div className="mt-4 pt-4 border-t space-y-2">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setTemplatesOpen(true)}
+            >
+              <LayoutTemplate className="w-4 h-4 mr-2" />
+              Templates Prontos
+            </Button>
             <Button
               variant="outline"
               className="w-full"
@@ -177,6 +219,30 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
           </div>
         </Card>
       </div>
+
+      {/* Dialog de Templates */}
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Seção por Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            {TEMPLATES_LIST.map((template) => (
+              <button
+                key={template.key}
+                onClick={() => handleAddFromTemplate(template.key)}
+                className="w-full flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+              >
+                <span className="text-3xl">{template.icon}</span>
+                <div>
+                  <p className="font-medium">{template.name}</p>
+                  <p className="text-sm text-muted-foreground">{template.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Right Panel - Section Configurator */}
       <div className="lg:col-span-2">

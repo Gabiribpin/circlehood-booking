@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Save } from 'lucide-react';
+import { AutoTranslateButton } from './auto-translate-button';
 
 interface SectionConfiguratorProps {
   section: any;
@@ -20,6 +21,19 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
   const [data, setData] = useState(section.data || {});
   const [isVisible, setIsVisible] = useState(section.is_visible);
   const [theme, setTheme] = useState(section.theme || 'default');
+
+  // Extrai o texto principal da seção para tradução
+  const getTranslatableContent = (): string => {
+    const parts: string[] = [];
+    if (data.heading) parts.push(data.heading);
+    if (data.description) parts.push(data.description);
+    if (data.ctaText) parts.push(data.ctaText);
+    return parts.join('\n\n');
+  };
+
+  const handleTranslated = (translations: Record<string, string>) => {
+    setData((prev: any) => ({ ...prev, translations }));
+  };
 
   const handleSave = () => {
     onSave({
@@ -292,6 +306,19 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
               Para adicionar perguntas, use a aba "FAQ" no menu principal
             </p>
           </>
+        )}
+
+        {/* Tradução Automática */}
+        {getTranslatableContent() && (
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2">
+              Traduzir conteúdo desta seção para EN, RO, AR, ES
+            </p>
+            <AutoTranslateButton
+              content={getTranslatableContent()}
+              onTranslated={handleTranslated}
+            />
+          </div>
         )}
 
         {/* Botões de Ação */}
