@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Trash2, Edit, Upload, Search, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { RegionSelector } from '@/components/clients/region-selector';
 
 interface Contact {
   id: string;
@@ -36,6 +37,7 @@ interface Contact {
   email?: string;
   category?: string;
   notes?: string;
+  regions?: string[];
   created_at: string;
 }
 
@@ -55,6 +57,7 @@ export default function ContactsPage() {
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
+  const [regions, setRegions] = useState<string[]>([]);
 
   useEffect(() => {
     loadContacts();
@@ -118,6 +121,7 @@ export default function ContactsPage() {
           email: email || null,
           category: category || null,
           notes: notes || null,
+          regions: regions,
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingContact.id);
@@ -146,6 +150,7 @@ export default function ContactsPage() {
           email: email || null,
           category: category || null,
           notes: notes || null,
+          regions: regions,
         });
 
       if (error) {
@@ -201,6 +206,7 @@ export default function ContactsPage() {
     setEmail(contact.email || '');
     setCategory(contact.category || '');
     setNotes(contact.notes || '');
+    setRegions(contact.regions || []);
     setIsAddDialogOpen(true);
   }
 
@@ -211,6 +217,7 @@ export default function ContactsPage() {
     setEmail('');
     setCategory('');
     setNotes('');
+    setRegions([]);
   }
 
   function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -348,6 +355,12 @@ export default function ContactsPage() {
                     rows={3}
                   />
                 </div>
+
+                <RegionSelector
+                  value={regions}
+                  onChange={setRegions}
+                  label="Regiões de Dublin"
+                />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => {

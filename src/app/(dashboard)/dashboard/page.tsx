@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 import { AlertsWidget } from './components/alerts-widget';
+import { RegionBroadcast } from '@/components/dashboard/region-broadcast';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -172,16 +173,19 @@ export default async function DashboardPage() {
             </p>
           )}
         </div>
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <a
-            href={`/${professional.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Ver minha página
-          </a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <RegionBroadcast />
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <a
+              href={`/${professional.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Ver minha página
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Onboarding Checklist */}
