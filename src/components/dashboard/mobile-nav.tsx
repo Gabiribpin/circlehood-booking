@@ -78,7 +78,10 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
         {/* Menu Sheet */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <button className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              className="flex flex-col items-center gap-0.5 px-2 py-1 text-muted-foreground hover:text-foreground transition-colors"
+              suppressHydrationWarning
+            >
               <Menu className="h-5 w-5" />
               <span className="text-[10px]">Menu</span>
             </button>
