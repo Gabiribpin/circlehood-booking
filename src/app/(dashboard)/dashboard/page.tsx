@@ -12,6 +12,7 @@ import {
   Circle,
   Rocket,
   Euro,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -64,6 +65,7 @@ export default async function DashboardPage() {
     { data: todayRevenue },
     { data: weekRevenue },
     { data: monthRevenue },
+    { data: whatsappConfig },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -122,6 +124,11 @@ export default async function DashboardPage() {
       .gte('booking_date', monthStart)
       .lte('booking_date', monthEnd)
       .eq('status', 'confirmed'),
+    supabase
+      .from('whatsapp_config')
+      .select('is_active')
+      .eq('user_id', user.id)
+      .single(),
   ]);
 
   // Calculate revenue
@@ -149,12 +156,14 @@ export default async function DashboardPage() {
   const hasServices = (totalServices || 0) > 0;
   const hasSchedule = (workingHoursCount || 0) > 0;
   const hasProfile = !!(professional.bio && professional.bio.length > 10);
+  const hasWhatsAppConnected = whatsappConfig?.is_active ?? false;
 
   const onboardingSteps = [
     { id: 1, label: 'Criar conta', completed: true, href: null },
     { id: 2, label: 'Adicionar primeiro serviço', completed: hasServices, href: '/services' },
     { id: 3, label: 'Configurar horários', completed: hasSchedule, href: '/schedule' },
-    { id: 4, label: 'Personalizar sua página', completed: hasProfile, href: '/my-page' },
+    { id: 4, label: 'Conectar WhatsApp Bot', completed: hasWhatsAppConnected, href: '/whatsapp-config' },
+    { id: 5, label: 'Personalizar sua página', completed: hasProfile, href: '/my-page' },
   ];
 
   const completedSteps = onboardingSteps.filter(step => step.completed).length;
@@ -206,6 +215,8 @@ export default async function DashboardPage() {
                 <div key={step.id} className="flex items-center gap-3">
                   {step.completed ? (
                     <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                  ) : step.id === 4 ? (
+                    <MessageSquare className="h-5 w-5 text-muted-foreground shrink-0" />
                   ) : (
                     <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
                   )}
