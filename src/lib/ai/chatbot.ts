@@ -8,6 +8,31 @@ import { ConversationCache } from '@/lib/redis/conversation-cache';
 // Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
 const memoryCache = new Map<string, Array<{ role: 'user' | 'assistant'; content: string; ts: number }>>();
 
+// Converte "HH:MM" ou "HH:MM:SS" em minutos desde meia-noite
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+// Sugere primeiro slot disponível (09:00–19:00) sem conflito com bookings existentes
+function suggestAlternative(
+  existingBookings: Array<{ start_time: string; end_time?: string | null }>,
+  durationMinutes: number
+): string {
+  const slots = Array.from({ length: 11 }, (_, i) => `${String(9 + i).padStart(2, '0')}:00`);
+  for (const slot of slots) {
+    const slotStart = timeToMinutes(slot);
+    const slotEnd = slotStart + durationMinutes;
+    const hasConflict = existingBookings.some((b) => {
+      const bStart = timeToMinutes(b.start_time);
+      const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
+      return slotStart < bEnd && slotEnd > bStart;
+    });
+    if (!hasConflict) return slot;
+  }
+  return 'outro dia';
+}
+
 interface ConversationContext {
   userId: string;
   phone: string;
@@ -216,7 +241,7 @@ export class AIBot {
       notes?: string;
     },
     professionalId: string
-  ): Promise<{ success: boolean; error?: string; appointment_id?: string; service_name?: string; price?: number; date?: string; time?: string }> {
+  ): Promise<{ success: boolean; error?: string; message?: string; appointment_id?: string; service_name?: string; price?: number; date?: string; time?: string }> {
     try {
       // Normalizar data e hora antes de qualquer operação
       const bookingDate = this.normalizeDate(data.date);
@@ -245,7 +270,35 @@ export class AIBot {
       const endMins = endTotalMinutes % 60;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
 
-      // 3. Inserir agendamento na tabela bookings
+      // 3. Verificar conflitos de horário
+      const { data: existingBookings } = await this.supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('professional_id', professionalId)
+        .eq('booking_date', bookingDate)
+        .neq('status', 'cancelled')
+        .neq('status', 'completed');
+
+      if (existingBookings && existingBookings.length > 0) {
+        const reqStart = timeToMinutes(bookingTime);
+        const reqEnd = reqStart + duration;
+        for (const b of existingBookings) {
+          const bStart = timeToMinutes(b.start_time);
+          const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
+          if (reqStart < bEnd && reqEnd > bStart) {
+            const occupied = b.start_time.slice(0, 5);
+            const suggested = suggestAlternative(existingBookings, duration);
+            console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
+            return {
+              success: false,
+              error: 'unavailable',
+              message: `Desculpe, já tenho um compromisso às ${occupied}. Que tal às ${suggested}?`,
+            };
+          }
+        }
+      }
+
+      // 4. Inserir agendamento na tabela bookings
       const { data: booking, error: bookingError } = await this.supabase
         .from('bookings')
         .insert({
@@ -409,6 +462,24 @@ Quando tiver nome, serviço, data e horário confirmados:
 → Se erro: "Houve um problema técnico. Por favor, entre em contato."
 → NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso
 → DOMICÍLIO: se serviço for [A domicílio] ou [Salão ou domicílio], colete o endereço do cliente primeiro
+
+╔═══════════════════════════════════════════════════════════════╗
+║ VERIFICAÇÃO DE DISPONIBILIDADE                                ║
+╚═══════════════════════════════════════════════════════════════╝
+
+A ferramenta create_appointment JÁ verifica conflitos automaticamente.
+
+❌ NUNCA diga "vou verificar disponibilidade" (a tool já faz isso)
+❌ NUNCA confirme horário sem chamar a tool primeiro
+
+Se create_appointment retornar error='unavailable':
+→ Informe que o horário está ocupado
+→ Sugira o horário alternativo do campo 'message'
+→ Aguarde confirmação do cliente
+
+EXEMPLO:
+Tool retorna: {success: false, error: 'unavailable', message: 'Desculpe, já tenho um compromisso às 18:00. Que tal às 17:00?'}
+Bot responde: "Desculpe, esse horário já está ocupado. Que tal às 17:00?"
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║ DATA E HORA ATUAL                                             ║
