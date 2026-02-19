@@ -75,9 +75,13 @@ export function ImageUpload({
 
       // Call callback
       onUploadComplete(publicUrl);
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Erro ao fazer upload da imagem. Tente novamente.');
+    } catch (error: any) {
+      console.error('❌ Upload error full object:', error);
+      console.error('❌ error.message:', error?.message);
+      console.error('❌ error.statusCode:', error?.statusCode);
+      console.error('❌ error.error:', error?.error);
+      const msg = error?.message ?? error?.error ?? JSON.stringify(error);
+      alert(`Erro upload (bucket: ${bucket}): ${msg}`);
     } finally {
       setUploading(false);
     }
