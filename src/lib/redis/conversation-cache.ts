@@ -1,9 +1,32 @@
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Singleton — reutiliza conexão entre invocações quentes do Vercel
+let redis: Redis | null = null;
+
+function getRedis(): Redis {
+  if (redis) return redis;
+
+  redis = new Redis(process.env.STORAGE_URL!, {
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    lazyConnect: false,
+    retryStrategy: (times) => {
+      if (times > 3) {
+        console.error('❌ Redis: falhou após 3 tentativas');
+        return null;
+      }
+      const delay = Math.min(times * 50, 2000);
+      console.log(`🔄 Redis: retry #${times} em ${delay}ms`);
+      return delay;
+    },
+  });
+
+  redis.on('connect', () => console.log('🔌 Redis: conectado'));
+  redis.on('ready', () => console.log('✅ Redis: pronto'));
+  redis.on('error', (err) => console.error('❌ Redis error:', err.message));
+
+  return redis;
+}
 
 export interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -18,14 +41,16 @@ export class ConversationCache {
 
   static async getHistory(cacheKey: string): Promise<ConversationMessage[]> {
     try {
+      const client = getRedis();
       const key = `conversation:${cacheKey}`;
-      const data = await redis.get<ConversationMessage[]>(key);
+      const dataStr = await client.get(key);
 
-      if (!data) {
+      if (!dataStr) {
         console.log('📦 Redis: nenhum histórico para', cacheKey);
         return [];
       }
 
+      const data = JSON.parse(dataStr) as ConversationMessage[];
       console.log('📦 Redis: carregou', data.length, 'mensagens para', cacheKey);
       return data;
 
@@ -40,13 +65,14 @@ export class ConversationCache {
     messages: ConversationMessage[]
   ): Promise<void> {
     try {
+      const client = getRedis();
       const key = `conversation:${cacheKey}`;
 
       const current = await this.getHistory(cacheKey);
       const updated = [...current, ...messages];
       const limited = updated.slice(-MAX_MESSAGES);
 
-      await redis.setex(key, TTL, limited);
+      await client.setex(key, TTL, JSON.stringify(limited));
 
       console.log('✅ Redis: salvou', messages.length, 'mensagens |', limited.length, 'total para', cacheKey);
 
@@ -57,8 +83,9 @@ export class ConversationCache {
 
   static async clear(cacheKey: string): Promise<void> {
     try {
+      const client = getRedis();
       const key = `conversation:${cacheKey}`;
-      await redis.del(key);
+      await client.del(key);
       console.log('🗑️ Redis: histórico limpo para', cacheKey);
     } catch (error) {
       console.error('❌ Redis del error:', error);
