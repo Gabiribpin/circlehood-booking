@@ -299,7 +299,7 @@ export default function WhatsAppConfigPage() {
                   <Label htmlFor="businessPhone">Número do WhatsApp Business *</Label>
                   <Input
                     id="businessPhone"
-                    placeholder="+353 85 123 4567"
+                    placeholder="+55 11 99999-9999"
                     value={metaConfig.businessPhone}
                     onChange={(e) => setMetaConfig({ ...metaConfig, businessPhone: e.target.value })}
                   />
@@ -319,7 +319,7 @@ export default function WhatsAppConfigPage() {
                   <Input
                     id="accessToken"
                     type="password"
-                    placeholder="Token permanente do WhatsApp Business API"
+                    placeholder="EAAx...your_access_token"
                     value={metaConfig.accessToken}
                     onChange={(e) => setMetaConfig({ ...metaConfig, accessToken: e.target.value })}
                   />
@@ -328,10 +328,11 @@ export default function WhatsAppConfigPage() {
                   <Label htmlFor="verifyToken">Verify Token *</Label>
                   <Input
                     id="verifyToken"
-                    placeholder="Ex: circlehood_webhook_2024"
+                    placeholder="meu_token_verificacao_2024"
                     value={metaConfig.verifyToken}
                     onChange={(e) => setMetaConfig({ ...metaConfig, verifyToken: e.target.value })}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Escolha um token qualquer (você define)</p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Switch
