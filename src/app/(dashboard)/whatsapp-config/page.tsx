@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Image from 'next/image';
 
 type Provider = 'meta' | 'evolution';
+type ConnectionStatus = 'idle' | 'loading' | 'qrcode' | 'connected' | 'error';
 
 export default function WhatsAppConfigPage() {
   const [provider, setProvider] = useState<Provider>('meta');
 
+  // Meta config
   const [metaConfig, setMetaConfig] = useState({
     phoneNumberId: '',
     accessToken: '',
@@ -23,13 +26,13 @@ export default function WhatsAppConfigPage() {
     isActive: false,
   });
 
-  const [evolutionConfig, setEvolutionConfig] = useState({
-    evolutionApiUrl: '',
-    evolutionApiKey: '',
-    evolutionInstance: '',
-    businessPhone: '',
-    isActive: false,
-  });
+  // Evolution — só o número é visível ao utilizador
+  const [evolutionPhone, setEvolutionPhone] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
+  const [instanceName, setInstanceName] = useState('');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [aiSettings, setAiSettings] = useState({
     languages: ['pt', 'en'],
@@ -42,7 +45,14 @@ export default function WhatsAppConfigPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [metaMessage, setMetaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [evoMessage, setEvoMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadConfig() {
@@ -68,80 +78,129 @@ export default function WhatsAppConfigPage() {
           isActive: data.is_active ?? false,
         });
 
-        setEvolutionConfig({
-          evolutionApiUrl: data.evolution_api_url ?? '',
-          evolutionApiKey: data.evolution_api_key ?? '',
-          evolutionInstance: data.evolution_instance ?? '',
-          businessPhone: data.business_phone ?? '',
-          isActive: data.is_active ?? false,
-        });
+        if (savedProvider === 'evolution') {
+          setEvolutionPhone(data.business_phone ?? '');
+          setInstanceName(data.evolution_instance ?? '');
+          if (data.is_active) setConnectionStatus('connected');
+        }
       }
       setLoading(false);
     }
     loadConfig();
   }, []);
 
-  async function handleSave() {
+  // ── Conectar WhatsApp via Evolution API ──
+  async function handleConnect() {
+    if (!evolutionPhone) {
+      setEvoMessage('Insere o número do WhatsApp.');
+      setConnectionStatus('error');
+      return;
+    }
+
+    setConnectionStatus('loading');
+    setQrCode(null);
+    setEvoMessage(null);
+
+    try {
+      const res = await fetch('/api/evolution/create-instance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: evolutionPhone }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setConnectionStatus('error');
+        setEvoMessage(data.error ?? 'Erro ao criar instância.');
+        return;
+      }
+
+      setInstanceName(data.instanceName);
+
+      if (data.qrCode) {
+        setQrCode(data.qrCode);
+        setConnectionStatus('qrcode');
+        startPolling(data.instanceName);
+      } else {
+        // Sem QR code — verificar se já está conectado
+        startPolling(data.instanceName);
+      }
+    } catch {
+      setConnectionStatus('error');
+      setEvoMessage('Erro de ligação ao servidor.');
+    }
+  }
+
+  function startPolling(instance: string) {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        // Tentar obter QR Code atualizado
+        const qrRes = await fetch(`/api/evolution/get-qrcode?instance=${instance}`);
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          if (qrData.qrCode && !qrCode) {
+            setQrCode(qrData.qrCode);
+            setConnectionStatus('qrcode');
+          }
+        }
+
+        // Verificar conexão
+        const connRes = await fetch(`/api/evolution/check-connection?instance=${instance}`);
+        if (connRes.ok) {
+          const connData = await connRes.json();
+          if (connData.connected) {
+            clearInterval(pollingRef.current!);
+            pollingRef.current = null;
+            setConnectionStatus('connected');
+            setQrCode(null);
+          }
+        }
+      } catch {
+        // Ignorar erros de polling
+      }
+    }, 3000);
+  }
+
+  // ── Salvar Meta API ──
+  async function handleSaveMeta() {
     setSaving(true);
-    setMessage(null);
+    setMetaMessage(null);
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      setMessage({ type: 'error', text: 'Utilizador não autenticado.' });
+      setMetaMessage({ type: 'error', text: 'Utilizador não autenticado.' });
       setSaving(false);
       return;
     }
 
-    // Validações por provider
-    if (provider === 'meta') {
-      if (!metaConfig.phoneNumberId || !metaConfig.accessToken || !metaConfig.verifyToken || !metaConfig.businessPhone) {
-        setMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
-        setSaving(false);
-        return;
-      }
-    } else {
-      if (!evolutionConfig.evolutionApiUrl || !evolutionConfig.evolutionApiKey || !evolutionConfig.evolutionInstance || !evolutionConfig.businessPhone) {
-        setMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
-        setSaving(false);
-        return;
-      }
+    if (!metaConfig.phoneNumberId || !metaConfig.accessToken || !metaConfig.verifyToken || !metaConfig.businessPhone) {
+      setMetaMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
+      setSaving(false);
+      return;
     }
-
-    const payload =
-      provider === 'meta'
-        ? {
-            user_id: user.id,
-            provider: 'meta',
-            phone_number_id: metaConfig.phoneNumberId,
-            access_token: metaConfig.accessToken,
-            verify_token: metaConfig.verifyToken,
-            business_phone: metaConfig.businessPhone,
-            is_active: metaConfig.isActive,
-            updated_at: new Date().toISOString(),
-          }
-        : {
-            user_id: user.id,
-            provider: 'evolution',
-            evolution_api_url: evolutionConfig.evolutionApiUrl,
-            evolution_api_key: evolutionConfig.evolutionApiKey,
-            evolution_instance: evolutionConfig.evolutionInstance,
-            business_phone: evolutionConfig.businessPhone,
-            is_active: evolutionConfig.isActive,
-            updated_at: new Date().toISOString(),
-          };
 
     const { error } = await supabase
       .from('whatsapp_config')
-      .upsert(payload, { onConflict: 'user_id' });
+      .upsert({
+        user_id: user.id,
+        provider: 'meta',
+        phone_number_id: metaConfig.phoneNumberId,
+        access_token: metaConfig.accessToken,
+        verify_token: metaConfig.verifyToken,
+        business_phone: metaConfig.businessPhone,
+        is_active: metaConfig.isActive,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
 
-    if (error) {
-      setMessage({ type: 'error', text: `Erro ao salvar: ${error.message}` });
-    } else {
-      setMessage({ type: 'success', text: '✅ Configuração salva com sucesso!' });
-    }
-
+    setMetaMessage(error
+      ? { type: 'error', text: `Erro: ${error.message}` }
+      : { type: 'success', text: '✅ Configuração salva com sucesso!' }
+    );
     setSaving(false);
   }
 
@@ -205,7 +264,7 @@ export default function WhatsAppConfigPage() {
               </div>
             </div>
 
-            {/* ── Campos Meta ── */}
+            {/* ── Meta ── */}
             {provider === 'meta' && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold">Credenciais Meta Business</h2>
@@ -219,7 +278,6 @@ export default function WhatsAppConfigPage() {
                     onChange={(e) => setMetaConfig({ ...metaConfig, businessPhone: e.target.value })}
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="phoneNumberId">Phone Number ID *</Label>
                   <Input
@@ -230,7 +288,6 @@ export default function WhatsAppConfigPage() {
                   />
                   <p className="text-xs text-gray-500 mt-1">Meta for Developers → WhatsApp → API Setup</p>
                 </div>
-
                 <div>
                   <Label htmlFor="accessToken">Access Token *</Label>
                   <Input
@@ -241,7 +298,6 @@ export default function WhatsAppConfigPage() {
                     onChange={(e) => setMetaConfig({ ...metaConfig, accessToken: e.target.value })}
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="verifyToken">Verify Token *</Label>
                   <Input
@@ -251,7 +307,6 @@ export default function WhatsAppConfigPage() {
                     onChange={(e) => setMetaConfig({ ...metaConfig, verifyToken: e.target.value })}
                   />
                 </div>
-
                 <div className="flex items-center space-x-3">
                   <Switch
                     id="active-meta"
@@ -262,103 +317,128 @@ export default function WhatsAppConfigPage() {
                     {metaConfig.isActive ? '🟢 Bot ativo' : '🔴 Bot inativo'}
                   </Label>
                 </div>
-
                 <div className="p-4 bg-blue-50 rounded-lg space-y-2">
                   <p className="text-sm font-semibold text-blue-800">📋 URL do Webhook para o Meta:</p>
                   <code className="text-xs bg-white border rounded px-2 py-1 block text-blue-700 break-all">
                     {webhookUrl}
                   </code>
                 </div>
+
+                {metaMessage && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    metaMessage.type === 'success'
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {metaMessage.text}
+                  </div>
+                )}
+
+                <Button onClick={handleSaveMeta} disabled={saving} className="w-full">
+                  {saving ? 'A salvar...' : 'Salvar Configuração'}
+                </Button>
               </div>
             )}
 
-            {/* ── Campos Evolution ── */}
+            {/* ── Evolution API — Fluxo QR Code ── */}
             {provider === 'evolution' && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold">Credenciais Evolution API</h2>
+                <h2 className="text-lg font-semibold">Conectar WhatsApp</h2>
 
-                <div>
-                  <Label htmlFor="evolutionApiUrl">URL da Evolution API *</Label>
-                  <Input
-                    id="evolutionApiUrl"
-                    placeholder="https://sua-evolution-api.com"
-                    value={evolutionConfig.evolutionApiUrl}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionApiUrl: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">URL base da sua instância Evolution API</p>
-                </div>
+                {/* Conectado */}
+                {connectionStatus === 'connected' && (
+                  <div className="p-5 bg-green-50 border border-green-200 rounded-xl text-center space-y-2">
+                    <p className="text-4xl">✅</p>
+                    <p className="font-semibold text-green-800 text-lg">WhatsApp conectado!</p>
+                    <p className="text-sm text-green-700">Bot ativo para {evolutionPhone}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        if (pollingRef.current) clearInterval(pollingRef.current);
+                        setConnectionStatus('idle');
+                        setQrCode(null);
+                      }}
+                    >
+                      Reconectar / Trocar número
+                    </Button>
+                  </div>
+                )}
 
-                <div>
-                  <Label htmlFor="evolutionApiKey">API Key *</Label>
-                  <Input
-                    id="evolutionApiKey"
-                    type="password"
-                    placeholder="Sua API Key da Evolution API"
-                    value={evolutionConfig.evolutionApiKey}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionApiKey: e.target.value })}
-                  />
-                </div>
+                {/* QR Code */}
+                {connectionStatus === 'qrcode' && qrCode && (
+                  <div className="p-5 bg-gray-50 border rounded-xl text-center space-y-4">
+                    <p className="font-semibold text-gray-800">📱 Escaneia o QR Code com o WhatsApp</p>
+                    <div className="flex justify-center">
+                      <Image
+                        src={qrCode}
+                        alt="QR Code WhatsApp"
+                        width={220}
+                        height={220}
+                        className="rounded-lg border"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                      <span className="animate-spin inline-block">🔄</span>
+                      Aguardando leitura...
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      WhatsApp → Dispositivos vinculados → Vincular dispositivo
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (pollingRef.current) clearInterval(pollingRef.current);
+                        setConnectionStatus('idle');
+                        setQrCode(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                )}
 
-                <div>
-                  <Label htmlFor="evolutionInstance">Nome da Instância *</Label>
-                  <Input
-                    id="evolutionInstance"
-                    placeholder="Ex: circlehood"
-                    value={evolutionConfig.evolutionInstance}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, evolutionInstance: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Nome da instância criada no painel da Evolution API</p>
-                </div>
+                {/* Loading */}
+                {connectionStatus === 'loading' && (
+                  <div className="p-5 bg-gray-50 border rounded-xl text-center">
+                    <p className="text-gray-600">⏳ A criar instância e gerar QR Code...</p>
+                  </div>
+                )}
 
-                <div>
-                  <Label htmlFor="businessPhoneEvolution">Número do WhatsApp *</Label>
-                  <Input
-                    id="businessPhoneEvolution"
-                    placeholder="+55 11 99999-9999"
-                    value={evolutionConfig.businessPhone}
-                    onChange={(e) => setEvolutionConfig({ ...evolutionConfig, businessPhone: e.target.value })}
-                  />
-                </div>
+                {/* Erro */}
+                {connectionStatus === 'error' && evoMessage && (
+                  <div className="p-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-200">
+                    {evoMessage}
+                  </div>
+                )}
 
-                <div className="flex items-center space-x-3">
-                  <Switch
-                    id="active-evolution"
-                    checked={evolutionConfig.isActive}
-                    onCheckedChange={(checked) => setEvolutionConfig({ ...evolutionConfig, isActive: checked })}
-                  />
-                  <Label htmlFor="active-evolution" className="cursor-pointer">
-                    {evolutionConfig.isActive ? '🟢 Bot ativo' : '🔴 Bot inativo'}
-                  </Label>
-                </div>
-
-                <div className="p-4 bg-green-50 rounded-lg space-y-2">
-                  <p className="text-sm font-semibold text-green-800">📋 Configure o Webhook na Evolution API:</p>
-                  <code className="text-xs bg-white border rounded px-2 py-1 block text-green-700 break-all">
-                    {webhookUrl}
-                  </code>
-                  <p className="text-xs text-green-700">
-                    No painel da Evolution API → sua instância → Webhook → cole esta URL e ative o evento <strong>messages.upsert</strong>
-                  </p>
-                </div>
+                {/* Formulário — só número */}
+                {(connectionStatus === 'idle' || connectionStatus === 'error') && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="evolutionPhone">Número do WhatsApp *</Label>
+                      <Input
+                        id="evolutionPhone"
+                        placeholder="+55 11 99999-9999"
+                        value={evolutionPhone}
+                        onChange={(e) => setEvolutionPhone(e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Número que irás escanear — sem necessitar de configuração adicional
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleConnect}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      🟢 Conectar WhatsApp
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
-
-            {/* Feedback */}
-            {message && (
-              <div
-                className={`p-3 rounded-lg text-sm ${
-                  message.type === 'success'
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
-                }`}
-              >
-                {message.text}
-              </div>
-            )}
-
-            <Button onClick={handleSave} disabled={saving} className="w-full">
-              {saving ? 'A salvar...' : 'Salvar Configuração'}
-            </Button>
           </Card>
         </TabsContent>
 
