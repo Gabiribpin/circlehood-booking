@@ -8,18 +8,14 @@ import {
   Users,
   ExternalLink,
   CalendarRange,
-  CheckCircle2,
-  Circle,
-  Rocket,
   Euro,
-  MessageSquare,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 import { AlertsWidget } from './components/alerts-widget';
 import { RegionBroadcast } from '@/components/dashboard/region-broadcast';
-import { NextStepsCard } from '@/components/dashboard/next-steps-card';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -153,22 +149,7 @@ export default async function DashboardPage() {
     )
   );
 
-  // Onboarding checklist
-  const hasServices = (totalServices || 0) > 0;
-  const hasSchedule = (workingHoursCount || 0) > 0;
-  const hasProfile = !!(professional.bio && professional.bio.length > 10);
-  const hasWhatsAppConnected = whatsappConfig?.is_active ?? false;
-
-  const onboardingSteps = [
-    { id: 1, label: 'Criar conta', completed: true, href: null },
-    { id: 2, label: 'Adicionar primeiro serviço', completed: hasServices, href: '/services' },
-    { id: 3, label: 'Configurar horários', completed: hasSchedule, href: '/schedule' },
-    { id: 4, label: 'Conectar WhatsApp Bot', completed: hasWhatsAppConnected, href: '/whatsapp-config' },
-    { id: 5, label: 'Personalizar sua página', completed: hasProfile, href: '/my-page' },
-  ];
-
-  const completedSteps = onboardingSteps.filter(step => step.completed).length;
-  const showOnboarding = completedSteps < onboardingSteps.length;
+  const showOnboardingBanner = !professional.onboarding_completed;
 
   return (
     <div className="space-y-6">
@@ -198,57 +179,36 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Onboarding Checklist */}
-      {showOnboarding && (
-        <Card className="border-primary/50 bg-primary/5">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Rocket className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Comece a receber clientes</CardTitle>
-              </div>
-              <Badge variant="secondary">{completedSteps}/{onboardingSteps.length}</Badge>
+      {/* Banner de setup — aparece enquanto não concluiu onboarding */}
+      {showOnboardingBanner && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex items-center gap-4">
+            <Info className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-sm">Configure sua conta para receber clientes</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Adicione serviços, horários e conecte o WhatsApp Bot.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {onboardingSteps.map((step) => (
-                <div key={step.id} className="flex items-center gap-3">
-                  {step.completed ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-                  ) : step.id === 4 ? (
-                    <MessageSquare className="h-5 w-5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                  )}
-                  {step.href && !step.completed ? (
-                    <Link
-                      href={step.href}
-                      className="text-sm hover:underline"
-                    >
-                      {step.label}
-                    </Link>
-                  ) : (
-                    <span className={`text-sm ${step.completed ? 'text-muted-foreground' : ''}`}>
-                      {step.label}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            {completedSteps === onboardingSteps.length - 1 && (
-              <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-md">
-                <p className="text-sm text-green-700 dark:text-green-400">
-                  🎉 Quase lá! Complete o último passo e compartilhe seu link para começar a receber agendamentos!
-                </p>
-              </div>
-            )}
+            <Button asChild size="sm">
+              <Link href="/onboarding">Completar setup →</Link>
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Card "Comece a Divulgar" — aparece quando onboarding 5/5 */}
-      {!showOnboarding && <NextStepsCard />}
+      {/* Link de retorno ao guia (sempre visível, mas discreto) */}
+      {!showOnboardingBanner && (
+        <Card className="border-dashed">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Info className="h-4 w-4 text-muted-foreground shrink-0" />
+            <p className="text-sm text-muted-foreground flex-1">Precisa rever o guia de configuração?</p>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/onboarding">Ver guia</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Alertas CRM */}
       <AlertsWidget />
