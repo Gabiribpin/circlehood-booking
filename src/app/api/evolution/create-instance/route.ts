@@ -61,6 +61,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Falha ao obter token da instância.' }, { status: 502 });
       }
       instanceToken = existing.token;
+
+      // Buscar QR code da instância existente
+      const qrRes = await fetch(`${evolutionConfig.baseUrl}/instance/qrcode/${instanceName}`, {
+        headers: { 'apikey': evolutionConfig.globalApiKey },
+      });
+      if (qrRes.ok) {
+        const qrData = await qrRes.json();
+        qrCode = qrData?.base64 ?? null;
+      }
     } else {
       instanceToken = createData?.hash?.apikey ?? createData?.instance?.token ?? '';
       qrCode = createData?.qrcode?.base64 ?? null;
