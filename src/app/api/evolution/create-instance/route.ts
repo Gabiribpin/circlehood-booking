@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         evolution_api_url: evolutionConfig.baseUrl,
         evolution_api_key: instanceToken,
         evolution_instance: instanceName,
-        business_phone: phone,
+        business_phone: normalizedPhone,
         is_active: false,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
