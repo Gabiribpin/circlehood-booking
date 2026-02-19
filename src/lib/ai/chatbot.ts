@@ -65,7 +65,7 @@ export class AIBot {
         { role: 'user', content: message, timestamp: Date.now() },
         { role: 'assistant', content: response, timestamp: Date.now() + 1 },
       ]),
-      this.saveToHistory(context.conversationId, message, response),
+      this.saveToHistory(context.conversationId, context.phone, message, response),
     ]);
 
     return response;
@@ -258,7 +258,6 @@ export class AIBot {
           client_phone: data.customer_phone,
           notes: data.notes || 'Agendado via WhatsApp Bot',
           status: 'confirmed',
-          created_via: 'whatsapp_bot',
           service_location: data.service_location || 'in_salon',
           customer_address: data.customer_address || null,
         })
@@ -626,6 +625,7 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
 
   private async saveToHistory(
     conversationId: string,
+    phone: string,
     userMessage: string,
     botResponse: string
   ) {
@@ -646,6 +646,11 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
           conversation_id: conversationId,
           direction: 'inbound',
           content: userMessage,
+          // legacy NOT NULL columns
+          sender_phone: phone,
+          recipient_phone: 'bot',
+          message_type: 'text',
+          message_content: userMessage,
           status: 'received',
           sent_at: now,
         },
@@ -653,6 +658,11 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
           conversation_id: conversationId,
           direction: 'outbound',
           content: botResponse,
+          // legacy NOT NULL columns
+          sender_phone: 'bot',
+          recipient_phone: phone,
+          message_type: 'text',
+          message_content: botResponse,
           status: 'sent',
           sent_at: twoMsLater,
         },

@@ -38,6 +38,28 @@ export async function processWhatsAppMessage(
 
     const provider: WhatsAppProvider = config.provider ?? detectedProvider ?? 'meta';
 
+    // Verificar use_bot do contato
+    const { data: professional } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', config.user_id)
+      .single();
+
+    if (professional) {
+      const normalizedPhone = from.replace(/[^0-9]/g, '');
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('use_bot')
+        .eq('professional_id', professional.id)
+        .or(`phone.eq.${from},phone.eq.+${normalizedPhone},phone.eq.${normalizedPhone}`)
+        .maybeSingle();
+
+      if (contact && contact.use_bot === false) {
+        console.log('🚫 Bot desativado para contato:', from);
+        return;
+      }
+    }
+
     // Processar mensagem com IA
     const bot = new AIBot();
     const response = await bot.processMessage(from, text, config.user_id);

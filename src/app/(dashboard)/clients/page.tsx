@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { PhoneInput } from '@/components/ui/phone-input';
 import {
   Dialog,
@@ -43,6 +44,7 @@ interface Contact {
   notes?: string;
   tags?: string[];
   regions?: string[];
+  use_bot?: boolean;
   created_at: string;
 }
 
@@ -53,6 +55,7 @@ interface ContactWithStats extends Contact {
 }
 
 type FilterType = 'all' | 'vip' | 'new' | 'inactive' | 'birthday';
+type BotFilter = 'all' | 'bot_on' | 'bot_off';
 
 // ─── CRM helpers ──────────────────────────────────────────────────────────────
 
@@ -271,14 +274,16 @@ function CRMView() {
 // ─── Aba Gerenciar ────────────────────────────────────────────────────────────
 
 function ManageView() {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [botFilter, setBotFilter] = useState<BotFilter>('all');
   const [professionalId, setProfessionalId] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -305,6 +310,7 @@ function ManageView() {
 
     if (error) { toast({ title: 'Erro ao carregar contatos', description: error.message, variant: 'destructive' }); return; }
     setContacts(data || []);
+    setSelectedIds(new Set());
     setLoading(false);
   }
 
@@ -352,33 +358,51 @@ function ManageView() {
     setEditingContact(null); setName(''); setPhone(''); setEmail(''); setCategory(''); setNotes(''); setRegions([]);
   }
 
-  function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const supabase = createClient();
-      let imported = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [n, p, em, cat] = line.split(',').map(s => s.trim());
-        if (!n || !p) continue;
-        const { error } = await supabase.from('contacts')
-          .insert({ professional_id: professionalId, name: n, phone: p, email: em || null, category: cat || null });
-        if (!error) imported++;
-      }
-      toast({ title: 'Importação concluída!', description: `${imported} contatos importados.` });
-      loadContacts();
-    };
-    reader.readAsText(file);
+  async function updateUseBot(id: string, val: boolean) {
+    const supabase = createClient();
+    const { error } = await supabase.from('contacts').update({ use_bot: val }).eq('id', id);
+    if (error) { toast({ title: 'Erro ao atualizar bot', description: error.message, variant: 'destructive' }); return; }
+    setContacts((prev) => prev.map((c) => c.id === id ? { ...c, use_bot: val } : c));
   }
 
-  const filtered = contacts.filter((c) => {
-    const t = searchTerm.toLowerCase();
-    return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
-  });
+  async function bulkUpdateBot(val: boolean) {
+    if (selectedIds.size === 0) return;
+    const supabase = createClient();
+    const { error } = await supabase.from('contacts').update({ use_bot: val }).in('id', [...selectedIds]);
+    if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: val ? '🤖 Bot ativado' : '🚫 Bot desativado', description: `${selectedIds.size} contato${selectedIds.size !== 1 ? 's' : ''} atualizado${selectedIds.size !== 1 ? 's' : ''}` });
+    setContacts((prev) => prev.map((c) => selectedIds.has(c.id) ? { ...c, use_bot: val } : c));
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const filtered = contacts
+    .filter((c) => {
+      const t = searchTerm.toLowerCase();
+      return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
+    })
+    .filter((c) => {
+      if (botFilter === 'bot_on') return (c.use_bot ?? true) === true;
+      if (botFilter === 'bot_off') return (c.use_bot ?? true) === false;
+      return true;
+    });
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id));
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((c) => c.id)));
+    }
+  }
 
   if (loading) return <div className="p-8">Carregando...</div>;
 
@@ -387,8 +411,7 @@ function ManageView() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-muted-foreground text-sm">Gerencie seus contatos para campanhas de marketing</p>
         <div className="flex gap-2">
-          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-          <Button variant="outline" onClick={() => csvInputRef.current?.click()}>
+          <Button variant="outline" onClick={() => router.push('/clients/import')}>
             <Upload className="mr-2 h-4 w-4" /> Importar CSV
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
@@ -434,16 +457,47 @@ function ManageView() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               <CardTitle>{filtered.length} {filtered.length === 1 ? 'Contato' : 'Contatos'}</CardTitle>
             </div>
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar contatos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative w-56">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar contatos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
+              </div>
+              {/* Filtros de bot */}
+              <div className="flex gap-1">
+                {([
+                  { key: 'all', label: 'Todos' },
+                  { key: 'bot_on', label: '🤖 Bot Ativo' },
+                  { key: 'bot_off', label: '🚫 Bot Desativado' },
+                ] as { key: BotFilter; label: string }[]).map((f) => (
+                  <Button key={f.key} variant={botFilter === f.key ? 'default' : 'outline'} size="sm"
+                    className="whitespace-nowrap text-xs" onClick={() => setBotFilter(f.key)}>
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Bulk actions */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 pt-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">{selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}</span>
+              <Button size="sm" variant="outline" onClick={() => bulkUpdateBot(true)}>
+                🤖 Ativar bot ({selectedIds.size})
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkUpdateBot(false)}>
+                🚫 Desativar bot ({selectedIds.size})
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                Limpar seleção
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
@@ -456,20 +510,46 @@ function ManageView() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer"
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead className="text-center">Bot</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} className={selectedIds.has(c.id) ? 'bg-muted/40' : ''}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => toggleSelect(c.id)}
+                        className="cursor-pointer"
+                        aria-label={`Selecionar ${c.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.phone}</TableCell>
+                    <TableCell className="font-mono text-sm">{c.phone}</TableCell>
                     <TableCell>{c.email || '-'}</TableCell>
                     <TableCell>{c.category || '-'}</TableCell>
+                    <TableCell className="text-center">
+                      <Switch
+                        checked={c.use_bot ?? true}
+                        onCheckedChange={(val) => updateUseBot(c.id, val)}
+                        aria-label={`Bot ${c.use_bot ?? true ? 'ativo' : 'inativo'} para ${c.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Edit className="h-4 w-4" /></Button>
@@ -490,9 +570,9 @@ function ManageView() {
           <CardDescription>Formato do arquivo (primeira linha é o cabeçalho):</CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,categoria
-Maria Silva,+5511999999999,maria@exemplo.com,Unhas
-Ana Costa,+5511988888888,ana@exemplo.com,Cabelo`}</pre>
+          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,notas
+Maria Silva,+5511999999999,maria@exemplo.com,Cliente VIP
+Ana Costa,+5511988888888,ana@exemplo.com,`}</pre>
         </CardContent>
       </Card>
     </div>
