@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
+import { BotConfigPanel } from '@/components/dashboard/bot-config-panel';
 
 type Provider = 'meta' | 'evolution';
 type ConnectionStatus = 'idle' | 'loading' | 'qrcode' | 'connected' | 'error';
@@ -45,8 +46,10 @@ export default function WhatsAppConfigPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingAi, setSavingAi] = useState(false);
   const [metaMessage, setMetaMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [evoMessage, setEvoMessage] = useState<string | null>(null);
+  const [aiMessage, setAiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -84,6 +87,24 @@ export default function WhatsAppConfigPage() {
           if (data.is_active) setConnectionStatus('connected');
         }
       }
+
+      // Carregar ai_instructions (pega a mais recente)
+      const { data: aiData } = await supabase
+        .from('ai_instructions')
+        .select('instructions, welcome_message')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (aiData) {
+        setAiSettings(prev => ({
+          ...prev,
+          instructions: aiData.instructions ?? '',
+          welcomeMessage: aiData.welcome_message ?? '',
+        }));
+      }
+
       setLoading(false);
     }
     loadConfig();
@@ -202,6 +223,40 @@ export default function WhatsAppConfigPage() {
       : { type: 'success', text: '✅ Configuração salva com sucesso!' }
     );
     setSaving(false);
+  }
+
+  // ── Salvar configurações de IA ──
+  async function handleSaveAI() {
+    setSavingAi(true);
+    setAiMessage(null);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAiMessage({ type: 'error', text: 'Utilizador não autenticado.' });
+      setSavingAi(false);
+      return;
+    }
+
+    // Upsert em ai_instructions para cada idioma selecionado
+    const upserts = aiSettings.languages.map((lang) => ({
+      user_id: user.id,
+      language: lang,
+      instructions: aiSettings.instructions,
+      welcome_message: aiSettings.welcomeMessage,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from('ai_instructions')
+      .upsert(upserts, { onConflict: 'user_id,language' });
+
+    setAiMessage(error
+      ? { type: 'error', text: `Erro: ${error.message}` }
+      : { type: 'success', text: '✅ Configurações de IA salvas!' }
+    );
+    setSavingAi(false);
   }
 
   if (loading) {
@@ -565,9 +620,22 @@ export default function WhatsAppConfigPage() {
               ))}
             </div>
 
-            <Button className="w-full" variant="outline">
-              Salvar Configurações de IA
+            {aiMessage && (
+              <div className={`p-3 rounded-lg text-sm ${
+                aiMessage.type === 'success'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {aiMessage.text}
+              </div>
+            )}
+
+            <Button className="w-full" variant="outline" onClick={handleSaveAI} disabled={savingAi}>
+              {savingAi ? 'A salvar...' : 'Salvar Configurações de IA'}
             </Button>
+
+            {/* Configuração avançada do bot */}
+            <BotConfigPanel />
           </Card>
         </TabsContent>
 

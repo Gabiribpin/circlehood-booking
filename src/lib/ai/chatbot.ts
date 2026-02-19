@@ -69,10 +69,12 @@ export class AIBot {
     conversationCache.set(cacheKey, cached);
     console.log('📦 Cache atualizado:', cached.length, 'mensagens para', cacheKey);
 
-    // 8. Salvar no banco (em paralelo, não bloqueia)
-    this.saveToHistory(context.conversationId, message, response).catch(err =>
-      console.error('saveToHistory falhou:', err)
-    );
+    // 8. Salvar no banco (await para garantir persistência em Vercel serverless)
+    try {
+      await this.saveToHistory(context.conversationId, message, response);
+    } catch (err) {
+      console.error('❌ saveToHistory falhou (não bloqueia resposta):', err);
+    }
 
     return response;
   }
@@ -101,19 +103,59 @@ export class AIBot {
 
   private buildSystemPrompt(context: ConversationContext): string {
     const { businessInfo, language, phone, history } = context;
+    const botConfig = businessInfo.botConfig;
 
     console.log('📝 Contexto sendo passado:', {
       phone,
       language,
       historyLength: history.length,
       historyPreview: history.slice(0, 2),
+      botConfig: botConfig ? { bot_name: botConfig.bot_name, personality: botConfig.bot_personality } : null,
     });
 
     const conversationHistory = history.length > 0
       ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')
       : '(sem histórico anterior)';
 
-    return `Você é um assistente virtual inteligente para ${businessInfo.business_name}.
+    // Variáveis disponíveis para substituição no prompt customizado
+    const vars: Record<string, string> = {
+      '{business_name}': businessInfo.business_name,
+      '{bot_name}': botConfig?.bot_name ?? businessInfo.business_name,
+      '{phone}': phone,
+      '{services}': this.formatServices(businessInfo.services),
+      '{schedule}': this.formatSchedule(businessInfo.schedule),
+      '{location}': businessInfo.location,
+      '{conversation_history}': conversationHistory,
+    };
+
+    // Se custom_system_prompt preenchido → usar diretamente com substituição de variáveis
+    if (botConfig?.custom_system_prompt) {
+      let prompt = botConfig.custom_system_prompt;
+      for (const [key, value] of Object.entries(vars)) {
+        prompt = prompt.split(key).join(value);
+      }
+      return prompt;
+    }
+
+    // Construir prompt padrão usando configurações do botConfig
+    const botName = botConfig?.bot_name || businessInfo.business_name;
+    const personality = botConfig?.bot_personality ?? 'friendly';
+    const greetingMsg = botConfig?.greeting_message ?? '';
+    const unavailableMsg = botConfig?.unavailable_message ?? '';
+    const confirmationMsg = botConfig?.confirmation_message ?? '';
+    const autoBook = botConfig?.auto_book_if_available ?? true;
+    const alwaysConfirm = botConfig?.always_confirm_booking ?? false;
+    const askAdditional = botConfig?.ask_for_additional_info ?? false;
+
+    const personalityMap: Record<string, string> = {
+      friendly: 'Tom: amigável e caloroso — use emojis moderadamente.',
+      professional: 'Tom: profissional e formal — evite emojis.',
+      casual: 'Tom: descontraído e informal — use emojis livremente.',
+    };
+    const personalityText = personalityMap[personality] ?? 'Tom: amigável e caloroso.';
+
+    return `Você é ${botName}, assistente virtual de ${businessInfo.business_name}.
+${personalityText}
 
 IDIOMA: Detecte o idioma da mensagem e responda NO MESMO IDIOMA.
 
@@ -137,13 +179,20 @@ REGRAS DE COMPORTAMENTO INTELIGENTE:
    ❌ ERRADO: "Bem-vindo! Nossos serviços são..."
    ✅ CORRETO: "Oi [Nome]! Tudo bem? Posso ajudar com algo?"
 
-3. AGENDAMENTO DIRETO — sem enrolação:
-   ❌ "Deixe-me verificar a disponibilidade..."
-   ✅ "Perfeito! Agendado para [Data] às [Hora]!"
-   Não existe "verificar" — confirme diretamente.
+3. ${autoBook
+      ? 'AGENDAMENTO DIRETO — confirme sem dizer "verificar disponibilidade".'
+      : 'AGENDAMENTO — pergunte confirmação antes de registrar.'}
 
-4. NUNCA diga "te envio confirmação" — a mensagem JÁ É a confirmação.
+4. ${alwaysConfirm
+      ? 'Sempre peça confirmação explícita do cliente antes de registrar.'
+      : 'Confirme o agendamento diretamente após coletar nome, serviço, data e horário.'}
 
+5. ${askAdditional
+      ? 'Pergunte informações adicionais relevantes (ex: tipo de cabelo, sensibilidade).'
+      : 'Seja direto — não peça informações desnecessárias.'}
+
+6. NUNCA diga "te envio confirmação" — esta mensagem JÁ É a confirmação.
+${greetingMsg ? `\nMENSAGEM DE BOAS-VINDAS:\n${greetingMsg}\n` : ''}${unavailableMsg ? `\nQUANDO INDISPONÍVEL:\n${unavailableMsg}\n` : ''}
 INFORMAÇÕES DO NEGÓCIO:
 - Nome: ${businessInfo.business_name}
 - Descrição: ${businessInfo.description}
@@ -151,14 +200,10 @@ INFORMAÇÕES DO NEGÓCIO:
 - Horário: ${this.formatSchedule(businessInfo.schedule)}
 - Localização: ${businessInfo.location}
 
-${businessInfo.ai_instructions ? `INSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}` : ''}
-
+${businessInfo.ai_instructions ? `INSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}\n` : ''}
 FORMATO DE AGENDAMENTO:
 Colete: nome completo, serviço, data e horário.
-Confirme com:
-"Agendado [Nome]! ✅
-[Data] [Hora] - [Serviço] €[Preço]
-Nos vemos! 💅"`;
+${confirmationMsg || `Confirme com:\n"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos! 💅"`}`;
   }
 
   private getLanguageName(code: string): string {
@@ -229,24 +274,43 @@ Nos vemos! 💅"`;
         content: m.content,
       }));
 
-    // 3. Buscar info do negócio (professional + services + working_hours)
-    const { data: professional } = await this.supabase
-      .from('professionals')
-      .select('id, business_name, bio, city')
-      .eq('user_id', businessId)
-      .single();
+    // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
+    const [
+      { data: professional },
+      { data: botConfig },
+      { data: aiInstructions },
+    ] = await Promise.all([
+      this.supabase
+        .from('professionals')
+        .select('id, business_name, bio, city')
+        .eq('user_id', businessId)
+        .single(),
+      this.supabase
+        .from('bot_config')
+        .select('*')
+        .eq('user_id', businessId)
+        .maybeSingle(),
+      this.supabase
+        .from('ai_instructions')
+        .select('instructions')
+        .eq('user_id', businessId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
-    const { data: services } = await this.supabase
-      .from('services')
-      .select('name, price, duration_minutes')
-      .eq('professional_id', professional?.id ?? '')
-      .eq('is_active', true);
-
-    const { data: workingHours } = await this.supabase
-      .from('working_hours')
-      .select('day_of_week, start_time, end_time')
-      .eq('professional_id', professional?.id ?? '')
-      .eq('is_available', true);
+    const [{ data: services }, { data: workingHours }] = await Promise.all([
+      this.supabase
+        .from('services')
+        .select('name, price, duration_minutes')
+        .eq('professional_id', professional?.id ?? '')
+        .eq('is_active', true),
+      this.supabase
+        .from('working_hours')
+        .select('day_of_week, start_time, end_time')
+        .eq('professional_id', professional?.id ?? '')
+        .eq('is_available', true),
+    ]);
 
     const schedule = (workingHours ?? []).reduce(
       (acc: Record<string, { start: string; end: string }>, wh) => {
@@ -268,6 +332,8 @@ Nos vemos! 💅"`;
         services: services ?? [],
         schedule,
         location: professional?.city ?? '',
+        ai_instructions: aiInstructions?.instructions ?? '',
+        botConfig: botConfig ?? null,
       },
     };
   }
