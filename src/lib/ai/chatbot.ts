@@ -85,20 +85,160 @@ export class AIBot {
     context: ConversationContext
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(context);
+    const professionalId = context.businessInfo.professional_id;
+
+    const tools = [
+      {
+        name: 'create_appointment',
+        description: 'Cria um agendamento REAL no sistema. Use SOMENTE quando o cliente tiver confirmado: nome completo, serviço desejado, data específica e horário específico. NÃO use para verificar disponibilidade.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            customer_name: { type: 'string', description: 'Nome completo do cliente' },
+            customer_phone: { type: 'string', description: 'Telefone do cliente (já disponível no contexto)' },
+            service_name: { type: 'string', description: 'Nome do serviço (ex: "Corte", "Manicure", "Pézinho")' },
+            date: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
+            time: { type: 'string', description: 'Horário no formato HH:MM' },
+            notes: { type: 'string', description: 'Observações adicionais (opcional)' },
+          },
+          required: ['customer_name', 'customer_phone', 'service_name', 'date', 'time'],
+        },
+      },
+    ];
+
+    const messages: Array<{ role: 'user' | 'assistant'; content: any }> = [
+      ...context.history,
+      { role: 'user', content: message },
+    ];
 
     const response = await this.anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
       system: systemPrompt,
-      messages: [
-        ...context.history,
-        { role: 'user', content: message }
-      ]
+      tools,
+      messages,
     });
 
-    return response.content[0].type === 'text'
-      ? response.content[0].text
-      : '';
+    // Se o Claude decidiu usar a tool create_appointment
+    if (response.stop_reason === 'tool_use') {
+      const toolUseBlock = response.content.find(
+        (c): c is { type: 'tool_use'; id: string; name: string; input: Record<string, any> } =>
+          c.type === 'tool_use'
+      );
+
+      if (toolUseBlock && toolUseBlock.name === 'create_appointment') {
+        console.log('🛠️ Tool use: create_appointment', JSON.stringify(toolUseBlock.input));
+
+        const result = await this.createAppointment(
+          toolUseBlock.input as any,
+          professionalId
+        );
+
+        console.log('📅 createAppointment result:', JSON.stringify(result));
+
+        // Segunda chamada com o resultado da tool
+        const followUp = await this.anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          tools,
+          messages: [
+            ...messages,
+            { role: 'assistant', content: response.content },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolUseBlock.id,
+                  content: JSON.stringify(result),
+                },
+              ],
+            },
+          ],
+        });
+
+        const textFollowUp = (followUp.content as any[]).find(c => c.type === 'text');
+        return textFollowUp?.text ?? '';
+      }
+    }
+
+    // Resposta de texto normal
+    const textBlock = (response.content as any[]).find(c => c.type === 'text');
+    return textBlock?.text ?? '';
+  }
+
+  private async createAppointment(
+    data: {
+      customer_name: string;
+      customer_phone: string;
+      service_name: string;
+      date: string;
+      time: string;
+      notes?: string;
+    },
+    professionalId: string
+  ): Promise<{ success: boolean; error?: string; appointment_id?: string; service_name?: string; price?: number; date?: string; time?: string }> {
+    try {
+      // 1. Buscar serviço por nome (parcial)
+      const { data: service, error: serviceError } = await this.supabase
+        .from('services')
+        .select('id, name, price, duration_minutes')
+        .eq('professional_id', professionalId)
+        .ilike('name', `%${data.service_name}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (serviceError || !service) {
+        console.error('createAppointment: serviço não encontrado:', data.service_name, serviceError);
+        return { success: false, error: `Serviço "${data.service_name}" não encontrado` };
+      }
+
+      // 2. Calcular horário de término
+      const [hours, minutes] = data.time.split(':').map(Number);
+      const duration = service.duration_minutes ?? 60;
+      const endTotalMinutes = hours * 60 + minutes + duration;
+      const endHours = Math.floor(endTotalMinutes / 60) % 24;
+      const endMins = endTotalMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
+
+      // 3. Inserir agendamento na tabela bookings
+      const { data: booking, error: bookingError } = await this.supabase
+        .from('bookings')
+        .insert({
+          professional_id: professionalId,
+          service_id: service.id,
+          booking_date: data.date,
+          start_time: `${data.time}:00`,
+          end_time: endTime,
+          client_name: data.customer_name,
+          client_phone: data.customer_phone,
+          notes: data.notes || 'Agendado via WhatsApp Bot',
+          status: 'confirmed',
+          created_via: 'whatsapp_bot',
+        })
+        .select('id')
+        .single();
+
+      if (bookingError || !booking) {
+        console.error('createAppointment: erro ao inserir booking:', bookingError);
+        return { success: false, error: bookingError?.message ?? 'Erro ao criar agendamento' };
+      }
+
+      console.log('✅ Agendamento criado:', booking.id, '| serviço:', service.name, '| data:', data.date, data.time);
+      return {
+        success: true,
+        appointment_id: booking.id,
+        service_name: service.name,
+        price: service.price,
+        date: data.date,
+        time: data.time,
+      };
+
+    } catch (err) {
+      console.error('createAppointment: erro inesperado:', err);
+      return { success: false, error: 'Erro inesperado ao criar agendamento' };
+    }
   }
 
   private getPersonalityInstructions(personality: string): string {
@@ -179,13 +319,13 @@ Detecte o idioma da mensagem e responda NO MESMO IDIOMA.
 Número do cliente: ${phone} — NUNCA peça o telefone, você já tem.
 
 ═══════════════════════════════════════════
-PRIMEIRA MENSAGEM
+APRESENTAÇÃO — REGRA CRÍTICA
 ═══════════════════════════════════════════
 ${isFirstContact && greetingMsg
-        ? `Este é o PRIMEIRO CONTATO. Responda EXATAMENTE com:\n"${greetingMsg}"`
+        ? `Esta é a PRIMEIRA mensagem. Use EXATAMENTE:\n"${greetingMsg}"\n\n⚠️ NÃO se apresente novamente nas mensagens seguintes.`
         : isFirstContact
-          ? `Este é o primeiro contato. Apresente-se como ${botName} e pergunte como pode ajudar.`
-          : 'Continue a conversa naturalmente com base no histórico abaixo.'
+          ? `Primeira mensagem: apresente-se como ${botName} UMA VEZ e pergunte como pode ajudar.\n\n⚠️ Nas mensagens seguintes, NÃO repita a apresentação.`
+          : `⚠️ HISTÓRICO JÁ EXISTE — você JÁ se apresentou. NÃO repita nome, NÃO repita saudação. Continue a conversa diretamente.`
       }
 
 ═══════════════════════════════════════════
@@ -199,16 +339,25 @@ REGRAS DE COMPORTAMENTO
 1. HISTÓRICO: Se cliente já disse o nome → USE, não peça de novo. Continue naturalmente.
 2. RECORRENTE: ❌ "Bem-vindo! Nossos serviços são..." ✅ "Oi [Nome]! Como posso ajudar?"
 3. ${autoBook
-        ? 'AGENDAMENTO: Confirme DIRETAMENTE — nunca diga "vou verificar disponibilidade".'
-        : 'AGENDAMENTO: Pergunte confirmação antes de registrar.'}
+        ? 'AGENDAMENTO: Use create_appointment DIRETAMENTE quando tiver todos os dados.'
+        : 'AGENDAMENTO: Pergunte confirmação antes de usar create_appointment.'}
 4. ${alwaysConfirm
-        ? 'CONFIRMAÇÃO OBRIGATÓRIA: SEMPRE pergunte "Confirma o agendamento?" antes de criar.'
-        : 'CONFIRMAÇÃO: Após coletar nome, serviço, data e horário, confirme diretamente.'}
+        ? 'CONFIRMAÇÃO OBRIGATÓRIA: Antes de usar create_appointment, pergunte "Confirma o agendamento?"'
+        : 'CONFIRMAÇÃO: Após coletar nome, serviço, data e horário, use create_appointment imediatamente.'}
 5. ${askAdditional
         ? 'INFORMAÇÕES: Pergunte sobre preferências, sensibilidades e observações do cliente.'
-        : 'INFORMAÇÕES: Colete apenas o essencial — não prolongue a conversa desnecessariamente.'}
+        : 'INFORMAÇÕES: Colete apenas o essencial — não prolongue desnecessariamente.'}
 6. NUNCA diga "te envio confirmação" — esta mensagem JÁ É a confirmação.
 ${unavailableMsg ? `7. QUANDO INDISPONÍVEL: ${unavailableMsg}` : ''}
+
+═══════════════════════════════════════════
+AGENDAMENTO REAL — OBRIGATÓRIO
+═══════════════════════════════════════════
+Quando tiver nome completo, serviço, data e horário confirmados:
+→ Use a ferramenta create_appointment para criar o agendamento REAL no sistema.
+→ CONFIRME ao cliente APENAS se a ferramenta retornar success: true.
+→ Se retornar erro, informe: "Houve um problema técnico. Por favor, entre em contato."
+→ ⚠️ NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso.
 
 ═══════════════════════════════════════════
 INFORMAÇÕES DO NEGÓCIO
@@ -221,7 +370,7 @@ INFORMAÇÕES DO NEGÓCIO
 ${businessInfo.ai_instructions ? `\nINSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}` : ''}
 
 ═══════════════════════════════════════════
-FORMATO DE CONFIRMAÇÃO DE AGENDAMENTO
+FORMATO DE CONFIRMAÇÃO (após create_appointment com sucesso)
 ═══════════════════════════════════════════
 ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos! 💅"`}`;
   }
@@ -353,6 +502,7 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
       language: conversation.language ?? '',
       history,
       businessInfo: {
+        professional_id: professional?.id ?? '',
         business_name: professional?.business_name ?? '',
         description: professional?.bio ?? '',
         services: services ?? [],
