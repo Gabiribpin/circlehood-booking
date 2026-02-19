@@ -170,6 +170,40 @@ export class AIBot {
     return textBlock?.text ?? '';
   }
 
+  private normalizeDate(dateStr: string): string {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const lower = dateStr.toLowerCase().trim();
+    if (lower === 'hoje' || lower === 'today') return todayStr;
+    if (lower === 'amanhã' || lower === 'amanha' || lower === 'tomorrow') {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow.toISOString().split('T')[0];
+    }
+    // Se já está em formato YYYY-MM-DD, retorna como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // Formato DD/MM/YYYY
+    const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+    // Fallback: hoje
+    console.warn('createAppointment: data não reconhecida:', dateStr, '→ usando hoje');
+    return todayStr;
+  }
+
+  private normalizeTime(timeStr: string): string {
+    const t = timeStr.trim();
+    // "18h" ou "18H"
+    if (/^\d{1,2}[hH]$/.test(t)) return t.replace(/[hH]/, '').padStart(2, '0') + ':00';
+    // "18h30" ou "18H30"
+    const hm = t.match(/^(\d{1,2})[hH](\d{2})$/);
+    if (hm) return `${hm[1].padStart(2,'0')}:${hm[2]}`;
+    // "18:00" ou "18:00:00"
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return t.slice(0, 5).padStart(5, '0');
+    // Fallback: retorna como está
+    return t;
+  }
+
   private async createAppointment(
     data: {
       customer_name: string;
@@ -184,6 +218,11 @@ export class AIBot {
     professionalId: string
   ): Promise<{ success: boolean; error?: string; appointment_id?: string; service_name?: string; price?: number; date?: string; time?: string }> {
     try {
+      // Normalizar data e hora antes de qualquer operação
+      const bookingDate = this.normalizeDate(data.date);
+      const bookingTime = this.normalizeTime(data.time);
+      console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}"`);
+
       // 1. Buscar serviço por nome (parcial)
       const { data: service, error: serviceError } = await this.supabase
         .from('services')
@@ -199,7 +238,7 @@ export class AIBot {
       }
 
       // 2. Calcular horário de término
-      const [hours, minutes] = data.time.split(':').map(Number);
+      const [hours, minutes] = bookingTime.split(':').map(Number);
       const duration = service.duration_minutes ?? 60;
       const endTotalMinutes = hours * 60 + minutes + duration;
       const endHours = Math.floor(endTotalMinutes / 60) % 24;
@@ -212,8 +251,8 @@ export class AIBot {
         .insert({
           professional_id: professionalId,
           service_id: service.id,
-          booking_date: data.date,
-          start_time: `${data.time}:00`,
+          booking_date: bookingDate,
+          start_time: `${bookingTime}:00`,
           end_time: endTime,
           client_name: data.customer_name,
           client_phone: data.customer_phone,
@@ -227,7 +266,8 @@ export class AIBot {
         .single();
 
       if (bookingError || !booking) {
-        console.error('createAppointment: erro ao inserir booking:', bookingError);
+        console.error('createAppointment: erro ao inserir booking:', JSON.stringify(bookingError));
+        console.error('createAppointment: dados enviados:', { bookingDate, bookingTime, professionalId, serviceId: service.id });
         return { success: false, error: bookingError?.message ?? 'Erro ao criar agendamento' };
       }
 
@@ -370,6 +410,17 @@ Quando tiver nome, serviço, data e horário confirmados:
 → Se erro: "Houve um problema técnico. Por favor, entre em contato."
 → NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso
 → DOMICÍLIO: se serviço for [A domicílio] ou [Salão ou domicílio], colete o endereço do cliente primeiro
+
+╔═══════════════════════════════════════════════════════════════╗
+║ DATA E HORA ATUAL                                             ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Data de hoje: ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Dublin' })})
+
+Quando o cliente disser "hoje" → use ${new Date().toISOString().split('T')[0]}
+Quando o cliente disser "amanhã" → calcule o dia seguinte
+Para o campo "date" da ferramenta, SEMPRE use formato YYYY-MM-DD
+Para o campo "time", SEMPRE use formato HH:MM (ex: "18:00", não "18h")
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║ INFORMAÇÕES DO NEGÓCIO                                        ║
