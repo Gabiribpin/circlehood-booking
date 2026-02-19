@@ -1,12 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/ui/phone-input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Trash2, Edit, Upload, Search, Users } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { RegionSelector } from '@/components/clients/region-selector';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Contact {
   id: string;
@@ -16,69 +42,45 @@ interface Contact {
   category?: string;
   notes?: string;
   tags?: string[];
+  regions?: string[];
   created_at: string;
 }
 
 interface ContactWithStats extends Contact {
   lastBookingDate?: string;
-  lastServiceName?: string;
   totalBookings: number;
   smartTags: string[];
 }
 
 type FilterType = 'all' | 'vip' | 'new' | 'inactive' | 'birthday';
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase();
+// ─── CRM helpers ──────────────────────────────────────────────────────────────
+
+function getInitials(name: string) {
+  return name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
 }
 
-function getAvatarColor(name: string): string {
-  const colors = [
-    'bg-purple-500', 'bg-blue-500', 'bg-green-500',
-    'bg-pink-500', 'bg-orange-500', 'bg-teal-500',
-  ];
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
+function getAvatarColor(name: string) {
+  const colors = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500'];
+  return colors[name.charCodeAt(0) % colors.length];
 }
 
-function computeSmartTags(contact: Contact, totalBookings: number, lastBookingDate?: string): string[] {
+function computeSmartTags(contact: Contact, totalBookings: number, lastBookingDate?: string) {
   const tags: string[] = [];
   const now = new Date();
-
-  // Novo: criado nos últimos 30 dias e sem agendamentos anteriores
-  const createdAt = new Date(contact.created_at);
-  const daysSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceCreated <= 30 && totalBookings <= 1) {
-    tags.push('🆕 Novo');
-  }
-
-  // VIP: 5+ agendamentos
-  if (totalBookings >= 5) {
-    tags.push('⭐ VIP');
-  }
-
-  // Inativo: último agendamento há mais de 60 dias
+  const daysSinceCreated = (now.getTime() - new Date(contact.created_at).getTime()) / 86400000;
+  if (daysSinceCreated <= 30 && totalBookings <= 1) tags.push('🆕 Novo');
+  if (totalBookings >= 5) tags.push('⭐ VIP');
   if (lastBookingDate) {
-    const lastBooking = new Date(lastBookingDate);
-    const daysSinceLastBooking = (now.getTime() - lastBooking.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceLastBooking > 60) {
-      tags.push('⚠️ Inativo');
-    }
+    const days = (now.getTime() - new Date(lastBookingDate).getTime()) / 86400000;
+    if (days > 60) tags.push('⚠️ Inativo');
   }
-
   return tags;
 }
 
-function formatLastVisit(dateStr?: string): string {
+function formatLastVisit(dateStr?: string) {
   if (!dateStr) return 'Nunca visitou';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const days = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
   if (days === 0) return 'Hoje';
   if (days === 1) return 'Ontem';
   if (days < 7) return `há ${days} dias`;
@@ -87,88 +89,81 @@ function formatLastVisit(dateStr?: string): string {
   return `há ${Math.floor(days / 365)} ano(s)`;
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'manage' ? 'manage' : 'crm';
+
+  return (
+    <div className="container mx-auto p-4 md:p-6 space-y-4">
+      <h1 className="text-2xl md:text-3xl font-bold">👥 Clientes</h1>
+
+      <Tabs defaultValue={defaultTab}>
+        <TabsList>
+          <TabsTrigger value="crm">📊 CRM</TabsTrigger>
+          <TabsTrigger value="manage">⚙️ Gerenciar</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="crm" className="mt-4">
+          <CRMView />
+        </TabsContent>
+
+        <TabsContent value="manage" className="mt-4">
+          <ManageView />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ─── Aba CRM ──────────────────────────────────────────────────────────────────
+
+function CRMView() {
   const [contacts, setContacts] = useState<ContactWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
-  useEffect(() => {
-    loadClients();
-  }, []);
+  useEffect(() => { loadClients(); }, []);
 
   async function loadClients() {
     const supabase = createClient();
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data: professional } = await supabase
-      .from('professionals')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
+      .from('professionals').select('id').eq('user_id', user.id).single();
     if (!professional) return;
 
-    // Buscar contatos
-    const { data: contactsData } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('professional_id', professional.id)
-      .order('name', { ascending: true });
+    const [{ data: contactsData }, { data: bookingsData }] = await Promise.all([
+      supabase.from('contacts').select('*').eq('professional_id', professional.id).order('name'),
+      supabase.from('bookings').select('client_phone, booking_date')
+        .eq('professional_id', professional.id).eq('status', 'confirmed')
+        .order('booking_date', { ascending: false }),
+    ]);
 
-    if (!contactsData) {
-      setLoading(false);
-      return;
-    }
+    if (!contactsData) { setLoading(false); return; }
 
-    // Buscar agendamentos para calcular estatísticas
-    const { data: bookingsData } = await supabase
-      .from('bookings')
-      .select('client_phone, booking_date, status')
-      .eq('professional_id', professional.id)
-      .eq('status', 'confirmed')
-      .order('booking_date', { ascending: false });
-
-    // Montar mapa de estatísticas por telefone
     const statsMap: Record<string, { lastDate: string; count: number }> = {};
-    for (const booking of bookingsData || []) {
-      const phone = booking.client_phone?.replace(/\D/g, '');
-      if (!phone) continue;
-      if (!statsMap[phone]) {
-        statsMap[phone] = { lastDate: booking.booking_date, count: 0 };
-      }
-      statsMap[phone].count++;
+    for (const b of bookingsData || []) {
+      const p = b.client_phone?.replace(/\D/g, '');
+      if (!p) continue;
+      if (!statsMap[p]) statsMap[p] = { lastDate: b.booking_date, count: 0 };
+      statsMap[p].count++;
     }
 
-    // Combinar contatos com estatísticas
-    const enriched: ContactWithStats[] = contactsData.map((contact) => {
-      const phone = contact.phone?.replace(/\D/g, '');
-      const stats = statsMap[phone] || { lastDate: undefined, count: 0 };
-      const smartTags = computeSmartTags(contact, stats.count, stats.lastDate);
-
-      return {
-        ...contact,
-        lastBookingDate: stats.lastDate,
-        totalBookings: stats.count,
-        smartTags,
-      };
-    });
-
-    setContacts(enriched);
+    setContacts(contactsData.map((c) => {
+      const stats = statsMap[c.phone?.replace(/\D/g, '')] ?? { lastDate: undefined, count: 0 };
+      return { ...c, lastBookingDate: stats.lastDate, totalBookings: stats.count, smartTags: computeSmartTags(c, stats.count, stats.lastDate) };
+    }));
     setLoading(false);
   }
 
-  // Filtros
   const filtered = contacts
     .filter((c) => {
-      const term = searchTerm.toLowerCase();
-      return (
-        c.name.toLowerCase().includes(term) ||
-        c.phone.includes(term) ||
-        c.email?.toLowerCase().includes(term)
-      );
+      const t = searchTerm.toLowerCase();
+      return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
     })
     .filter((c) => {
       if (activeFilter === 'all') return true;
@@ -199,30 +194,16 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">👥 Meus Clientes</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {contacts.length} {contacts.length === 1 ? 'cliente' : 'clientes'} no total
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">{contacts.length} {contacts.length === 1 ? 'cliente' : 'clientes'} no total</p>
 
-      {/* Busca */}
       <div className="relative">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome, telefone ou email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
+        <Input placeholder="Buscar por nome, telefone ou email..." value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
       </div>
 
-      {/* Filtros Rápidos */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {([
           { key: 'all', label: 'Todos', count: counts.all },
           { key: 'birthday', label: '🎂 Aniversariantes', count: counts.birthday },
@@ -230,24 +211,14 @@ export default function ClientsPage() {
           { key: 'new', label: '🆕 Novos', count: counts.new },
           { key: 'inactive', label: '⚠️ Inativos', count: counts.inactive },
         ] as { key: FilterType; label: string; count: number }[]).map((f) => (
-          <Button
-            key={f.key}
-            variant={activeFilter === f.key ? 'default' : 'outline'}
-            size="sm"
-            className="whitespace-nowrap flex-shrink-0"
-            onClick={() => setActiveFilter(f.key)}
-          >
+          <Button key={f.key} variant={activeFilter === f.key ? 'default' : 'outline'} size="sm"
+            className="whitespace-nowrap flex-shrink-0" onClick={() => setActiveFilter(f.key)}>
             {f.label}
-            {f.count > 0 && (
-              <span className="ml-1.5 bg-white/20 text-xs rounded-full px-1.5 py-0.5">
-                {f.count}
-              </span>
-            )}
+            {f.count > 0 && <span className="ml-1.5 bg-white/20 text-xs rounded-full px-1.5 py-0.5">{f.count}</span>}
           </Button>
         ))}
       </div>
 
-      {/* Grid de Clientes */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -258,54 +229,32 @@ export default function ClientsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((contact) => (
-            <Card
-              key={contact.id}
-              className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-            >
+          {filtered.map((c) => (
+            <Card key={c.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-3">
-                {/* Avatar */}
-                <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ${getAvatarColor(contact.name)}`}
-                >
-                  {getInitials(contact.name)}
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ${getAvatarColor(c.name)}`}>
+                  {getInitials(c.name)}
                 </div>
-
                 <div className="flex-1 min-w-0">
-                  {/* Nome + Smart Tags */}
                   <div className="flex items-start justify-between gap-1 mb-1">
-                    <h3 className="font-semibold text-sm leading-tight truncate">
-                      {contact.name}
-                    </h3>
+                    <h3 className="font-semibold text-sm leading-tight truncate">{c.name}</h3>
                     <div className="flex gap-1 flex-shrink-0">
-                      {contact.smartTags.map((tag) => (
-                        <span key={tag} className="text-xs">{tag.split(' ')[0]}</span>
-                      ))}
+                      {c.smartTags.map((tag) => <span key={tag} className="text-xs">{tag.split(' ')[0]}</span>)}
                     </div>
                   </div>
-
-                  {/* Telefone */}
-                  <p className="text-xs text-muted-foreground truncate">
-                    📞 {contact.phone}
-                  </p>
-
-                  {/* Última visita */}
+                  <p className="text-xs text-muted-foreground truncate">📞 {c.phone}</p>
                   <div className="mt-2 pt-2 border-t">
                     <p className="text-xs text-muted-foreground">Última visita</p>
                     <p className="text-xs font-medium mt-0.5">
-                      {contact.lastBookingDate
-                        ? `${formatLastVisit(contact.lastBookingDate)} · ${contact.totalBookings} visita${contact.totalBookings !== 1 ? 's' : ''}`
+                      {c.lastBookingDate
+                        ? `${formatLastVisit(c.lastBookingDate)} · ${c.totalBookings} visita${c.totalBookings !== 1 ? 's' : ''}`
                         : 'Sem agendamentos'}
                     </p>
                   </div>
-
-                  {/* Tags manuais */}
-                  {contact.tags && contact.tags.length > 0 && (
+                  {c.tags && c.tags.length > 0 && (
                     <div className="mt-2 flex gap-1 flex-wrap">
-                      {contact.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">
-                          {tag}
-                        </Badge>
+                      {c.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">{tag}</Badge>
                       ))}
                     </div>
                   )}
@@ -315,6 +264,237 @@ export default function ClientsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Aba Gerenciar ────────────────────────────────────────────────────────────
+
+function ManageView() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [professionalId, setProfessionalId] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const { toast } = useToast();
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [category, setCategory] = useState('');
+  const [notes, setNotes] = useState('');
+  const [regions, setRegions] = useState<string[]>([]);
+
+  useEffect(() => { loadContacts(); }, []);
+
+  async function loadContacts() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: professional } = await supabase
+      .from('professionals').select('id').eq('user_id', user.id).single();
+    if (!professional) return;
+    setProfessionalId(professional.id);
+
+    const { data, error } = await supabase
+      .from('contacts').select('*').eq('professional_id', professional.id)
+      .order('created_at', { ascending: false });
+
+    if (error) { toast({ title: 'Erro ao carregar contatos', description: error.message, variant: 'destructive' }); return; }
+    setContacts(data || []);
+    setLoading(false);
+  }
+
+  async function handleSave() {
+    if (!name || !phone) {
+      toast({ title: 'Campos obrigatórios', description: 'Nome e telefone são obrigatórios', variant: 'destructive' });
+      return;
+    }
+    const supabase = createClient();
+
+    if (editingContact) {
+      const { error } = await supabase.from('contacts')
+        .update({ name, phone, email: email || null, category: category || null, notes: notes || null, regions, updated_at: new Date().toISOString() })
+        .eq('id', editingContact.id);
+      if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Contato atualizado!' });
+    } else {
+      const { error } = await supabase.from('contacts')
+        .insert({ professional_id: professionalId, name, phone, email: email || null, category: category || null, notes: notes || null, regions });
+      if (error) { toast({ title: 'Erro ao adicionar', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Contato adicionado!' });
+    }
+    resetForm();
+    setIsDialogOpen(false);
+    loadContacts();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Tem certeza que deseja excluir este contato?')) return;
+    const supabase = createClient();
+    const { error } = await supabase.from('contacts').delete().eq('id', id);
+    if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Contato excluído!' });
+    loadContacts();
+  }
+
+  function handleEdit(contact: Contact) {
+    setEditingContact(contact);
+    setName(contact.name); setPhone(contact.phone); setEmail(contact.email || '');
+    setCategory(contact.category || ''); setNotes(contact.notes || ''); setRegions(contact.regions || []);
+    setIsDialogOpen(true);
+  }
+
+  function resetForm() {
+    setEditingContact(null); setName(''); setPhone(''); setEmail(''); setCategory(''); setNotes(''); setRegions([]);
+  }
+
+  function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const lines = (event.target?.result as string).split('\n');
+      const supabase = createClient();
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [n, p, em, cat] = line.split(',').map(s => s.trim());
+        if (!n || !p) continue;
+        const { error } = await supabase.from('contacts')
+          .insert({ professional_id: professionalId, name: n, phone: p, email: em || null, category: cat || null });
+        if (!error) imported++;
+      }
+      toast({ title: 'Importação concluída!', description: `${imported} contatos importados.` });
+      loadContacts();
+    };
+    reader.readAsText(file);
+  }
+
+  const filtered = contacts.filter((c) => {
+    const t = searchTerm.toLowerCase();
+    return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
+  });
+
+  if (loading) return <div className="p-8">Carregando...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <p className="text-muted-foreground text-sm">Gerencie seus contatos para campanhas de marketing</p>
+        <div className="flex gap-2">
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+          <Button variant="outline" onClick={() => csvInputRef.current?.click()}>
+            <Upload className="mr-2 h-4 w-4" /> Importar CSV
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" /> Adicionar Contato</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Contato'}</DialogTitle>
+                <DialogDescription>Preencha os dados do contato abaixo</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="c-name">Nome *</Label>
+                  <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria Silva" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-phone">Telefone *</Label>
+                  <PhoneInput value={phone} onChange={(v) => setPhone(v || '')} placeholder="(11) 99999-9999" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-email">Email</Label>
+                  <Input id="c-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@exemplo.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-category">Categoria</Label>
+                  <Input id="c-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Unhas, Cabelo" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-notes">Notas</Label>
+                  <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Observações..." />
+                </div>
+                <RegionSelector value={regions} onChange={setRegions} label="Regiões de Dublin" />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
+                <Button onClick={handleSave}>{editingContact ? 'Atualizar' : 'Adicionar'}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              <CardTitle>{filtered.length} {filtered.length === 1 ? 'Contato' : 'Contatos'}</CardTitle>
+            </div>
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar contatos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">Nenhum contato ainda</h3>
+              <p className="text-muted-foreground mt-2">Adicione seus primeiros contatos para começar campanhas</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell>{c.phone}</TableCell>
+                    <TableCell>{c.email || '-'}</TableCell>
+                    <TableCell>{c.category || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Como importar contatos via CSV</CardTitle>
+          <CardDescription>Formato do arquivo (primeira linha é o cabeçalho):</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,categoria
+Maria Silva,+5511999999999,maria@exemplo.com,Unhas
+Ana Costa,+5511988888888,ana@exemplo.com,Cabelo`}</pre>
+        </CardContent>
+      </Card>
     </div>
   );
 }
