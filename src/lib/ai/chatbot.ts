@@ -44,16 +44,17 @@ export class AIBot {
     const response = await this.generateResponse(message, intent, context);
     console.log('✅ Anthropic respondeu para', phone);
 
-    // 5. Salvar no Redis (cache persistente — fonte principal)
+    // 5. Salvar no Redis E no banco em paralelo
+    // Ambos aguardados — garante que a próxima mensagem sempre encontra histórico,
+    // mesmo se Redis estiver indisponível (Supabase atua como fallback confiável)
     const cacheKey = `${businessId}_${phone}`;
-    ConversationCache.addMessages(cacheKey, [
-      { role: 'user', content: message, timestamp: Date.now() },
-      { role: 'assistant', content: response, timestamp: Date.now() + 1 },
-    ]).catch(err => console.error('❌ Redis save falhou:', err));
-
-    // 6. Salvar no banco como backup (fire-and-forget — Redis já tem os dados)
-    this.saveToHistory(context.conversationId, message, response)
-      .catch(err => console.error('⚠️ saveToHistory falhou (Redis já salvou):', err));
+    await Promise.allSettled([
+      ConversationCache.addMessages(cacheKey, [
+        { role: 'user', content: message, timestamp: Date.now() },
+        { role: 'assistant', content: response, timestamp: Date.now() + 1 },
+      ]),
+      this.saveToHistory(context.conversationId, message, response),
+    ]);
 
     return response;
   }
