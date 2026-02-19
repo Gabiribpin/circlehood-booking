@@ -285,7 +285,56 @@ export class AIBot {
         return { success: false, error: `Serviço "${data.service_name}" não encontrado` };
       }
 
-      // 2. Calcular horário de término
+      // 2. Verificar agendamentos futuros do mesmo cliente (duplicatas)
+      const todayISO = new Date().toISOString().split('T')[0];
+      const { data: futureBookings } = await this.supabase
+        .from('bookings')
+        .select('id, booking_date, start_time, service_id, services(name)')
+        .eq('professional_id', professionalId)
+        .eq('client_phone', data.customer_phone)
+        .gte('booking_date', todayISO)
+        .neq('status', 'cancelled')
+        .neq('status', 'completed')
+        .order('booking_date', { ascending: true });
+
+      if (futureBookings && futureBookings.length > 0) {
+        console.log(`⚠️ Cliente já tem ${futureBookings.length} agendamento(s) futuro(s)`);
+
+        // Mesmo dia (qualquer serviço)
+        const sameDay = futureBookings.find((b) => b.booking_date === bookingDate);
+        if (sameDay) {
+          const sameDayTime = sameDay.start_time.slice(0, 5);
+          const sameDayService = (sameDay as any).services?.name ?? 'serviço';
+          const sameDayDateLabel = new Date(sameDay.booking_date + 'T12:00:00Z')
+            .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+          console.log(`🚨 Duplicata mesmo dia: ${sameDay.booking_date} ${sameDayTime} ${sameDayService}`);
+          return {
+            success: false,
+            error: 'duplicate_same_day',
+            message: `Você já tem um agendamento para ${sameDayDateLabel} às ${sameDayTime} (${sameDayService}). Quer remarcar para ${bookingTime} ou é um serviço diferente?`,
+          };
+        }
+
+        // Mesmo serviço em até 3 dias
+        const reqDate = new Date(bookingDate + 'T12:00:00Z').getTime();
+        const nearby = futureBookings.find((b) => {
+          const diffDays = Math.abs(new Date(b.booking_date + 'T12:00:00Z').getTime() - reqDate) / 86400000;
+          return diffDays <= 3 && b.service_id === service.id;
+        });
+        if (nearby) {
+          const nearbyTime = nearby.start_time.slice(0, 5);
+          const nearbyLabel = new Date(nearby.booking_date + 'T12:00:00Z')
+            .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+          console.log(`⚠️ Mesmo serviço em dias próximos: ${nearby.booking_date} ${nearbyTime}`);
+          return {
+            success: false,
+            error: 'duplicate_nearby',
+            message: `Você já tem ${service.name} marcado para ${nearbyLabel} às ${nearbyTime}. Quer remarcar para ${bookingDate} às ${bookingTime}, ou confirma os dois agendamentos?`,
+          };
+        }
+      }
+
+      // 3. Calcular horário de término
       const [hours, minutes] = bookingTime.split(':').map(Number);
       const duration = service.duration_minutes ?? 60;
       const endTotalMinutes = hours * 60 + minutes + duration;
@@ -549,22 +598,33 @@ Quando tiver nome, serviço, data e horário confirmados:
 → DOMICÍLIO: se serviço for [A domicílio] ou [Salão ou domicílio], colete o endereço do cliente primeiro
 
 ╔═══════════════════════════════════════════════════════════════╗
-║ VERIFICAÇÃO DE DISPONIBILIDADE                                ║
+║ VERIFICAÇÃO DE DISPONIBILIDADE E DUPLICATAS                   ║
 ╚═══════════════════════════════════════════════════════════════╝
 
-A ferramenta create_appointment JÁ verifica conflitos automaticamente.
+A ferramenta create_appointment verifica conflitos E duplicatas automaticamente.
 
 ❌ NUNCA diga "vou verificar disponibilidade" (a tool já faz isso)
 ❌ NUNCA confirme horário sem chamar a tool primeiro
+❌ NUNCA crie múltiplos agendamentos sem confirmação explícita do cliente
 
 Se create_appointment retornar error='unavailable':
-→ Informe que o horário está ocupado
+→ Informe que o horário não está disponível
 → Sugira o horário alternativo do campo 'message'
 → Aguarde confirmação do cliente
 
-EXEMPLO:
-Tool retorna: {success: false, error: 'unavailable', message: 'Desculpe, já tenho um compromisso às 18:00. Que tal às 17:00?'}
-Bot responde: "Desculpe, esse horário já está ocupado. Que tal às 17:00?"
+Se create_appointment retornar error='duplicate_same_day':
+→ Cliente já tem agendamento NO MESMO DIA
+→ Repasse a 'message' da tool
+→ Aguarde resposta clara: "remarcar" ou "é outro serviço"
+→ Se "remarcar": chame create_appointment com o novo horário (o antigo será substituído manualmente pela profissional)
+→ Se "outro serviço": colete o serviço correto e chame create_appointment normalmente
+
+Se create_appointment retornar error='duplicate_nearby':
+→ Cliente já tem O MESMO SERVIÇO em dias próximos
+→ Repasse a 'message' da tool
+→ Aguarde resposta: "remarcar" ou "confirmar dois"
+→ Se "remarcar": informe que a profissional vai ajustar o agendamento existente, confirme o novo
+→ Se "confirmar dois": chame create_appointment normalmente e confirme ambos
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║ DATA E HORA ATUAL                                             ║
