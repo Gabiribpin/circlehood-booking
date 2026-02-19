@@ -271,6 +271,31 @@ export class AIBot {
       const bookingTime = this.normalizeTime(data.time);
       console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}"`);
 
+      // BUG #1 fix: rejeitar horários no passado (Dublin timezone)
+      const now = new Date();
+      const dublinNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+      const dublinTodayStr = `${dublinNow.getFullYear()}-${String(dublinNow.getMonth() + 1).padStart(2, '0')}-${String(dublinNow.getDate()).padStart(2, '0')}`;
+      const requestedDateTime = new Date(`${bookingDate}T${bookingTime}:00`);
+      const dublinNowDateTime = new Date(`${dublinTodayStr}T${String(dublinNow.getHours()).padStart(2, '0')}:${String(dublinNow.getMinutes()).padStart(2, '0')}:00`);
+
+      if (requestedDateTime < dublinNowDateTime) {
+        const diffMins = Math.ceil((dublinNowDateTime.getTime() - requestedDateTime.getTime()) / (1000 * 60));
+        const nowLabel = `${String(dublinNow.getHours()).padStart(2, '0')}:${String(dublinNow.getMinutes()).padStart(2, '0')}`;
+        console.log(`⛔ Horário no passado: solicitado ${bookingDate} ${bookingTime}, Dublin agora ${dublinTodayStr} ${nowLabel} (diff=${diffMins}min)`);
+        if (diffMins <= 30) {
+          return {
+            success: false,
+            error: 'past_time_close',
+            message: `Esse horário acabou de passar (${diffMins} minuto${diffMins === 1 ? '' : 's'} atrás). Já são ${nowLabel} agora. Quer que eu verifique o próximo horário disponível?`,
+          };
+        }
+        return {
+          success: false,
+          error: 'past_time',
+          message: `Não posso agendar no passado! Você pediu ${bookingTime} mas já são ${nowLabel} agora. Qual horário você gostaria?`,
+        };
+      }
+
       // 1. Buscar serviço por nome (parcial)
       const { data: service, error: serviceError } = await this.supabase
         .from('services')
@@ -325,11 +350,13 @@ export class AIBot {
           const nearbyTime = nearby.start_time.slice(0, 5);
           const nearbyLabel = new Date(nearby.booking_date + 'T12:00:00Z')
             .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+          const requestedDateLabel = new Date(bookingDate + 'T12:00:00Z')
+            .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
           console.log(`⚠️ Mesmo serviço em dias próximos: ${nearby.booking_date} ${nearbyTime}`);
           return {
             success: false,
             error: 'duplicate_nearby',
-            message: `Você já tem ${service.name} marcado para ${nearbyLabel} às ${nearbyTime}. Quer remarcar para ${bookingDate} às ${bookingTime}, ou confirma os dois agendamentos?`,
+            message: `Você já tem ${service.name} marcado para ${nearbyLabel} às ${nearbyTime}. Quer remarcar para ${requestedDateLabel} às ${bookingTime}, ou confirma os dois agendamentos?`,
           };
         }
       }
@@ -638,6 +665,16 @@ A ferramenta create_appointment verifica conflitos E duplicatas automaticamente.
 ❌ NUNCA confirme horário sem chamar a tool primeiro
 ❌ NUNCA crie múltiplos agendamentos sem confirmação explícita do cliente
 
+Se create_appointment retornar error='past_time':
+→ O horário solicitado já passou
+→ Repasse a mensagem do campo 'message'
+→ Pergunte qual horário o cliente prefere (hoje ou outro dia)
+
+Se create_appointment retornar error='past_time_close':
+→ O horário acabou de passar (poucos minutos atrás)
+→ Repasse a mensagem do campo 'message'
+→ Ofereça verificar o próximo horário disponível hoje
+
 Se create_appointment retornar error='day_unavailable':
 → Profissional não atende nesse dia da semana
 → Repasse a mensagem do campo 'message'
@@ -666,6 +703,12 @@ Se create_appointment retornar error='duplicate_nearby':
 → Aguarde resposta: "remarcar" ou "confirmar dois"
 → Se "remarcar": informe que a profissional vai ajustar o agendamento existente, confirme o novo
 → Se "confirmar dois": chame create_appointment normalmente e confirme ambos
+
+AGENDAMENTOS CANCELADOS — REGRA CRÍTICA:
+→ Se o cliente disser que um agendamento foi cancelado, ACREDITE nele
+→ NÃO insista que o agendamento ainda está ativo
+→ Ofereça reagendar diretamente: "Vamos reagendar! Qual data e horário prefere?"
+→ A verificação de duplicatas da tool considera APENAS agendamentos ativos (confirmados)
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║ DATA E HORA ATUAL                                             ║
