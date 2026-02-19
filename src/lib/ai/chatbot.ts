@@ -312,17 +312,19 @@ export class AIBot {
             const occupied = b.start_time.slice(0, 5);
             console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
 
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            // day_of_week é INT: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+            const todayDayInt = new Date(bookingDate + 'T12:00:00Z').getUTCDay();
 
             // Buscar expediente de hoje
-            const todayDayName = dayNames[new Date(bookingDate + 'T12:00:00Z').getUTCDay()];
             const { data: todayWH } = await this.supabase
               .from('working_hours')
               .select('start_time, end_time')
               .eq('professional_id', professionalId)
-              .eq('day_of_week', todayDayName)
+              .eq('day_of_week', todayDayInt)
               .eq('is_available', true)
               .maybeSingle();
+
+            console.log(`🗓️ Working hours hoje (day_int=${todayDayInt}):`, todayWH ? `${todayWH.start_time}–${todayWH.end_time}` : 'não atende');
 
             const todaySlot = todayWH
               ? suggestAlternative(bookingDate, existingBookings, duration, todayWH.start_time, todayWH.end_time)
@@ -332,7 +334,7 @@ export class AIBot {
               return {
                 success: false,
                 error: 'unavailable',
-                message: `Desculpe, já tenho um compromisso às ${occupied}. Que tal às ${todaySlot} ainda hoje?`,
+                message: `Desculpe, esse horário não está disponível. Que tal às ${todaySlot} ainda hoje?`,
               };
             }
 
@@ -340,14 +342,14 @@ export class AIBot {
             const tomorrowDate = new Date(bookingDate + 'T12:00:00Z');
             tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
             const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
-            const tomorrowDayName = dayNames[tomorrowDate.getUTCDay()];
+            const tomorrowDayInt = tomorrowDate.getUTCDay();
 
             const [{ data: tomorrowWH }, { data: tomorrowBookings }] = await Promise.all([
               this.supabase
                 .from('working_hours')
                 .select('start_time, end_time')
                 .eq('professional_id', professionalId)
-                .eq('day_of_week', tomorrowDayName)
+                .eq('day_of_week', tomorrowDayInt)
                 .eq('is_available', true)
                 .maybeSingle(),
               this.supabase
@@ -359,11 +361,13 @@ export class AIBot {
                 .neq('status', 'completed'),
             ]);
 
+            console.log(`🗓️ Working hours amanhã (day_int=${tomorrowDayInt}, data=${tomorrowStr}):`, tomorrowWH ? `${tomorrowWH.start_time}–${tomorrowWH.end_time}` : 'não atende');
+
             if (!tomorrowWH) {
               return {
                 success: false,
                 error: 'unavailable',
-                message: `Desculpe, já tenho um compromisso às ${occupied} e não tenho mais horários hoje. Amanhã não atendo. Podemos agendar para outro dia?`,
+                message: `Desculpe, não tenho disponibilidade nesse horário e amanhã não atendo. Podemos agendar para outro dia?`,
               };
             }
 
@@ -373,7 +377,7 @@ export class AIBot {
             return {
               success: false,
               error: 'unavailable',
-              message: `Desculpe, já tenho um compromisso às ${occupied} e não tenho mais horários hoje. Que tal ${tomorrowLabel} às ${tomorrowSlot}?`,
+              message: `Desculpe, não tenho disponibilidade nesse horário e não tenho mais vagas hoje. Que tal ${tomorrowLabel} às ${tomorrowSlot}?`,
             };
           }
         }
