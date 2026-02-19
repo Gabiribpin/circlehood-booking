@@ -5,6 +5,7 @@ import { classifyIntent } from './intent-classifier';
 
 interface ConversationContext {
   userId: string;
+  phone: string;
   language: string;
   history: Array<{ role: 'user' | 'assistant', content: string }>;
   businessInfo: any;
@@ -28,9 +29,14 @@ export class AIBot {
     // 1. Buscar contexto do usuário
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Detectar idioma se ainda não foi detectado
+    // 2. Detectar idioma se ainda não foi detectado, e persistir
     if (!context.language) {
       context.language = await detectLanguage(message);
+      await this.supabase
+        .from('whatsapp_conversations')
+        .update({ language: context.language })
+        .eq('user_id', businessId)
+        .eq('customer_phone', phone);
     }
 
     // 3. Classificar intenção
@@ -68,11 +74,14 @@ export class AIBot {
   }
 
   private buildSystemPrompt(context: ConversationContext): string {
-    const { businessInfo, language } = context;
+    const { businessInfo, language, phone } = context;
 
     return `Você é um assistente virtual amigável e prestativo para ${businessInfo.business_name}.
 
-IDIOMA: Responda SEMPRE em ${this.getLanguageName(language)}.
+IDIOMA: Detecte o idioma da mensagem do cliente e responda NO MESMO IDIOMA.
+
+NÚMERO DO CLIENTE: ${phone}
+⚠️ NUNCA peça o telefone ao cliente — você já tem o número automaticamente: ${phone}
 
 INFORMAÇÕES DO NEGÓCIO:
 - Nome: ${businessInfo.business_name}
@@ -102,9 +111,8 @@ Quando o cliente quiser agendar, colete:
 1. Nome completo
 2. Serviço desejado
 3. Data e horário preferido
-4. Telefone (se ainda não tiver)
 
-Depois confirme todos os detalhes antes de finalizar.`;
+Depois confirme todos os detalhes antes de finalizar. (O telefone já está registrado automaticamente.)`;
   }
 
   private getLanguageName(code: string): string {
@@ -149,7 +157,7 @@ Depois confirme todos os detalhes antes de finalizar.`;
 
     if (convError || !conversation) {
       console.error('Error fetching/creating conversation:', convError);
-      return { userId: phone, language: '', history: [], businessInfo: {} };
+      return { userId: phone, phone, language: '', history: [], businessInfo: {} };
     }
 
     // 2. Buscar últimas 10 mensagens (mais antigas primeiro para contexto)
@@ -198,6 +206,7 @@ Depois confirme todos os detalhes antes de finalizar.`;
 
     return {
       userId: phone,
+      phone,
       language: conversation.language ?? '',
       history,
       businessInfo: {
