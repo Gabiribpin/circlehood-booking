@@ -22,13 +22,6 @@ export default async function AutomationsPage() {
     redirect('/onboarding');
   }
 
-  // Buscar logs de cron jobs (últimos 30)
-  const { data: cronLogs } = await supabase
-    .from('cron_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(30);
-
   // Buscar logs de notificações do profissional (últimas 50)
   const { data: notificationLogs } = await supabase
     .from('notification_logs')
@@ -52,7 +45,7 @@ export default async function AutomationsPage() {
   return (
     <AutomationsManager
       professional={professional}
-      cronLogs={cronLogs || []}
+      cronLogs={[]}
       notificationLogs={notificationLogs || []}
       stats={{
         totalNotifications: totalNotifications || 0,

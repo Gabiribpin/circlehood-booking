@@ -2,14 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { detectLanguage } from './language-detector';
 import { classifyIntent } from './intent-classifier';
-
-// Cache em memória — funciona enquanto a mesma instância Vercel estiver quente
-// Complementa o banco: se DB falhar, cache garante contexto na mesma sessão
-const conversationCache = new Map<string, Array<{
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}>>();
+import { ConversationCache } from '@/lib/redis/conversation-cache';
 
 interface ConversationContext {
   userId: string;
@@ -35,46 +28,32 @@ export class AIBot {
   }
 
   async processMessage(phone: string, message: string, businessId: string) {
-    // 1. Buscar contexto do banco
+    // 1. Buscar contexto (Redis → Supabase como fallback)
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Usar idioma salvo ou 'pt' como padrão
+    // 2. Idioma padrão
     if (!context.language) {
       context.language = 'pt';
     }
 
-    // 3. Complementar histórico com cache em memória (se banco retornou vazio)
-    const cacheKey = `${businessId}-${phone}`;
-    let cached = (conversationCache.get(cacheKey) || [])
-      .filter(m => Date.now() - m.timestamp < 24 * 60 * 60 * 1000);
-
-    if (context.history.length === 0 && cached.length > 0) {
-      console.log('📦 Usando cache em memória:', cached.length, 'mensagens');
-      context.history = cached.map(m => ({ role: m.role, content: m.content }));
-    }
-
-    // 4. Adicionar mensagem atual ao cache
-    cached.push({ role: 'user', content: message, timestamp: Date.now() });
-
-    // 5. Classificar intenção
+    // 3. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
-    // 6. Gerar resposta
+    // 4. Gerar resposta
     console.log('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
     const response = await this.generateResponse(message, intent, context);
     console.log('✅ Anthropic respondeu para', phone);
 
-    // 7. Salvar resposta no cache
-    cached.push({ role: 'assistant', content: response, timestamp: Date.now() + 1 });
-    conversationCache.set(cacheKey, cached);
-    console.log('📦 Cache atualizado:', cached.length, 'mensagens para', cacheKey);
+    // 5. Salvar no Redis (cache persistente — fonte principal)
+    const cacheKey = `${businessId}_${phone}`;
+    ConversationCache.addMessages(cacheKey, [
+      { role: 'user', content: message, timestamp: Date.now() },
+      { role: 'assistant', content: response, timestamp: Date.now() + 1 },
+    ]).catch(err => console.error('❌ Redis save falhou:', err));
 
-    // 8. Salvar no banco (await para garantir persistência em Vercel serverless)
-    try {
-      await this.saveToHistory(context.conversationId, message, response);
-    } catch (err) {
-      console.error('❌ saveToHistory falhou (não bloqueia resposta):', err);
-    }
+    // 6. Salvar no banco como backup (fire-and-forget — Redis já tem os dados)
+    this.saveToHistory(context.conversationId, message, response)
+      .catch(err => console.error('⚠️ saveToHistory falhou (Redis já salvou):', err));
 
     return response;
   }
@@ -99,6 +78,8 @@ export class AIBot {
             service_name: { type: 'string', description: 'Nome do serviço (ex: "Corte", "Manicure", "Pézinho")' },
             date: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
             time: { type: 'string', description: 'Horário no formato HH:MM' },
+            service_location: { type: 'string', description: 'Local do atendimento: "in_salon" (no salão) ou "at_home" (a domicílio)' },
+            customer_address: { type: 'string', description: 'Endereço do cliente — obrigatório quando service_location="at_home"' },
             notes: { type: 'string', description: 'Observações adicionais (opcional)' },
           },
           required: ['customer_name', 'customer_phone', 'service_name', 'date', 'time'],
@@ -175,6 +156,8 @@ export class AIBot {
       service_name: string;
       date: string;
       time: string;
+      service_location?: string;
+      customer_address?: string;
       notes?: string;
     },
     professionalId: string
@@ -216,6 +199,8 @@ export class AIBot {
           notes: data.notes || 'Agendado via WhatsApp Bot',
           status: 'confirmed',
           created_via: 'whatsapp_bot',
+          service_location: data.service_location || 'in_salon',
+          customer_address: data.customer_address || null,
         })
         .select('id')
         .single();
@@ -348,7 +333,8 @@ REGRAS DE COMPORTAMENTO
         ? 'INFORMAÇÕES: Pergunte sobre preferências, sensibilidades e observações do cliente.'
         : 'INFORMAÇÕES: Colete apenas o essencial — não prolongue desnecessariamente.'}
 6. NUNCA diga "te envio confirmação" — esta mensagem JÁ É a confirmação.
-${unavailableMsg ? `7. QUANDO INDISPONÍVEL: ${unavailableMsg}` : ''}
+7. SERVIÇO A DOMICÍLIO: Se o serviço tiver "[A domicílio]" ou "[Salão ou domicílio]", pergunte o endereço completo do cliente antes de criar o agendamento. Passe service_location="at_home" e customer_address no create_appointment.
+${unavailableMsg ? `8. QUANDO INDISPONÍVEL: ${unavailableMsg}` : ''}
 
 ═══════════════════════════════════════════
 AGENDAMENTO REAL — OBRIGATÓRIO
@@ -387,9 +373,12 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
   }
 
   private formatServices(services: any[]): string {
-    return services.map(s =>
-      `- ${s.name}: €${s.price}${s.duration ? ` (${s.duration}min)` : ''}`
-    ).join('\n');
+    return services.map(s => {
+      const location = s.service_location === 'at_home' ? ' [A domicílio]'
+        : s.service_location === 'both' ? ' [Salão ou domicílio]'
+        : '';
+      return `- ${s.name}: €${s.price}${s.duration_minutes ? ` (${s.duration_minutes}min)` : ''}${location}`;
+    }).join('\n');
   }
 
   private formatSchedule(schedule: any): string {
@@ -420,28 +409,46 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
       return { userId: phone, phone, conversationId: '', language: '', history: [], businessInfo: {} };
     }
 
-    // 2. Buscar últimas 10 mensagens (mais antigas primeiro para contexto)
-    console.log('🔍 DEBUG: Buscando histórico para', phone, '| conversa:', conversation.id);
-    const { data: messages } = await this.supabase
-      .from('whatsapp_messages')
-      .select('direction, content')
-      .eq('conversation_id', conversation.id)
-      .order('sent_at', { ascending: false })
-      .limit(10);
+    // 2. Histórico: Redis primeiro, Supabase como fallback
+    const cacheKey = `${businessId}_${phone}`;
+    let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
-    console.log('📊 Mensagens encontradas:', messages?.length ?? 0);
-    if (messages && messages.length > 0) {
-      console.log('💬 Últimas mensagens:', messages.map(m => `${m.direction}: ${m.content.substring(0, 50)}`));
+    const redisHistory = await ConversationCache.getHistory(cacheKey);
+
+    if (redisHistory.length > 0) {
+      // Redis tem dados — usar diretamente (mais rápido)
+      history = redisHistory.map(m => ({ role: m.role, content: m.content }));
+    } else {
+      // Redis vazio — buscar no Supabase e popular Redis
+      console.log('📊 Redis vazio, buscando histórico no Supabase para conversa', conversation.id);
+      const { data: messages } = await this.supabase
+        .from('whatsapp_messages')
+        .select('direction, content, sent_at')
+        .eq('conversation_id', conversation.id)
+        .order('sent_at', { ascending: false })
+        .limit(20);
+
+      console.log('📊 Supabase: encontradas', messages?.length ?? 0, 'mensagens');
+
+      history = (messages ?? [])
+        .reverse()
+        .map((m) => ({
+          role: m.direction === 'inbound' ? 'user' : 'assistant',
+          content: m.content,
+        }));
+
+      if (history.length > 0) {
+        // Popular Redis com dados do banco
+        ConversationCache.addMessages(
+          cacheKey,
+          history.map((m, i) => ({
+            ...m,
+            timestamp: Date.now() - (history.length - i) * 1000,
+          }))
+        ).catch(() => {});
+        console.log('💾 Redis populado com', history.length, 'mensagens do Supabase');
+      }
     }
-
-    const history: Array<{ role: 'user' | 'assistant'; content: string }> = (
-      messages ?? []
-    )
-      .reverse()
-      .map((m) => ({
-        role: m.direction === 'inbound' ? 'user' : 'assistant',
-        content: m.content,
-      }));
 
     // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
     const [
@@ -471,7 +478,7 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
     const [{ data: services }, { data: workingHours }] = await Promise.all([
       this.supabase
         .from('services')
-        .select('name, price, duration_minutes')
+        .select('name, price, duration_minutes, service_location')
         .eq('professional_id', professional?.id ?? '')
         .eq('is_active', true),
       this.supabase

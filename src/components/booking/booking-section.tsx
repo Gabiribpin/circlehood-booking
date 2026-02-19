@@ -6,11 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { TimeSlots } from '@/components/booking/time-slots';
 import { BookingForm } from '@/components/booking/booking-form';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
   CheckCircle,
   Clock,
   Loader2,
+  Home,
+  Building2,
 } from 'lucide-react';
 import type { Service } from '@/types/database';
 
@@ -59,6 +63,9 @@ export function BookingSection({
     clientPhone: '',
     notes: '',
   });
+  const [selectedLocation, setSelectedLocation] = useState<'in_salon' | 'at_home'>('in_salon');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerAddressCity, setCustomerAddressCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -71,6 +78,11 @@ export function BookingSection({
     setSelectedService(service);
     setSelectedDate(undefined);
     setSelectedSlot(null);
+    // Inicializar local baseado no tipo do serviço
+    const loc = (service as any).service_location;
+    setSelectedLocation(loc === 'at_home' ? 'at_home' : 'in_salon');
+    setCustomerAddress('');
+    setCustomerAddressCity('');
     setStep(2);
   }
 
@@ -109,6 +121,9 @@ export function BookingSection({
           client_email: formData.clientEmail || undefined,
           client_phone: formData.clientPhone || undefined,
           notes: formData.notes || undefined,
+          service_location: selectedLocation,
+          customer_address: selectedLocation === 'at_home' ? (customerAddress || undefined) : undefined,
+          customer_address_city: selectedLocation === 'at_home' ? (customerAddressCity || undefined) : undefined,
         }),
       });
 
@@ -231,6 +246,68 @@ export function BookingSection({
               </p>
             </div>
 
+            {/* Seleção de local para serviços "both" */}
+            {(selectedService as any).service_location === 'both' && (
+              <div className="space-y-2">
+                <Label>Local de atendimento</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLocation('in_salon')}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-lg border text-sm transition-colors ${
+                      selectedLocation === 'in_salon'
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-muted-foreground/20 text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <Building2 className="h-5 w-5" />
+                    No salão
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLocation('at_home')}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-lg border text-sm transition-colors ${
+                      selectedLocation === 'at_home'
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-muted-foreground/20 text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <Home className="h-5 w-5" />
+                    Em casa
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Endereço do cliente quando for a domicílio */}
+            {selectedLocation === 'at_home' && (
+              <div className="space-y-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+                <div className="flex items-center gap-2">
+                  <Home className="h-4 w-4 text-blue-600" />
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Atendimento a domicílio</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerAddress">Endereço *</Label>
+                  <Input
+                    id="customerAddress"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder="Rua, número, apt"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerAddressCity">Cidade</Label>
+                  <Input
+                    id="customerAddressCity"
+                    value={customerAddressCity}
+                    onChange={(e) => setCustomerAddressCity(e.target.value)}
+                    placeholder="Ex: Dublin"
+                  />
+                </div>
+              </div>
+            )}
+
             <BookingForm data={formData} onChange={setFormData} />
 
             {error && (
@@ -240,7 +317,12 @@ export function BookingSection({
             <Button
               className="w-full"
               onClick={handleSubmit}
-              disabled={!formData.clientName || !formData.clientPhone || submitting}
+              disabled={
+                !formData.clientName ||
+                !formData.clientPhone ||
+                (selectedLocation === 'at_home' && !customerAddress) ||
+                submitting
+              }
             >
               {submitting && (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -273,6 +355,9 @@ export function BookingSection({
                 setSelectedDate(undefined);
                 setSelectedSlot(null);
                 setFormData({ clientName: '', clientEmail: '', clientPhone: '', notes: '' });
+                setSelectedLocation('in_salon');
+                setCustomerAddress('');
+                setCustomerAddressCity('');
               }}
             >
               Fazer outro agendamento

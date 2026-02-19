@@ -5,7 +5,12 @@ import { formatTemplate } from '@/lib/notifications/templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST() {
+export async function POST(request: Request) {
+  const cronSecret = request.headers.get('x-cron-secret');
+  if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = await createClient();
 
   try {

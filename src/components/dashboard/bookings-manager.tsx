@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CalendarDays, Phone, Mail, MessageCircle } from 'lucide-react';
+import { CalendarDays, Phone, Mail, MessageCircle, MapPin, Home } from 'lucide-react';
 
 interface BookingWithService {
   id: string;
@@ -21,6 +21,9 @@ interface BookingWithService {
   end_time: string;
   status: 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   notes: string | null;
+  service_location?: string | null;
+  customer_address?: string | null;
+  customer_address_city?: string | null;
   created_at: string;
   services: { name: string; price: number } | null;
 }
@@ -77,6 +80,20 @@ function BookingCard({
               {booking.booking_date.split('-').reverse().join('/')}{' '}
               {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
             </p>
+            {booking.service_location === 'at_home' && (
+              <div className="flex items-center gap-1 mt-1">
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  <Home className="h-2.5 w-2.5" /> A domicílio
+                </Badge>
+                {booking.customer_address && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {booking.customer_address}
+                    {booking.customer_address_city ? `, ${booking.customer_address_city}` : ''}
+                  </span>
+                )}
+              </div>
+            )}
             {booking.notes && (
               <p className="text-xs text-muted-foreground mt-1 italic">
                 {booking.notes}

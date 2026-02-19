@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { BookingSection } from '@/components/booking/booking-section';
 import { TrialBanner } from '@/components/public-page/trial-banner';
 import { SectionRenderer } from '@/components/public-page/section-renderer';
+import { MapPin } from 'lucide-react';
 import type { Professional, Service } from '@/types/database';
 import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
@@ -127,6 +128,40 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+function AddressCard({ professional }: { professional: any }) {
+  const p = professional as any;
+  if (p.show_address_on_page === false) return null;
+  if (!p.address && !p.address_city) return null;
+
+  const mapsQuery = encodeURIComponent(
+    [p.address, p.address_city, p.address_country].filter(Boolean).join(', ')
+  );
+
+  return (
+    <div className="px-4 sm:px-6 py-3">
+      <div className="flex items-start gap-2 p-3 rounded-lg border bg-muted/30">
+        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+        <div className="text-sm">
+          {p.address && <p className="font-medium">{p.address}</p>}
+          {(p.address_city || p.address_country) && (
+            <p className="text-muted-foreground">
+              {[p.address_city, p.address_country].filter(Boolean).join(', ')}
+            </p>
+          )}
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline mt-1 inline-block"
+          >
+            Ver no Google Maps →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function PublicProfilePage({ params }: PageProps) {
   const { slug } = await params;
   const data = await getProfessional(slug);
@@ -149,12 +184,15 @@ export default async function PublicProfilePage({ params }: PageProps) {
           </div>
           {trialExpired && <TrialBanner />}
           {!trialExpired && (
-            <BookingSection
-              services={services}
-              professionalId={professional.id}
-              currency={professional.currency}
-              workingHours={workingHours}
-            />
+            <>
+              <AddressCard professional={professional} />
+              <BookingSection
+                services={services}
+                professionalId={professional.id}
+                currency={professional.currency}
+                workingHours={workingHours}
+              />
+            </>
           )}
         </div>
       </div>
@@ -226,6 +264,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
         {/* Booking Section - sempre no final se não estiver no trial expirado */}
         {!trialExpired && (
           <div className="max-w-lg mx-auto py-8 px-4">
+            <AddressCard professional={professional} />
             <BookingSection
               services={services}
               professionalId={professional.id}

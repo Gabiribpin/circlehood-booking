@@ -16,7 +16,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Clock, Loader2, Sparkles } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Pencil, Trash2, Clock, Loader2, Sparkles, Home } from 'lucide-react';
 import type { Service } from '@/types/database';
 
 interface ServicesManagerProps {
@@ -54,6 +61,7 @@ export function ServicesManager({
   const [description, setDescription] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [price, setPrice] = useState('');
+  const [serviceLocation, setServiceLocation] = useState('in_salon');
 
   function openCreate() {
     setEditingService(null);
@@ -61,6 +69,7 @@ export function ServicesManager({
     setDescription('');
     setDurationMinutes('60');
     setPrice('');
+    setServiceLocation('in_salon');
     setDialogOpen(true);
   }
 
@@ -70,6 +79,7 @@ export function ServicesManager({
     setDescription(service.description || '');
     setDurationMinutes(String(service.duration_minutes));
     setPrice(String(service.price));
+    setServiceLocation((service as any).service_location || 'in_salon');
     setDialogOpen(true);
   }
 
@@ -83,6 +93,7 @@ export function ServicesManager({
       duration_minutes: parseInt(durationMinutes),
       price: parseFloat(price),
       professional_id: professionalId,
+      service_location: serviceLocation,
     };
 
     if (editingService) {
@@ -164,7 +175,7 @@ export function ServicesManager({
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-medium">{service.name}</h3>
                       <Badge
                         variant={service.is_active ? 'default' : 'secondary'}
@@ -172,6 +183,16 @@ export function ServicesManager({
                       >
                         {service.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
+                      {(service as any).service_location === 'at_home' && (
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Home className="h-2.5 w-2.5" /> A domicílio
+                        </Badge>
+                      )}
+                      {(service as any).service_location === 'both' && (
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <Home className="h-2.5 w-2.5" /> Salão ou domicílio
+                        </Badge>
+                      )}
                     </div>
                     {service.description && (
                       <p className="text-sm text-muted-foreground">
@@ -296,6 +317,19 @@ export function ServicesManager({
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Local de atendimento</Label>
+              <Select value={serviceLocation} onValueChange={setServiceLocation}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_salon">No salão / estabelecimento</SelectItem>
+                  <SelectItem value="at_home">A domicílio (na casa do cliente)</SelectItem>
+                  <SelectItem value="both">Ambos (cliente escolhe)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter>
               <Button

@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { ImageUpload } from '@/components/dashboard/image-upload';
+import { Switch } from '@/components/ui/switch';
 import {
   Loader2,
   Sparkles,
@@ -47,6 +48,9 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   const [whatsapp, setWhatsapp] = useState(professional.whatsapp || '');
   const [instagram, setInstagram] = useState(professional.instagram || '');
   const [address, setAddress] = useState(professional.address || '');
+  const [addressCity, setAddressCity] = useState((professional as any).address_city || '');
+  const [addressCountry, setAddressCountry] = useState((professional as any).address_country || 'Ireland');
+  const [showAddressOnPage, setShowAddressOnPage] = useState((professional as any).show_address_on_page !== false);
   const [profileImageUrl, setProfileImageUrl] = useState(professional.profile_image_url || '');
   const [coverImageUrl, setCoverImageUrl] = useState(professional.cover_image_url || '');
   const [saving, setSaving] = useState(false);
@@ -63,6 +67,9 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
         whatsapp: whatsapp || null,
         instagram: instagram || null,
         address: address || null,
+        address_city: addressCity || null,
+        address_country: addressCountry || null,
+        show_address_on_page: showAddressOnPage,
         profile_image_url: profileImageUrl || null,
         cover_image_url: coverImageUrl || null,
       })
@@ -273,8 +280,40 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Rua, número, cidade"
+                  placeholder="Rua e número"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="addressCity">Cidade</Label>
+                  <Input
+                    id="addressCity"
+                    value={addressCity}
+                    onChange={(e) => setAddressCity(e.target.value)}
+                    placeholder="Ex: Dublin"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addressCountry">País</Label>
+                  <Input
+                    id="addressCountry"
+                    value={addressCountry}
+                    onChange={(e) => setAddressCountry(e.target.value)}
+                    placeholder="Ex: Ireland"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="showAddressOnPage"
+                  checked={showAddressOnPage}
+                  onCheckedChange={setShowAddressOnPage}
+                />
+                <Label htmlFor="showAddressOnPage" className="cursor-pointer text-sm">
+                  Mostrar endereço na página pública
+                </Label>
               </div>
 
               <Button onClick={handleSave} disabled={saving} className="w-full gap-2">

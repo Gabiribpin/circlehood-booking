@@ -13,6 +13,9 @@ export async function POST(request: NextRequest) {
     client_email,
     client_phone,
     notes,
+    service_location,
+    customer_address,
+    customer_address_city,
   } = body;
 
   if (!professional_id || !service_id || !booking_date || !start_time || !client_name || !client_phone) {
@@ -96,6 +99,9 @@ export async function POST(request: NextRequest) {
       client_phone: client_phone || null,
       notes: notes || null,
       status: 'confirmed',
+      service_location: service_location || 'in_salon',
+      customer_address: customer_address || null,
+      customer_address_city: customer_address_city || null,
     })
     .select()
     .single();

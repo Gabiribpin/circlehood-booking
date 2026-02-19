@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WhatsAppClient } from '@/lib/whatsapp/client';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, message, userId } = await request.json();
+    const { to, message } = await request.json();
 
-    if (!to || !message || !userId) {
+    if (!to || !message) {
       return NextResponse.json(
-        { error: 'Missing required fields: to, message, userId' },
+        { error: 'Missing required fields: to, message' },
         { status: 400 }
       );
     }
 
-    // Buscar configuração do WhatsApp do usuário
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { data: config, error } = await supabase
       .from('whatsapp_config')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('is_active', true)
       .single();
 
@@ -33,7 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Enviar mensagem
     const whatsapp = new WhatsAppClient({
       phoneNumberId: config.phone_number_id,
       accessToken: config.access_token
