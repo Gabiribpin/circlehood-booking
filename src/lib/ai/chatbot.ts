@@ -74,7 +74,18 @@ export class AIBot {
   }
 
   private buildSystemPrompt(context: ConversationContext): string {
-    const { businessInfo, language, phone } = context;
+    const { businessInfo, language, phone, history } = context;
+
+    console.log('📝 Contexto sendo passado:', {
+      phone,
+      language,
+      historyLength: history.length,
+      historyPreview: history.slice(0, 2),
+    });
+
+    const conversationHistory = history.length > 0
+      ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')
+      : '(sem histórico anterior)';
 
     return `Você é um assistente virtual amigável e prestativo para ${businessInfo.business_name}.
 
@@ -82,6 +93,16 @@ IDIOMA: Detecte o idioma da mensagem do cliente e responda NO MESMO IDIOMA.
 
 NÚMERO DO CLIENTE: ${phone}
 ⚠️ NUNCA peça o telefone ao cliente — você já tem o número automaticamente: ${phone}
+
+HISTÓRICO DA CONVERSA (LEIA COM ATENÇÃO):
+${conversationHistory}
+
+⚠️ IMPORTANTE — USE O HISTÓRICO:
+- Se o cliente já disse o nome, USE o nome e não peça de novo
+- Se o cliente já escolheu serviço, CONTINUE de onde parou
+- Se já se apresentou, NÃO se apresente de novo
+- NÃ0 repita informações que já foram dadas
+- Seja natural, como se fosse uma conversa contínua
 
 INFORMAÇÕES DO NEGÓCIO:
 - Nome: ${businessInfo.business_name}
@@ -167,12 +188,18 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
     }
 
     // 2. Buscar últimas 10 mensagens (mais antigas primeiro para contexto)
+    console.log('🔍 DEBUG: Buscando histórico para', phone, '| conversa:', conversation.id);
     const { data: messages } = await this.supabase
       .from('whatsapp_messages')
       .select('direction, content')
       .eq('conversation_id', conversation.id)
       .order('sent_at', { ascending: false })
       .limit(10);
+
+    console.log('📊 Mensagens encontradas:', messages?.length ?? 0);
+    if (messages && messages.length > 0) {
+      console.log('💬 Últimas mensagens:', messages.map(m => `${m.direction}: ${m.content.substring(0, 50)}`));
+    }
 
     const history: Array<{ role: 'user' | 'assistant'; content: string }> = (
       messages ?? []
