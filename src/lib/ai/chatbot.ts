@@ -717,8 +717,6 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
           conversation_id: conversationId,
           direction: 'inbound',
           content: userMessage,
-          // legacy NOT NULL columns
-          sender_phone: phone,
           recipient_phone: 'bot',
           message_type: 'text',
           message_content: userMessage,
@@ -729,8 +727,6 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
           conversation_id: conversationId,
           direction: 'outbound',
           content: botResponse,
-          // legacy NOT NULL columns
-          sender_phone: 'bot',
           recipient_phone: phone,
           message_type: 'text',
           message_content: botResponse,
