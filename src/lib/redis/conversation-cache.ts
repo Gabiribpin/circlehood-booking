@@ -9,8 +9,9 @@ export interface ConversationMessage {
 const TTL = 86400; // 24 horas
 const MAX_MESSAGES = 20;
 
-// Fail-fast: se STORAGE_URL não configurada, não tenta conectar
-const isConfigured = !!process.env.STORAGE_URL;
+// Aceita STORAGE_URL ou REDIS_URL (nomes alternativos de integração)
+const REDIS_CONNECTION_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
+const isConfigured = !!REDIS_CONNECTION_URL;
 
 let redis: Redis | null = null;
 
@@ -18,7 +19,7 @@ function getRedis(): Redis | null {
   if (!isConfigured) return null;
   if (redis) return redis;
 
-  redis = new Redis(process.env.STORAGE_URL!, {
+  redis = new Redis(REDIS_CONNECTION_URL!, {
     maxRetriesPerRequest: 1,     // Falha rápido (não 3 tentativas lentas)
     connectTimeout: 3000,         // 3s timeout de conexão
     commandTimeout: 3000,         // 3s timeout por comando
