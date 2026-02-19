@@ -6,6 +6,7 @@ import { classifyIntent } from './intent-classifier';
 interface ConversationContext {
   userId: string;
   phone: string;
+  conversationId: string;
   language: string;
   history: Array<{ role: 'user' | 'assistant', content: string }>;
   businessInfo: any;
@@ -45,8 +46,8 @@ export class AIBot {
     // 4. Gerar resposta baseada na intenção
     const response = await this.generateResponse(message, intent, context);
 
-    // 5. Salvar no histórico
-    await this.saveToHistory(phone, businessId, message, response);
+    // 5. Salvar no histórico (usar conversationId já carregado, sem lookup extra)
+    await this.saveToHistory(context.conversationId, message, response);
 
     return response;
   }
@@ -184,7 +185,7 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
 
     if (convError || !conversation) {
       console.error('Error fetching/creating conversation:', convError);
-      return { userId: phone, phone, language: '', history: [], businessInfo: {} };
+      return { userId: phone, phone, conversationId: '', language: '', history: [], businessInfo: {} };
     }
 
     // 2. Buscar últimas 10 mensagens (mais antigas primeiro para contexto)
@@ -240,6 +241,7 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
     return {
       userId: phone,
       phone,
+      conversationId: conversation.id,
       language: conversation.language ?? '',
       history,
       businessInfo: {
@@ -253,43 +255,35 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
   }
 
   private async saveToHistory(
-    phone: string,
-    businessId: string,
+    conversationId: string,
     userMessage: string,
     botResponse: string
   ) {
-    // 1. Buscar ID da conversa (já deve existir após getConversationContext)
-    const { data: conversation, error: convError } = await this.supabase
-      .from('whatsapp_conversations')
-      .select('id')
-      .eq('user_id', businessId)
-      .eq('customer_phone', phone)
-      .single();
-
-    if (convError || !conversation) {
-      console.error('saveToHistory: conversation not found', convError);
+    if (!conversationId) {
+      console.error('saveToHistory: conversationId vazio, abortando');
       return;
     }
 
     const now = new Date().toISOString();
+    const twoMsLater = new Date(Date.now() + 2).toISOString();
 
-    // 2. Inserir mensagem do cliente (inbound) e resposta do bot (outbound)
+    // Inserir mensagem do cliente (inbound) e resposta do bot (outbound)
     const { error: msgError } = await this.supabase
       .from('whatsapp_messages')
       .insert([
         {
-          conversation_id: conversation.id,
+          conversation_id: conversationId,
           direction: 'inbound',
           content: userMessage,
           status: 'received',
           sent_at: now,
         },
         {
-          conversation_id: conversation.id,
+          conversation_id: conversationId,
           direction: 'outbound',
           content: botResponse,
           status: 'sent',
-          sent_at: now,
+          sent_at: twoMsLater,
         },
       ]);
 
@@ -298,10 +292,11 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
       return;
     }
 
-    // 3. Atualizar last_message_at na conversa
+    console.log('✅ saveToHistory: mensagens salvas para conversa', conversationId);
+
     await this.supabase
       .from('whatsapp_conversations')
-      .update({ last_message_at: now })
-      .eq('id', conversation.id);
+      .update({ last_message_at: twoMsLater })
+      .eq('id', conversationId);
   }
 }
