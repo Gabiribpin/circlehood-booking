@@ -3,6 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 import { detectLanguage } from './language-detector';
 import { classifyIntent } from './intent-classifier';
 
+// Cache em memória — funciona enquanto a mesma instância Vercel estiver quente
+// Complementa o banco: se DB falhar, cache garante contexto na mesma sessão
+const conversationCache = new Map<string, Array<{
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}>>();
+
 interface ConversationContext {
   userId: string;
   phone: string;
@@ -27,24 +35,44 @@ export class AIBot {
   }
 
   async processMessage(phone: string, message: string, businessId: string) {
-    // 1. Buscar contexto do usuário
+    // 1. Buscar contexto do banco
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Usar idioma salvo ou 'pt' como padrão (o prompt detecta dinamicamente)
+    // 2. Usar idioma salvo ou 'pt' como padrão
     if (!context.language) {
       context.language = 'pt';
     }
 
-    // 3. Classificar intenção
+    // 3. Complementar histórico com cache em memória (se banco retornou vazio)
+    const cacheKey = `${businessId}-${phone}`;
+    let cached = (conversationCache.get(cacheKey) || [])
+      .filter(m => Date.now() - m.timestamp < 24 * 60 * 60 * 1000);
+
+    if (context.history.length === 0 && cached.length > 0) {
+      console.log('📦 Usando cache em memória:', cached.length, 'mensagens');
+      context.history = cached.map(m => ({ role: m.role, content: m.content }));
+    }
+
+    // 4. Adicionar mensagem atual ao cache
+    cached.push({ role: 'user', content: message, timestamp: Date.now() });
+
+    // 5. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
-    // 4. Gerar resposta baseada na intenção
+    // 6. Gerar resposta
     console.log('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
     const response = await this.generateResponse(message, intent, context);
     console.log('✅ Anthropic respondeu para', phone);
 
-    // 5. Salvar no histórico (usar conversationId já carregado, sem lookup extra)
-    await this.saveToHistory(context.conversationId, message, response);
+    // 7. Salvar resposta no cache
+    cached.push({ role: 'assistant', content: response, timestamp: Date.now() + 1 });
+    conversationCache.set(cacheKey, cached);
+    console.log('📦 Cache atualizado:', cached.length, 'mensagens para', cacheKey);
+
+    // 8. Salvar no banco (em paralelo, não bloqueia)
+    this.saveToHistory(context.conversationId, message, response).catch(err =>
+      console.error('saveToHistory falhou:', err)
+    );
 
     return response;
   }
