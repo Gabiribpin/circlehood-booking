@@ -1,33 +1,5 @@
 import Redis from 'ioredis';
 
-// Singleton — reutiliza conexão entre invocações quentes do Vercel
-let redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (redis) return redis;
-
-  redis = new Redis(process.env.STORAGE_URL!, {
-    maxRetriesPerRequest: 3,
-    enableReadyCheck: true,
-    lazyConnect: false,
-    retryStrategy: (times) => {
-      if (times > 3) {
-        console.error('❌ Redis: falhou após 3 tentativas');
-        return null;
-      }
-      const delay = Math.min(times * 50, 2000);
-      console.log(`🔄 Redis: retry #${times} em ${delay}ms`);
-      return delay;
-    },
-  });
-
-  redis.on('connect', () => console.log('🔌 Redis: conectado'));
-  redis.on('ready', () => console.log('✅ Redis: pronto'));
-  redis.on('error', (err) => console.error('❌ Redis error:', err.message));
-
-  return redis;
-}
-
 export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -37,25 +9,51 @@ export interface ConversationMessage {
 const TTL = 86400; // 24 horas
 const MAX_MESSAGES = 20;
 
+// Fail-fast: se STORAGE_URL não configurada, não tenta conectar
+const isConfigured = !!process.env.STORAGE_URL;
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!isConfigured) return null;
+  if (redis) return redis;
+
+  redis = new Redis(process.env.STORAGE_URL!, {
+    maxRetriesPerRequest: 1,     // Falha rápido (não 3 tentativas lentas)
+    connectTimeout: 3000,         // 3s timeout de conexão
+    commandTimeout: 3000,         // 3s timeout por comando
+    enableReadyCheck: false,      // Não espera READY antes de enviar comandos
+    lazyConnect: true,            // Conecta só quando precisa
+    retryStrategy: (times) => {
+      if (times > 1) return null; // Apenas 1 retry
+      return 500;
+    },
+  });
+
+  redis.on('error', (err) => console.error('❌ Redis error:', err.message));
+
+  return redis;
+}
+
 export class ConversationCache {
 
   static async getHistory(cacheKey: string): Promise<ConversationMessage[]> {
+    const client = getRedis();
+    if (!client) {
+      console.log('⏭️ Redis não configurado — usando fallback');
+      return [];
+    }
+
     try {
-      const client = getRedis();
       const key = `conversation:${cacheKey}`;
       const dataStr = await client.get(key);
-
-      if (!dataStr) {
-        console.log('📦 Redis: nenhum histórico para', cacheKey);
-        return [];
-      }
+      if (!dataStr) return [];
 
       const data = JSON.parse(dataStr) as ConversationMessage[];
       console.log('📦 Redis: carregou', data.length, 'mensagens para', cacheKey);
       return data;
-
     } catch (error) {
-      console.error('❌ Redis get error:', error);
+      console.error('❌ Redis get error:', (error as Error).message);
       return [];
     }
   }
@@ -64,31 +62,28 @@ export class ConversationCache {
     cacheKey: string,
     messages: ConversationMessage[]
   ): Promise<void> {
+    const client = getRedis();
+    if (!client) return;
+
     try {
-      const client = getRedis();
       const key = `conversation:${cacheKey}`;
-
       const current = await this.getHistory(cacheKey);
-      const updated = [...current, ...messages];
-      const limited = updated.slice(-MAX_MESSAGES);
-
+      const limited = [...current, ...messages].slice(-MAX_MESSAGES);
       await client.setex(key, TTL, JSON.stringify(limited));
-
-      console.log('✅ Redis: salvou', messages.length, 'mensagens |', limited.length, 'total para', cacheKey);
-
+      console.log('✅ Redis: salvou', messages.length, 'mensagens para', cacheKey);
     } catch (error) {
-      console.error('❌ Redis set error:', error);
+      console.error('❌ Redis set error:', (error as Error).message);
     }
   }
 
   static async clear(cacheKey: string): Promise<void> {
+    const client = getRedis();
+    if (!client) return;
+
     try {
-      const client = getRedis();
-      const key = `conversation:${cacheKey}`;
-      await client.del(key);
-      console.log('🗑️ Redis: histórico limpo para', cacheKey);
+      await client.del(`conversation:${cacheKey}`);
     } catch (error) {
-      console.error('❌ Redis del error:', error);
+      console.error('❌ Redis del error:', (error as Error).message);
     }
   }
 }

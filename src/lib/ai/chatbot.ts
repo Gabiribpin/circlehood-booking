@@ -4,6 +4,10 @@ import { detectLanguage } from './language-detector';
 import { classifyIntent } from './intent-classifier';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 
+// Tier 3 de fallback: in-memory Map (funciona dentro da mesma instância Vercel)
+// Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
+const memoryCache = new Map<string, Array<{ role: 'user' | 'assistant'; content: string; ts: number }>>();
+
 interface ConversationContext {
   userId: string;
   phone: string;
@@ -44,10 +48,18 @@ export class AIBot {
     const response = await this.generateResponse(message, intent, context);
     console.log('✅ Anthropic respondeu para', phone);
 
-    // 5. Salvar no Redis E no banco em paralelo
-    // Ambos aguardados — garante que a próxima mensagem sempre encontra histórico,
-    // mesmo se Redis estiver indisponível (Supabase atua como fallback confiável)
+    // 5. Salvar nos 3 tiers em paralelo
     const cacheKey = `${businessId}_${phone}`;
+
+    // Tier 3 (memory) — síncrono, sempre funciona
+    const cached = memoryCache.get(cacheKey) || [];
+    cached.push(
+      { role: 'user', content: message, ts: Date.now() },
+      { role: 'assistant', content: response, ts: Date.now() + 1 },
+    );
+    memoryCache.set(cacheKey, cached.slice(-20));
+
+    // Tier 1 (Redis) + Tier 2 (Supabase DB) — em paralelo, ambos aguardados
     await Promise.allSettled([
       ConversationCache.addMessages(cacheKey, [
         { role: 'user', content: message, timestamp: Date.now() },
@@ -92,6 +104,14 @@ export class AIBot {
       ...context.history,
       { role: 'user', content: message },
     ];
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 CONTEXTO ANTHROPIC:');
+    console.log('  history.length:', context.history.length);
+    console.log('  isFirstMessage:', context.history.length === 0);
+    console.log('  conversationId:', context.conversationId);
+    console.log('  messages[últimas 2]:', messages.slice(-2).map(m => `${m.role}: ${String(m.content).substring(0, 60)}`));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const response = await this.anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -240,41 +260,9 @@ export class AIBot {
   }
 
   private buildSystemPrompt(context: ConversationContext): string {
-    const { businessInfo, language, phone, history } = context;
+    const { businessInfo, phone, history } = context;
     const botConfig = businessInfo.botConfig;
 
-    console.log('📝 buildSystemPrompt | historyLength:', history.length, '| botConfig:', botConfig
-      ? `bot_name="${botConfig.bot_name}" personality="${botConfig.bot_personality}" greeting=${!!botConfig.greeting_message}`
-      : 'NULL'
-    );
-
-    const conversationHistory = history.length > 0
-      ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')
-      : '(sem histórico anterior)';
-
-    const isFirstContact = history.length === 0;
-
-    // Variáveis disponíveis para substituição no prompt customizado
-    const vars: Record<string, string> = {
-      '{business_name}': businessInfo.business_name,
-      '{bot_name}': botConfig?.bot_name ?? businessInfo.business_name,
-      '{phone}': phone,
-      '{services}': this.formatServices(businessInfo.services),
-      '{schedule}': this.formatSchedule(businessInfo.schedule),
-      '{location}': businessInfo.location,
-      '{conversation_history}': conversationHistory,
-    };
-
-    // Se custom_system_prompt preenchido → usar diretamente com substituição de variáveis
-    if (botConfig?.custom_system_prompt) {
-      let prompt = botConfig.custom_system_prompt;
-      for (const [key, value] of Object.entries(vars)) {
-        prompt = prompt.split(key).join(value);
-      }
-      return prompt;
-    }
-
-    // Construir prompt padrão usando configurações do botConfig
     const botName = botConfig?.bot_name || businessInfo.business_name;
     const personality = botConfig?.bot_personality ?? 'friendly';
     const greetingMsg = botConfig?.greeting_message ?? '';
@@ -284,82 +272,137 @@ export class AIBot {
     const alwaysConfirm = botConfig?.always_confirm_booking ?? false;
     const askAdditional = botConfig?.ask_for_additional_info ?? false;
 
-    const personalityInstructions = this.getPersonalityInstructions(personality);
+    const isFirstMessage = history.length === 0;
 
-    return `═══════════════════════════════════════════
-IDENTIDADE
-═══════════════════════════════════════════
-Você se chama: ${botName}
-Você representa: ${businessInfo.business_name}
-⚠️ SEMPRE se apresente como "${botName}" — NUNCA use outro nome.
+    const conversationHistory = history.length > 0
+      ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Você'}: ${m.content}`).join('\n')
+      : '(Primeira mensagem desta conversa)';
 
-═══════════════════════════════════════════
-PERSONALIDADE
-═══════════════════════════════════════════
-${personalityInstructions}
+    console.log(`📝 Prompt | isFirstMessage=${isFirstMessage} | historyLen=${history.length} | bot="${botName}"`);
 
-═══════════════════════════════════════════
-IDIOMA E CLIENTE
-═══════════════════════════════════════════
-Detecte o idioma da mensagem e responda NO MESMO IDIOMA.
-Número do cliente: ${phone} — NUNCA peça o telefone, você já tem.
-
-═══════════════════════════════════════════
-APRESENTAÇÃO — REGRA CRÍTICA
-═══════════════════════════════════════════
-${isFirstContact && greetingMsg
-        ? `Esta é a PRIMEIRA mensagem. Use EXATAMENTE:\n"${greetingMsg}"\n\n⚠️ NÃO se apresente novamente nas mensagens seguintes.`
-        : isFirstContact
-          ? `Primeira mensagem: apresente-se como ${botName} UMA VEZ e pergunte como pode ajudar.\n\n⚠️ Nas mensagens seguintes, NÃO repita a apresentação.`
-          : `⚠️ HISTÓRICO JÁ EXISTE — você JÁ se apresentou. NÃO repita nome, NÃO repita saudação. Continue a conversa diretamente.`
+    // Se custom_system_prompt preenchido → usar com substituição de variáveis
+    if (botConfig?.custom_system_prompt) {
+      const vars: Record<string, string> = {
+        '{business_name}': businessInfo.business_name,
+        '{bot_name}': botName,
+        '{phone}': phone,
+        '{services}': this.formatServices(businessInfo.services),
+        '{schedule}': this.formatSchedule(businessInfo.schedule),
+        '{location}': businessInfo.location,
+        '{conversation_history}': conversationHistory,
+      };
+      let prompt = botConfig.custom_system_prompt;
+      for (const [key, value] of Object.entries(vars)) {
+        prompt = prompt.split(key).join(value);
       }
+      return prompt;
+    }
 
-═══════════════════════════════════════════
-HISTÓRICO DA CONVERSA
-═══════════════════════════════════════════
+    return `
+╔═══════════════════════════════════════════════════════════════╗
+║ IDENTIDADE                                                     ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Você é: ${botName}
+Negócio: ${businessInfo.business_name}
+Personalidade: ${this.getPersonalityInstructions(personality)}
+Telefone do cliente: ${phone} — NUNCA peça o telefone, você já tem.
+Responda no mesmo idioma que o cliente usar.
+
+╔═══════════════════════════════════════════════════════════════╗
+║ REGRA DE APRESENTAÇÃO — ABSOLUTA                              ║
+╚═══════════════════════════════════════════════════════════════╝
+
+${isFirstMessage
+      ? `✅ PRIMEIRA MENSAGEM → Apresente-se UMA ÚNICA VEZ.
+${greetingMsg ? `Use exatamente: "${greetingMsg}"` : `Diga algo como: "Olá! Sou ${botName} do ${businessInfo.business_name}. Como posso ajudar?"`}`
+      : `❌ NÃO é primeira mensagem → PROIBIDO se apresentar novamente.
+❌ NUNCA diga "Sou ${botName}", "Olá! Sou...", "Eu sou..."
+❌ NUNCA diga o nome do negócio como apresentação
+✅ Continue a conversa DIRETAMENTE, como se fosse a mesma conversa
+✅ Se souber o nome do cliente, use-o naturalmente`
+    }
+
+╔═══════════════════════════════════════════════════════════════╗
+║ HISTÓRICO DA CONVERSA — LEIA ANTES DE RESPONDER              ║
+╚═══════════════════════════════════════════════════════════════╝
+
 ${conversationHistory}
 
-═══════════════════════════════════════════
-REGRAS DE COMPORTAMENTO
-═══════════════════════════════════════════
-1. HISTÓRICO: Se cliente já disse o nome → USE, não peça de novo. Continue naturalmente.
-2. RECORRENTE: ❌ "Bem-vindo! Nossos serviços são..." ✅ "Oi [Nome]! Como posso ajudar?"
-3. ${autoBook
-        ? 'AGENDAMENTO: Use create_appointment DIRETAMENTE quando tiver todos os dados.'
-        : 'AGENDAMENTO: Pergunte confirmação antes de usar create_appointment.'}
-4. ${alwaysConfirm
-        ? 'CONFIRMAÇÃO OBRIGATÓRIA: Antes de usar create_appointment, pergunte "Confirma o agendamento?"'
-        : 'CONFIRMAÇÃO: Após coletar nome, serviço, data e horário, use create_appointment imediatamente.'}
-5. ${askAdditional
-        ? 'INFORMAÇÕES: Pergunte sobre preferências, sensibilidades e observações do cliente.'
-        : 'INFORMAÇÕES: Colete apenas o essencial — não prolongue desnecessariamente.'}
-6. NUNCA diga "te envio confirmação" — esta mensagem JÁ É a confirmação.
-7. SERVIÇO A DOMICÍLIO: Se o serviço tiver "[A domicílio]" ou "[Salão ou domicílio]", pergunte o endereço completo do cliente antes de criar o agendamento. Passe service_location="at_home" e customer_address no create_appointment.
-${unavailableMsg ? `8. QUANDO INDISPONÍVEL: ${unavailableMsg}` : ''}
+╔═══════════════════════════════════════════════════════════════╗
+║ REGRAS DE CONTEXTO — ABSOLUTAS                                ║
+╚═══════════════════════════════════════════════════════════════╝
 
-═══════════════════════════════════════════
-AGENDAMENTO REAL — OBRIGATÓRIO
-═══════════════════════════════════════════
-Quando tiver nome completo, serviço, data e horário confirmados:
-→ Use a ferramenta create_appointment para criar o agendamento REAL no sistema.
-→ CONFIRME ao cliente APENAS se a ferramenta retornar success: true.
-→ Se retornar erro, informe: "Houve um problema técnico. Por favor, entre em contato."
-→ ⚠️ NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso.
+ANTES de qualquer resposta, VERIFIQUE o histórico acima:
 
-═══════════════════════════════════════════
-INFORMAÇÕES DO NEGÓCIO
-═══════════════════════════════════════════
-- Nome: ${businessInfo.business_name}
-- Descrição: ${businessInfo.description}
-- Serviços: ${this.formatServices(businessInfo.services)}
-- Horário: ${this.formatSchedule(businessInfo.schedule)}
-- Localização: ${businessInfo.location}
-${businessInfo.ai_instructions ? `\nINSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}` : ''}
+1. Cliente já disse o nome? → USE o nome, NUNCA pergunte de novo
+2. Cliente já disse o serviço? → USE o serviço, NUNCA pergunte de novo
+3. Cliente já disse a data? → USE a data, NUNCA pergunte de novo
+4. Cliente já disse o horário? → USE o horário, NUNCA pergunte de novo
 
-═══════════════════════════════════════════
-FORMATO DE CONFIRMAÇÃO (após create_appointment com sucesso)
-═══════════════════════════════════════════
-${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos! 💅"`}`;
+❌ ERRADO: Cliente diz "sou Gabriel" → Bot pergunta "Qual seu nome?"
+✅ CERTO:  Cliente diz "sou Gabriel" → Bot usa "Gabriel" diretamente
+
+❌ ERRADO: Cliente diz "hoje 18h" → Bot pergunta "Qual horário prefere?"
+✅ CERTO:  Cliente diz "hoje 18h" → Bot usa "hoje às 18h" diretamente
+
+╔═══════════════════════════════════════════════════════════════╗
+║ COLETA DE INFORMAÇÕES PARA AGENDAMENTO                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Para agendar você precisa de: nome, serviço, data, horário.
+Pergunte APENAS o que ainda NÃO está no histórico.
+Se o cliente der tudo de uma vez → confirme e agende imediatamente.
+
+${autoBook
+      ? 'Quando tiver todos os dados → use create_appointment DIRETAMENTE.'
+      : 'Quando tiver todos os dados → peça confirmação antes de usar create_appointment.'}
+${alwaysConfirm ? 'SEMPRE pergunte "Confirma o agendamento?" antes de criar.' : ''}
+${askAdditional ? 'Pergunte sobre preferências/observações do cliente.' : 'Colete apenas o essencial.'}
+
+╔═══════════════════════════════════════════════════════════════╗
+║ AGENDAMENTO REAL — OBRIGATÓRIO                                ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Quando tiver nome, serviço, data e horário confirmados:
+→ Use a ferramenta create_appointment (cria agendamento REAL no banco)
+→ Confirme ao cliente APENAS se success: true
+→ Se erro: "Houve um problema técnico. Por favor, entre em contato."
+→ NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso
+→ DOMICÍLIO: se serviço for [A domicílio] ou [Salão ou domicílio], colete o endereço do cliente primeiro
+
+╔═══════════════════════════════════════════════════════════════╗
+║ INFORMAÇÕES DO NEGÓCIO                                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Negócio: ${businessInfo.business_name}
+${businessInfo.description ? `Descrição: ${businessInfo.description}` : ''}
+Localização: ${businessInfo.location}
+
+Serviços:
+${this.formatServices(businessInfo.services)}
+
+Horário de funcionamento:
+${this.formatSchedule(businessInfo.schedule)}
+${businessInfo.ai_instructions ? `\nInstruções personalizadas:\n${businessInfo.ai_instructions}` : ''}
+${unavailableMsg ? `\nQuando indisponível: ${unavailableMsg}` : ''}
+
+╔═══════════════════════════════════════════════════════════════╗
+║ FORMATO DE CONFIRMAÇÃO (após create_appointment com sucesso)  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊`}
+
+╔═══════════════════════════════════════════════════════════════╗
+║ ERROS ABSOLUTAMENTE PROIBIDOS                                 ║
+╚═══════════════════════════════════════════════════════════════╝
+
+❌ Apresentar-se mais de uma vez
+❌ Perguntar informação que já foi dada
+❌ Ignorar o histórico da conversa
+❌ Dizer "Agendado!" sem usar a ferramenta
+❌ Pedir o telefone (você já tem: ${phone})
+`;
   }
 
   private getLanguageName(code: string): string {
@@ -410,18 +453,20 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
       return { userId: phone, phone, conversationId: '', language: '', history: [], businessInfo: {} };
     }
 
-    // 2. Histórico: Redis primeiro, Supabase como fallback
+    // 2. Histórico — 3 tiers: Redis → Supabase → In-memory Map
     const cacheKey = `${businessId}_${phone}`;
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    let historySource = 'none';
 
+    // TIER 1: Redis (mais rápido, persiste entre instâncias)
     const redisHistory = await ConversationCache.getHistory(cacheKey);
-
     if (redisHistory.length > 0) {
-      // Redis tem dados — usar diretamente (mais rápido)
       history = redisHistory.map(m => ({ role: m.role, content: m.content }));
-    } else {
-      // Redis vazio — buscar no Supabase e popular Redis
-      console.log('📊 Redis vazio, buscando histórico no Supabase para conversa', conversation.id);
+      historySource = 'redis';
+    }
+
+    // TIER 2: Supabase DB (fallback persistente)
+    if (history.length === 0) {
       const { data: messages } = await this.supabase
         .from('whatsapp_messages')
         .select('direction, content, sent_at')
@@ -429,27 +474,33 @@ ${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Pre�
         .order('sent_at', { ascending: false })
         .limit(20);
 
-      console.log('📊 Supabase: encontradas', messages?.length ?? 0, 'mensagens');
-
-      history = (messages ?? [])
-        .reverse()
-        .map((m) => ({
-          role: m.direction === 'inbound' ? 'user' : 'assistant',
-          content: m.content,
-        }));
-
-      if (history.length > 0) {
-        // Popular Redis com dados do banco
+      if (messages && messages.length > 0) {
+        history = messages
+          .reverse()
+          .map((m) => ({
+            role: m.direction === 'inbound' ? 'user' : 'assistant' as 'user' | 'assistant',
+            content: m.content,
+          }));
+        historySource = 'supabase';
+        // Popular Redis com dados do banco para próximas chamadas
         ConversationCache.addMessages(
           cacheKey,
-          history.map((m, i) => ({
-            ...m,
-            timestamp: Date.now() - (history.length - i) * 1000,
-          }))
+          history.map((m, i) => ({ ...m, timestamp: Date.now() - (history.length - i) * 1000 }))
         ).catch(() => {});
-        console.log('💾 Redis populado com', history.length, 'mensagens do Supabase');
       }
     }
+
+    // TIER 3: In-memory Map (fallback local — mesma instância Vercel)
+    if (history.length === 0) {
+      const cached = memoryCache.get(cacheKey) || [];
+      const fresh = cached.filter(m => Date.now() - m.ts < 24 * 60 * 60 * 1000);
+      if (fresh.length > 0) {
+        history = fresh.map(m => ({ role: m.role, content: m.content }));
+        historySource = 'memory';
+      }
+    }
+
+    console.log(`📊 Histórico: ${history.length} msgs | source=${historySource} | conversationId=${conversation.id}`);
 
     // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
     const [
