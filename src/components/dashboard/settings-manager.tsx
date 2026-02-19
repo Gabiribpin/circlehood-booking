@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CreditCard, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import type { Professional } from '@/types/database';
 
 interface SettingsManagerProps {
@@ -24,6 +27,68 @@ export function SettingsManager({
 }: SettingsManagerProps) {
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
+
+  // Editable account fields
+  const [businessName, setBusinessName] = useState(professional.business_name);
+  const [slug, setSlug] = useState(professional.slug);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [accountSaved, setAccountSaved] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+
+  async function handleSaveAccount() {
+    if (!businessName.trim()) {
+      setAccountError('O nome do negócio não pode estar vazio.');
+      return;
+    }
+    if (!slug.trim()) {
+      setAccountError('O slug não pode estar vazio.');
+      return;
+    }
+
+    const validSlug = slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    setSavingAccount(true);
+    setAccountError(null);
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      // Check slug uniqueness
+      const { data: existing } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('slug', validSlug)
+        .neq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        setAccountError('Este slug já está em uso. Escolha outro.');
+        setSavingAccount(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('professionals')
+        .update({ business_name: businessName.trim(), slug: validSlug })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setSlug(validSlug);
+      setAccountSaved(true);
+      setTimeout(() => setAccountSaved(false), 3000);
+    } catch (err: any) {
+      setAccountError(err?.message ?? 'Erro ao salvar. Tente novamente.');
+    } finally {
+      setSavingAccount(false);
+    }
+  }
 
   async function handleCheckout() {
     setLoadingCheckout(true);
@@ -197,26 +262,66 @@ export function SettingsManager({
         </CardContent>
       </Card>
 
-      {/* Account Info */}
+      {/* Account Info — Editable */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Conta</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Negócio</span>
-            <span className="text-sm font-medium">{professional.business_name}</span>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="businessName">Nome do Negócio</Label>
+            <Input
+              id="businessName"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Ex: Salão da Maria"
+            />
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Slug</span>
-            <span className="text-sm font-mono">{professional.slug}</span>
+
+          <div className="space-y-2">
+            <Label htmlFor="slug">URL da sua página</Label>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {typeof window !== 'undefined' ? window.location.host : 'circlehood-booking.vercel.app'}/
+              </span>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="seu-negocio"
+                className="flex-1"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Apenas letras minúsculas, números e hífens. Auto-formatado ao salvar.
+            </p>
           </div>
-          <div className="flex items-center justify-between">
+
+          <div className="flex items-center justify-between py-1">
             <span className="text-sm text-muted-foreground">Membro desde</span>
             <span className="text-sm">
               {new Date(professional.created_at).toLocaleDateString('pt-BR')}
             </span>
           </div>
+
+          {accountError && (
+            <p className="text-sm text-destructive">{accountError}</p>
+          )}
+
+          <Button
+            onClick={handleSaveAccount}
+            disabled={savingAccount}
+            className="w-full gap-2"
+          >
+            {savingAccount ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : accountSaved ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {accountSaved ? 'Salvo!' : 'Salvar Alterações'}
+          </Button>
         </CardContent>
       </Card>
     </div>
