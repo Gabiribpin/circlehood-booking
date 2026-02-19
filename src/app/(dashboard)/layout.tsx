@@ -58,11 +58,11 @@ export default async function DashboardLayout({
     supabase.from('whatsapp_config').select('provider, is_active').eq('user_id', user.id).single(),
   ]);
 
-  const hasMetaBusiness = whatsappConfig?.provider === 'meta' && whatsappConfig?.is_active === true;
+  const hasActiveWhatsApp = whatsappConfig?.is_active === true;
 
   const NAV_ITEMS = BASE_NAV_ITEMS.map((item) =>
     item.href === '/campaigns'
-      ? { ...item, badge: !hasMetaBusiness ? '🔒' : null }
+      ? { ...item, badge: !hasActiveWhatsApp ? '🔒' : null }
       : item
   );
 

@@ -334,15 +334,46 @@ export class AIBot {
         }
       }
 
-      // 3. Calcular horário de término
-      const [hours, minutes] = bookingTime.split(':').map(Number);
+      // 3. Validar dia e horário dentro do expediente
+      const bookingDayInt = new Date(bookingDate + 'T12:00:00Z').getUTCDay();
+      const { data: dayWH } = await this.supabase
+        .from('working_hours')
+        .select('start_time, end_time')
+        .eq('professional_id', professionalId)
+        .eq('day_of_week', bookingDayInt)
+        .eq('is_available', true)
+        .maybeSingle();
+
+      if (!dayWH) {
+        console.log(`🚫 Profissional não atende dia_int=${bookingDayInt} (${bookingDate})`);
+        return {
+          success: false,
+          error: 'day_unavailable',
+          message: `Desculpe, não atendo nesse dia. Qual outro dia funciona para você?`,
+        };
+      }
+
       const duration = service.duration_minutes ?? 60;
+      const reqStartMins = timeToMinutes(bookingTime);
+      const workStartMins = timeToMinutes(dayWH.start_time);
+      const workEndMins = timeToMinutes(dayWH.end_time);
+      if (reqStartMins < workStartMins || reqStartMins + duration > workEndMins) {
+        console.log(`🚫 Horário fora do expediente: ${bookingTime} (expediente ${dayWH.start_time}–${dayWH.end_time})`);
+        return {
+          success: false,
+          error: 'outside_hours',
+          message: `Desculpe, atendo das ${dayWH.start_time.slice(0, 5)} às ${dayWH.end_time.slice(0, 5)}. Quer agendar dentro desse horário?`,
+        };
+      }
+
+      // 4. Calcular horário de término
+      const [hours, minutes] = bookingTime.split(':').map(Number);
       const endTotalMinutes = hours * 60 + minutes + duration;
       const endHours = Math.floor(endTotalMinutes / 60) % 24;
       const endMins = endTotalMinutes % 60;
       const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
 
-      // 3. Verificar conflitos de horário
+      // 5. Verificar conflitos de horário
       const { data: existingBookings } = await this.supabase
         .from('bookings')
         .select('start_time, end_time')
@@ -432,7 +463,7 @@ export class AIBot {
         }
       }
 
-      // 4. Inserir agendamento na tabela bookings
+      // 6. Inserir agendamento na tabela bookings
       const { data: booking, error: bookingError } = await this.supabase
         .from('bookings')
         .insert({
@@ -606,6 +637,16 @@ A ferramenta create_appointment verifica conflitos E duplicatas automaticamente.
 ❌ NUNCA diga "vou verificar disponibilidade" (a tool já faz isso)
 ❌ NUNCA confirme horário sem chamar a tool primeiro
 ❌ NUNCA crie múltiplos agendamentos sem confirmação explícita do cliente
+
+Se create_appointment retornar error='day_unavailable':
+→ Profissional não atende nesse dia da semana
+→ Repasse a mensagem do campo 'message'
+→ Pergunte qual outro dia o cliente prefere
+
+Se create_appointment retornar error='outside_hours':
+→ Horário solicitado está fora do expediente
+→ Repasse a mensagem do campo 'message' (inclui horário de funcionamento)
+→ Pergunte qual horário dentro do expediente funciona
 
 Se create_appointment retornar error='unavailable':
 → Informe que o horário não está disponível

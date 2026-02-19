@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useId } from 'react';
+import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Download, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatPhoneInternational } from '@/lib/utils/phone-detection';
 
@@ -25,6 +25,7 @@ interface ParsedRow {
   name: string;
   phone: string;
   email: string;
+  birthday: string;
   notes: string;
   isDuplicate: boolean;
 }
@@ -35,7 +36,6 @@ function parseCSV(text: string): Omit<ParsedRow, 'isDuplicate'>[] {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   if (lines.length < 2) return [];
 
-  // Detectar cabeçalho
   const header = lines[0].toLowerCase().split(',').map((h) => h.trim().replace(/"/g, ''));
   const colIndex = (names: string[]) => {
     for (const n of names) {
@@ -48,6 +48,7 @@ function parseCSV(text: string): Omit<ParsedRow, 'isDuplicate'>[] {
   const nameCol = colIndex(['nome', 'name']);
   const phoneCol = colIndex(['telefone', 'phone', 'tel', 'celular', 'whatsapp']);
   const emailCol = colIndex(['email', 'e-mail']);
+  const birthdayCol = colIndex(['aniversario', 'aniversário', 'birthday', 'nascimento', 'data_nascimento', 'data nascimento']);
   const notesCol = colIndex(['notas', 'notes', 'observacoes', 'observações', 'obs']);
 
   const rows: Omit<ParsedRow, 'isDuplicate'>[] = [];
@@ -56,10 +57,24 @@ function parseCSV(text: string): Omit<ParsedRow, 'isDuplicate'>[] {
     const name = nameCol >= 0 ? cols[nameCol] || '' : cols[0] || '';
     const phone = phoneCol >= 0 ? cols[phoneCol] || '' : cols[1] || '';
     if (!name || !phone) continue;
+
+    // Normalizar data de aniversário: aceita YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
+    let birthday = birthdayCol >= 0 ? cols[birthdayCol] || '' : '';
+    if (birthday) {
+      // DD/MM/YYYY → YYYY-MM-DD
+      const dmyMatch = birthday.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (dmyMatch) {
+        birthday = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+      }
+      // Validar formato final
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) birthday = '';
+    }
+
     rows.push({
       name,
       phone: formatPhoneInternational(phone),
       email: emailCol >= 0 ? cols[emailCol] || '' : '',
+      birthday,
       notes: notesCol >= 0 ? cols[notesCol] || '' : '',
     });
   }
@@ -80,6 +95,7 @@ export default function ImportCSVPage() {
   const [useBotForAll, setUseBotForAll] = useState(false);
   const [importing, setImporting] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   // Auth + carregar phones existentes
   useEffect(() => {
@@ -106,28 +122,48 @@ export default function ImportCSVPage() {
     init();
   }, []);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function processFile(file: File) {
+    if (!file.name.endsWith('.csv')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione um arquivo .csv', variant: 'destructive' });
+      return;
+    }
     setFileName(file.name);
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       const parsed = parseCSV(text);
-
       const withStatus: ParsedRow[] = parsed.map((row) => ({
         ...row,
         isDuplicate: existingPhones.has(row.phone.replace(/\D/g, '')),
       }));
-
       setRows(withStatus);
     };
     reader.readAsText(file);
+  }
 
-    // Limpar input para permitir reselecionar o mesmo arquivo
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
     e.target.value = '';
   }
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }, [existingPhones]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleImport() {
     if (!professionalId || rows.length === 0) return;
@@ -146,6 +182,7 @@ export default function ImportCSVPage() {
       name: r.name,
       phone: r.phone,
       email: r.email || null,
+      birthday: r.birthday || null,
       notes: r.notes || null,
       use_bot: useBotForAll,
     }));
@@ -177,13 +214,42 @@ export default function ImportCSVPage() {
         <h1 className="text-2xl font-bold">Importar Contatos via CSV</h1>
       </div>
 
-      {/* Upload */}
+      {/* Instruções */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" /> Como preparar seu arquivo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            O arquivo CSV deve ter uma linha de cabeçalho com os nomes das colunas. Colunas suportadas:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+            <div className="bg-muted rounded-md p-3 space-y-1">
+              <p className="font-medium">Obrigatórias</p>
+              <p className="text-muted-foreground"><code>nome</code> — nome do contato</p>
+              <p className="text-muted-foreground"><code>telefone</code> — com código do país (+55, +353...)</p>
+            </div>
+            <div className="bg-muted rounded-md p-3 space-y-1">
+              <p className="font-medium">Opcionais</p>
+              <p className="text-muted-foreground"><code>email</code></p>
+              <p className="text-muted-foreground"><code>aniversario</code> — formato DD/MM/AAAA ou AAAA-MM-DD</p>
+              <p className="text-muted-foreground"><code>notas</code></p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/templates/contatos-template.csv" download>
+              <Download className="mr-2 h-4 w-4" /> Baixar template CSV
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Upload — drag & drop */}
       <Card>
         <CardHeader>
           <CardTitle>1. Selecionar arquivo</CardTitle>
-          <CardDescription>
-            O arquivo deve ter colunas: <code>nome, telefone, email, notas</code> (cabeçalho obrigatório)
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <input
@@ -194,23 +260,39 @@ export default function ImportCSVPage() {
             className="hidden"
             onChange={handleFileChange}
           />
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" />
-            {fileName ? `Trocar arquivo (${fileName})` : 'Selecionar arquivo CSV'}
-          </Button>
 
-          {fileName && (
-            <p className="text-sm text-muted-foreground">
-              Arquivo: <strong>{fileName}</strong>
-            </p>
-          )}
-
-          <div className="bg-muted rounded-lg p-3 text-sm">
-            <p className="font-medium mb-1">Formato esperado:</p>
-            <pre className="text-xs text-muted-foreground">{`nome,telefone,email,notas
-Maria Silva,+5511999999999,maria@exemplo.com,Cliente VIP
-Ana Costa,+353851234567,,`}</pre>
+          {/* Zona de drag & drop */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`
+              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+              ${isDragging
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
+              }
+            `}
+          >
+            <Upload className={`mx-auto h-8 w-8 mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+            {isDragging ? (
+              <p className="text-sm font-medium text-primary">Solte o arquivo aqui</p>
+            ) : (
+              <>
+                <p className="text-sm font-medium">
+                  {fileName ? `Arquivo: ${fileName}` : 'Arraste um arquivo CSV ou clique para selecionar'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Apenas arquivos .csv</p>
+              </>
+            )}
           </div>
+
+          {rows.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => { setRows([]); setFileName(''); }}>
+              Limpar e escolher outro arquivo
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -240,6 +322,7 @@ Ana Costa,+353851234567,,`}</pre>
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Aniversário</TableHead>
                       <TableHead>Notas</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -260,6 +343,9 @@ Ana Costa,+353851234567,,`}</pre>
                         <TableCell className="font-medium">{row.name}</TableCell>
                         <TableCell className="font-mono text-sm">{row.phone}</TableCell>
                         <TableCell className="text-muted-foreground">{row.email || '-'}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {row.birthday ? formatBirthday(row.birthday) : '-'}
+                        </TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">{row.notes || '-'}</TableCell>
                       </TableRow>
                     ))}
@@ -314,4 +400,12 @@ Ana Costa,+353851234567,,`}</pre>
       )}
     </div>
   );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatBirthday(dateStr: string): string {
+  // YYYY-MM-DD → DD/MM/AAAA
+  const [, month, day] = dateStr.split('-');
+  return `${day}/${month}`;
 }

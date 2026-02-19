@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/birthdays",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/send-campaign-messages",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

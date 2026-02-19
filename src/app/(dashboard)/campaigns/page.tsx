@@ -26,9 +26,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, MessageSquare, Send, Users, ExternalLink } from 'lucide-react';
+import { Plus, MessageSquare, Send, Users, ExternalLink, Clock, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Contact {
   id: string;
@@ -42,87 +44,59 @@ interface Campaign {
   id: string;
   name: string;
   message: string;
-  status: string;
+  status: string; // draft | scheduled | sending | completed | cancelled
   created_at: string;
   sent_at?: string;
-  _count?: number;
+  total_count?: number;
+  sent_count?: number;
+  failed_count?: number;
+  scheduled_at?: string;
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasMetaBusiness, setHasMetaBusiness] = useState(false);
+  const [hasActiveWhatsApp, setHasActiveWhatsApp] = useState(false);
   const [professionalId, setProfessionalId] = useState<string>('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [delaySecs, setDelaySecs] = useState(30);
+  const [contactSearch, setContactSearch] = useState('');
   const { toast } = useToast();
 
   // Form states
   const [campaignName, setCampaignName] = useState('');
   const [campaignMessage, setCampaignMessage] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const supabase = createClient();
-
-    // Get professional ID
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data: professional } = await supabase
-      .from('professionals')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
+      .from('professionals').select('id').eq('user_id', user.id).single();
     if (!professional) return;
     setProfessionalId(professional.id);
 
-    // Check if user has Meta Business connected
-    const { data: whatsappConfig } = await supabase
-      .from('whatsapp_config')
-      .select('provider, is_active')
-      .eq('user_id', user.id)
-      .single();
-    setHasMetaBusiness(whatsappConfig?.provider === 'meta' && whatsappConfig?.is_active === true);
+    // Qualquer config WhatsApp ativa (Meta ou Evolution)
+    const { data: wc } = await supabase
+      .from('whatsapp_config').select('is_active').eq('user_id', user.id).single();
+    setHasActiveWhatsApp(wc?.is_active === true);
 
-    // Load campaigns and contacts
     const [campaignsRes, contactsRes] = await Promise.all([
-      supabase
-        .from('campaigns')
-        .select('*')
-        .eq('professional_id', professional.id)
+      supabase.from('campaigns').select('*').eq('professional_id', professional.id)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('contacts')
-        .select('*')
-        .eq('professional_id', professional.id)
-        .order('name', { ascending: true }),
+      supabase.from('contacts').select('id, name, phone, email, category')
+        .eq('professional_id', professional.id).order('name'),
     ]);
-
-    if (campaignsRes.error) {
-      toast({
-        title: 'Erro ao carregar campanhas',
-        description: campaignsRes.error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (contactsRes.error) {
-      toast({
-        title: 'Erro ao carregar contatos',
-        description: contactsRes.error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
 
     setCampaigns(campaignsRes.data || []);
     setContacts(contactsRes.data || []);
@@ -131,195 +105,167 @@ export default function CampaignsPage() {
 
   async function handleCreateCampaign() {
     if (!campaignName || !campaignMessage) {
-      toast({
-        title: 'Campos obrigatórios',
-        description: 'Nome e mensagem são obrigatórios',
-        variant: 'destructive',
-      });
+      toast({ title: 'Campos obrigatórios', description: 'Nome e mensagem são obrigatórios', variant: 'destructive' });
       return;
     }
-
     const supabase = createClient();
-
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert({
-        professional_id: professionalId,
-        name: campaignName,
-        message: campaignMessage,
-        status: 'draft',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast({
-        title: 'Erro ao criar campanha',
-        description: error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    toast({
-      title: 'Campanha criada!',
-      description: 'Agora você pode enviar para seus contatos.',
+    const { error } = await supabase.from('campaigns').insert({
+      professional_id: professionalId,
+      name: campaignName,
+      message: campaignMessage,
+      status: 'draft',
     });
-
+    if (error) { toast({ title: 'Erro ao criar', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Campanha criada!' });
     resetForm();
     setIsCreateDialogOpen(false);
     loadData();
   }
 
-  function resetForm() {
-    setCampaignName('');
-    setCampaignMessage('');
-  }
+  function resetForm() { setCampaignName(''); setCampaignMessage(''); }
 
-  function handleSelectContact(contactId: string) {
-    setSelectedContacts((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
-    );
+  function handleSelectContact(id: string) {
+    setSelectedContacts((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
   function handleSelectAll() {
-    if (selectedContacts.length === contacts.length) {
-      setSelectedContacts([]);
+    const filteredIds = filteredContacts.map((c) => c.id);
+    const allSelected = filteredIds.every((id) => selectedContacts.includes(id));
+    if (allSelected) {
+      setSelectedContacts((prev) => prev.filter((id) => !filteredIds.includes(id)));
     } else {
-      setSelectedContacts(contacts.map((c) => c.id));
+      setSelectedContacts((prev) => [...new Set([...prev, ...filteredIds])]);
     }
   }
 
   function generateWhatsAppLink(contact: Contact, message: string) {
-    const personalizedMessage = message.replace('{nome}', contact.name);
-    const encodedMessage = encodeURIComponent(personalizedMessage);
-    const cleanPhone = contact.phone.replace(/\D/g, '');
-    return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+    const msg = message.replace('{nome}', contact.name);
+    return `https://wa.me/${contact.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
   }
 
   function handleOpenSendDialog(campaign: Campaign) {
     setSelectedCampaign(campaign);
     setSelectedContacts([]);
+    setContactSearch('');
     setIsSendDialogOpen(true);
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return <Badge variant="secondary">Rascunho</Badge>;
-      case 'sent':
-        return <Badge>Enviada</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  async function handleScheduleCampaign() {
+    if (!selectedCampaign || selectedContacts.length === 0) return;
+    setIsScheduling(true);
+    const supabase = createClient();
 
-  if (loading) {
-    return <div className="p-8">Carregando...</div>;
+    try {
+      const now = new Date();
+      const sends = selectedContacts.map((contactId, i) => {
+        const contact = contacts.find((c) => c.id === contactId)!;
+        const scheduledFor = new Date(now.getTime() + (i + 1) * delaySecs * 1000);
+        return {
+          campaign_id: selectedCampaign.id,
+          professional_id: professionalId,
+          contact_id: contactId,
+          phone: contact.phone,
+          name: contact.name,
+          status: 'pending',
+          scheduled_for: scheduledFor.toISOString(),
+        };
+      });
+
+      // Inserir campaign_sends em lotes de 100
+      for (let i = 0; i < sends.length; i += 100) {
+        const { error } = await supabase.from('campaign_sends').insert(sends.slice(i, i + 100));
+        if (error) throw error;
+      }
+
+      // Atualizar campanha
+      const { error: updErr } = await supabase.from('campaigns').update({
+        status: 'scheduled',
+        total_count: selectedContacts.length,
+        sent_count: 0,
+        failed_count: 0,
+        scheduled_at: now.toISOString(),
+      }).eq('id', selectedCampaign.id);
+      if (updErr) throw updErr;
+
+      const finishMin = Math.ceil((selectedContacts.length * delaySecs) / 60);
+      toast({
+        title: 'Campanha agendada!',
+        description: `${selectedContacts.length} mensagens serão enviadas em ~${finishMin} minuto${finishMin !== 1 ? 's' : ''}.`,
+      });
+      setIsSendDialogOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast({ title: 'Erro ao agendar', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsScheduling(false);
+    }
   }
 
-  if (!hasMetaBusiness) {
+  const filteredContacts = contacts.filter((c) => {
+    const t = contactSearch.toLowerCase();
+    return c.name.toLowerCase().includes(t) || c.phone.includes(t);
+  });
+
+  const allFilteredSelected = filteredContacts.length > 0 && filteredContacts.every((c) => selectedContacts.includes(c.id));
+
+  if (loading) return <div className="p-8">Carregando...</div>;
+
+  if (!hasActiveWhatsApp) {
     return (
       <div className="max-w-2xl mx-auto mt-20 px-4">
         <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-8 text-center">
           <span className="text-6xl mb-4 block">⚠️</span>
-          <h2 className="text-2xl font-bold text-yellow-900 mb-4">
-            WhatsApp Business Oficial Necessário
-          </h2>
+          <h2 className="text-2xl font-bold text-yellow-900 mb-4">WhatsApp não configurado</h2>
           <p className="text-yellow-800 mb-6">
-            Para enviar campanhas de marketing, você precisa conectar seu{' '}
-            <strong>WhatsApp Business Oficial</strong>.
+            Configure o WhatsApp (Meta Business ou Evolution API) para enviar campanhas automaticamente.
           </p>
-          <div className="bg-white rounded p-4 mb-6 text-left">
-            <p className="text-sm text-gray-700 mb-2"><strong>Por quê?</strong></p>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li>✅ Envio em massa aprovado pelo WhatsApp</li>
-              <li>✅ Sem risco de bloqueio</li>
-              <li>✅ Métricas profissionais</li>
-              <li>❌ WhatsApp Normal pode ser banido em envios massivos</li>
-            </ul>
-          </div>
           <Link href="/whatsapp-config">
-            <Button size="lg">
-              💼 Conectar WhatsApp Business
-            </Button>
+            <Button size="lg">💼 Configurar WhatsApp</Button>
           </Link>
-          <p className="text-xs text-gray-500 mt-4">
-            Ou use WhatsApp Normal apenas para atender clientes individualmente
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Campanhas de Marketing</h1>
-          <p className="text-muted-foreground">
-            Envie mensagens personalizadas para seus contatos via WhatsApp
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold">📢 Campanhas</h1>
+          <p className="text-muted-foreground text-sm">Envie mensagens em massa para seus contatos via WhatsApp</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-          setIsCreateDialogOpen(open);
-          if (!open) resetForm();
-        }}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Campanha
-            </Button>
+            <Button><Plus className="mr-2 h-4 w-4" /> Nova Campanha</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Criar Nova Campanha</DialogTitle>
-              <DialogDescription>
-                Crie uma mensagem personalizada para enviar aos seus contatos
-              </DialogDescription>
+              <DialogDescription>Escreva a mensagem e depois escolha os contatos para enviar.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Campanha *</Label>
-                <Input
-                  id="name"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  placeholder="Ex: Lembrete de Unhas - Junho"
-                />
+                <Label htmlFor="c-name">Nome da campanha *</Label>
+                <Input id="c-name" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} placeholder="Ex: Promoção Junho" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="message">Mensagem *</Label>
-                <Textarea
-                  id="message"
-                  value={campaignMessage}
-                  onChange={(e) => setCampaignMessage(e.target.value)}
-                  placeholder="Oi {nome}! Faz tempo que não nos vemos. Que tal agendar suas unhas essa semana? 💅"
-                  rows={6}
-                />
+                <Label htmlFor="c-msg">Mensagem *</Label>
+                <Textarea id="c-msg" value={campaignMessage} onChange={(e) => setCampaignMessage(e.target.value)}
+                  placeholder="Oi {nome}! Faz tempo que não nos vemos. Que tal agendar suas unhas? 💅" rows={5} />
                 <p className="text-xs text-muted-foreground">
-                  Use <code className="bg-muted px-1 py-0.5 rounded">{'{nome}'}</code> para personalizar com o nome do contato
+                  Use <code className="bg-muted px-1 rounded">{'{nome}'}</code> para personalizar com o nome do contato
                 </p>
               </div>
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="text-sm font-medium mb-2">Prévia da mensagem:</h4>
-                <p className="text-sm whitespace-pre-wrap">
-                  {campaignMessage.replace('{nome}', 'Maria') || 'Sua mensagem aparecerá aqui...'}
-                </p>
-              </div>
+              {campaignMessage && (
+                <div className="bg-muted rounded-lg p-3">
+                  <p className="text-xs font-medium mb-1 text-muted-foreground">Prévia:</p>
+                  <p className="text-sm whitespace-pre-wrap">{campaignMessage.replace('{nome}', 'Maria')}</p>
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setIsCreateDialogOpen(false);
-                resetForm();
-              }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateCampaign}>
-                Criar Campanha
-              </Button>
+              <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>Cancelar</Button>
+              <Button onClick={handleCreateCampaign}>Criar campanha</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -327,36 +273,24 @@ export default function CampaignsPage() {
 
       {contacts.length === 0 && (
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Nenhum contato cadastrado</h3>
-              <p className="text-muted-foreground mt-2">
-                Adicione contatos primeiro para criar campanhas
-              </p>
-              <Button asChild variant="outline" className="mt-4">
-                <Link href="/contacts">
-                  Adicionar Contatos
-                </Link>
-              </Button>
-            </div>
+          <CardContent className="py-12 text-center">
+            <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">Nenhum contato cadastrado</h3>
+            <p className="text-muted-foreground mt-2">Adicione contatos antes de criar campanhas</p>
+            <Button asChild variant="outline" className="mt-4"><Link href="/clients?tab=manage">Ir para Contatos</Link></Button>
           </CardContent>
         </Card>
       )}
 
       {campaigns.length === 0 && contacts.length > 0 ? (
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Nenhuma campanha ainda</h3>
-              <p className="text-muted-foreground mt-2">
-                Crie sua primeira campanha para começar a divulgar seus serviços
-              </p>
-            </div>
+          <CardContent className="py-12 text-center">
+            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">Nenhuma campanha ainda</h3>
+            <p className="text-muted-foreground mt-2">Crie sua primeira campanha para divulgar seus serviços</p>
           </CardContent>
         </Card>
-      ) : (
+      ) : campaigns.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -371,7 +305,8 @@ export default function CampaignsPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Mensagem</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Criada em</TableHead>
+                  <TableHead>Progresso</TableHead>
+                  <TableHead>Criada</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -379,19 +314,37 @@ export default function CampaignsPage() {
                 {campaigns.map((campaign) => (
                   <TableRow key={campaign.id}>
                     <TableCell className="font-medium">{campaign.name}</TableCell>
-                    <TableCell className="max-w-xs truncate">{campaign.message}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground">{campaign.message}</TableCell>
                     <TableCell>{getStatusBadge(campaign.status)}</TableCell>
                     <TableCell>
+                      {(campaign.total_count ?? 0) > 0 ? (
+                        <span className="text-sm text-muted-foreground">
+                          {campaign.sent_count ?? 0}/{campaign.total_count}
+                          {(campaign.failed_count ?? 0) > 0 && (
+                            <span className="text-destructive ml-1">({campaign.failed_count} falha{campaign.failed_count !== 1 ? 's' : ''})</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
                       {new Date(campaign.created_at).toLocaleDateString('pt-BR')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => handleOpenSendDialog(campaign)}
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        Enviar
-                      </Button>
+                      {campaign.status === 'draft' && (
+                        <Button size="sm" onClick={() => handleOpenSendDialog(campaign)}>
+                          <Zap className="mr-1.5 h-3.5 w-3.5" /> Escalonar envio
+                        </Button>
+                      )}
+                      {campaign.status === 'completed' && (
+                        <span className="text-xs text-muted-foreground">Concluída</span>
+                      )}
+                      {(campaign.status === 'scheduled' || campaign.status === 'sending') && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> Em andamento
+                        </span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -399,58 +352,68 @@ export default function CampaignsPage() {
             </Table>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      {/* Send Campaign Dialog */}
+      {/* Dialog de escalonamento */}
       <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Enviar: {selectedCampaign?.name}</DialogTitle>
+            <DialogTitle>Escalonar envio: {selectedCampaign?.name}</DialogTitle>
             <DialogDescription>
-              Selecione os contatos e clique nos botões de WhatsApp para enviar
+              Selecione os contatos. As mensagens serão enviadas automaticamente em intervalos.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-muted p-4 rounded-lg">
-              <h4 className="text-sm font-medium mb-2">Mensagem:</h4>
-              <p className="text-sm whitespace-pre-wrap">{selectedCampaign?.message}</p>
+          <div className="space-y-4 py-2">
+            {selectedCampaign && (
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Mensagem que será enviada:</p>
+                <p className="text-sm whitespace-pre-wrap">{selectedCampaign.message.replace('{nome}', '[nome do contato]')}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <div className="space-y-1 flex-1">
+                <Label htmlFor="delay">Intervalo entre mensagens (segundos)</Label>
+                <Input id="delay" type="number" min={10} max={300} value={delaySecs}
+                  onChange={(e) => setDelaySecs(Math.max(10, Number(e.target.value)))} className="w-32" />
+                <p className="text-xs text-muted-foreground">Mínimo 10s. Recomendado: 30s para evitar bloqueios.</p>
+              </div>
             </div>
 
+            {selectedContacts.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg px-3 py-2 text-sm text-blue-700 dark:text-blue-300">
+                {selectedContacts.length} contato{selectedContacts.length !== 1 ? 's' : ''} selecionado{selectedContacts.length !== 1 ? 's' : ''} ·{' '}
+                Tempo estimado: ~{Math.ceil((selectedContacts.length * delaySecs) / 60)} min
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
-              <Label className="text-base">
-                Selecione os contatos ({selectedContacts.length} selecionados)
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label>Contatos ({contacts.length})</Label>
+                <Input placeholder="Buscar..." value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} className="w-40 h-7 text-sm" />
+              </div>
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                {selectedContacts.length === contacts.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                {allFilteredSelected ? 'Desmarcar' : 'Selecionar todos'}
               </Button>
             </div>
 
-            <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
-              {contacts.map((contact) => (
-                <div key={contact.id} className="flex items-center justify-between p-3 hover:bg-muted/50">
+            <div className="border rounded-lg divide-y max-h-72 overflow-y-auto">
+              {filteredContacts.map((contact) => (
+                <div key={contact.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-muted/40">
                   <div className="flex items-center gap-3">
                     <Checkbox
                       checked={selectedContacts.includes(contact.id)}
                       onCheckedChange={() => handleSelectContact(contact.id)}
                     />
                     <div>
-                      <p className="font-medium">{contact.name}</p>
-                      <p className="text-sm text-muted-foreground">{contact.phone}</p>
+                      <p className="text-sm font-medium">{contact.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{contact.phone}</p>
                     </div>
                   </div>
-                  {selectedContacts.includes(contact.id) && selectedCampaign && (
-                    <Button
-                      size="sm"
-                      asChild
-                      variant="default"
-                    >
-                      <a
-                        href={generateWhatsAppLink(contact, selectedCampaign.message)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Enviar WhatsApp
+                  {selectedCampaign && (
+                    <Button size="sm" variant="ghost" asChild className="text-xs h-7">
+                      <a href={generateWhatsAppLink(contact, selectedCampaign.message)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3 w-3 mr-1" /> Manual
                       </a>
                     </Button>
                   )}
@@ -459,15 +422,31 @@ export default function CampaignsPage() {
             </div>
           </div>
           <DialogFooter>
-            <p className="text-sm text-muted-foreground mr-auto">
-              Clique em cada botão "Enviar WhatsApp" para abrir o WhatsApp Web com a mensagem pronta
-            </p>
-            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>
-              Fechar
+            <Button variant="outline" onClick={() => setIsSendDialogOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleScheduleCampaign}
+              disabled={selectedContacts.length === 0 || isScheduling}
+            >
+              {isScheduling ? 'Agendando...' : (
+                <><Send className="mr-2 h-4 w-4" /> Agendar {selectedContacts.length} envio{selectedContacts.length !== 1 ? 's' : ''}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'draft':      return <Badge variant="secondary">Rascunho</Badge>;
+    case 'scheduled':  return <Badge variant="outline" className="text-blue-600 border-blue-300">Agendada</Badge>;
+    case 'sending':    return <Badge className="bg-orange-500">Enviando</Badge>;
+    case 'completed':  return <Badge className="bg-green-600">Concluída</Badge>;
+    case 'cancelled':  return <Badge variant="destructive">Cancelada</Badge>;
+    default:           return <Badge variant="outline">{status}</Badge>;
+  }
 }

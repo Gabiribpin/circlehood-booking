@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2, Edit, Upload, Search, Users } from 'lucide-react';
+import { Plus, Trash2, Edit, Upload, Search, Users, Cake } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RegionSelector } from '@/components/clients/region-selector';
 
@@ -44,6 +44,7 @@ interface Contact {
   notes?: string;
   tags?: string[];
   regions?: string[];
+  birthday?: string;
   use_bot?: boolean;
   created_at: string;
 }
@@ -66,6 +67,21 @@ function getInitials(name: string) {
 function getAvatarColor(name: string) {
   const colors = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500'];
   return colors[name.charCodeAt(0) % colors.length];
+}
+
+function isBirthdayThisMonth(birthday?: string): boolean {
+  if (!birthday) return false;
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const parts = birthday.split('-');
+  if (parts.length < 2) return false;
+  return parseInt(parts[1], 10) === currentMonth;
+}
+
+function formatBirthdayDisplay(birthday: string): string {
+  // YYYY-MM-DD → "DD/MM" or "DD/MM/YYYY"
+  const parts = birthday.split('-');
+  if (parts.length < 3) return birthday;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 function computeSmartTags(contact: Contact, totalBookings: number, lastBookingDate?: string) {
@@ -173,7 +189,7 @@ function CRMView() {
       if (activeFilter === 'vip') return c.smartTags.includes('⭐ VIP');
       if (activeFilter === 'new') return c.smartTags.includes('🆕 Novo');
       if (activeFilter === 'inactive') return c.smartTags.includes('⚠️ Inativo');
-      if (activeFilter === 'birthday') return c.tags?.includes('🎂 Aniversariante') ?? false;
+      if (activeFilter === 'birthday') return isBirthdayThisMonth(c.birthday);
       return true;
     });
 
@@ -182,7 +198,7 @@ function CRMView() {
     vip: contacts.filter((c) => c.smartTags.includes('⭐ VIP')).length,
     new: contacts.filter((c) => c.smartTags.includes('🆕 Novo')).length,
     inactive: contacts.filter((c) => c.smartTags.includes('⚠️ Inativo')).length,
-    birthday: contacts.filter((c) => c.tags?.includes('🎂 Aniversariante')).length,
+    birthday: contacts.filter((c) => isBirthdayThisMonth(c.birthday)).length,
   };
 
   if (loading) {
@@ -246,6 +262,15 @@ function CRMView() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">📞 {c.phone}</p>
+                  {c.birthday && (
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                      <Cake className="h-3 w-3" />
+                      {formatBirthdayDisplay(c.birthday)}
+                      {isBirthdayThisMonth(c.birthday) && (
+                        <span className="text-pink-500 font-medium">· Este mês!</span>
+                      )}
+                    </p>
+                  )}
                   <div className="mt-2 pt-2 border-t">
                     <p className="text-xs text-muted-foreground">Última visita</p>
                     <p className="text-xs font-medium mt-0.5">
@@ -290,6 +315,7 @@ function ManageView() {
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [regions, setRegions] = useState<string[]>([]);
 
   useEffect(() => { loadContacts(); }, []);
@@ -323,13 +349,13 @@ function ManageView() {
 
     if (editingContact) {
       const { error } = await supabase.from('contacts')
-        .update({ name, phone, email: email || null, category: category || null, notes: notes || null, regions, updated_at: new Date().toISOString() })
+        .update({ name, phone, email: email || null, category: category || null, notes: notes || null, birthday: birthday || null, regions, updated_at: new Date().toISOString() })
         .eq('id', editingContact.id);
       if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Contato atualizado!' });
     } else {
       const { error } = await supabase.from('contacts')
-        .insert({ professional_id: professionalId, name, phone, email: email || null, category: category || null, notes: notes || null, regions });
+        .insert({ professional_id: professionalId, name, phone, email: email || null, category: category || null, notes: notes || null, birthday: birthday || null, regions });
       if (error) { toast({ title: 'Erro ao adicionar', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Contato adicionado!' });
     }
@@ -350,12 +376,13 @@ function ManageView() {
   function handleEdit(contact: Contact) {
     setEditingContact(contact);
     setName(contact.name); setPhone(contact.phone); setEmail(contact.email || '');
-    setCategory(contact.category || ''); setNotes(contact.notes || ''); setRegions(contact.regions || []);
+    setCategory(contact.category || ''); setNotes(contact.notes || '');
+    setBirthday(contact.birthday || ''); setRegions(contact.regions || []);
     setIsDialogOpen(true);
   }
 
   function resetForm() {
-    setEditingContact(null); setName(''); setPhone(''); setEmail(''); setCategory(''); setNotes(''); setRegions([]);
+    setEditingContact(null); setName(''); setPhone(''); setEmail(''); setCategory(''); setNotes(''); setBirthday(''); setRegions([]);
   }
 
   async function updateUseBot(id: string, val: boolean) {
@@ -435,6 +462,10 @@ function ManageView() {
                 <div className="space-y-2">
                   <Label htmlFor="c-email">Email</Label>
                   <Input id="c-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@exemplo.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-birthday">Aniversário</Label>
+                  <Input id="c-birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="c-category">Categoria</Label>
