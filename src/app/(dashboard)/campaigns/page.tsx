@@ -53,6 +53,7 @@ export default function CampaignsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMetaBusiness, setHasMetaBusiness] = useState(false);
   const [professionalId, setProfessionalId] = useState<string>('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -82,6 +83,14 @@ export default function CampaignsPage() {
 
     if (!professional) return;
     setProfessionalId(professional.id);
+
+    // Check if user has Meta Business connected
+    const { data: whatsappConfig } = await supabase
+      .from('whatsapp_config')
+      .select('provider, is_active')
+      .eq('user_id', user.id)
+      .single();
+    setHasMetaBusiness(whatsappConfig?.provider === 'meta' && whatsappConfig?.is_active === true);
 
     // Load campaigns and contacts
     const [campaignsRes, contactsRes] = await Promise.all([
@@ -209,6 +218,40 @@ export default function CampaignsPage() {
 
   if (loading) {
     return <div className="p-8">Carregando...</div>;
+  }
+
+  if (!hasMetaBusiness) {
+    return (
+      <div className="max-w-2xl mx-auto mt-20 px-4">
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-8 text-center">
+          <span className="text-6xl mb-4 block">⚠️</span>
+          <h2 className="text-2xl font-bold text-yellow-900 mb-4">
+            WhatsApp Business Oficial Necessário
+          </h2>
+          <p className="text-yellow-800 mb-6">
+            Para enviar campanhas de marketing, você precisa conectar seu{' '}
+            <strong>WhatsApp Business Oficial</strong>.
+          </p>
+          <div className="bg-white rounded p-4 mb-6 text-left">
+            <p className="text-sm text-gray-700 mb-2"><strong>Por quê?</strong></p>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li>✅ Envio em massa aprovado pelo WhatsApp</li>
+              <li>✅ Sem risco de bloqueio</li>
+              <li>✅ Métricas profissionais</li>
+              <li>❌ WhatsApp Normal pode ser banido em envios massivos</li>
+            </ul>
+          </div>
+          <Link href="/whatsapp-config">
+            <Button size="lg">
+              💼 Conectar WhatsApp Business
+            </Button>
+          </Link>
+          <p className="text-xs text-gray-500 mt-4">
+            Ou use WhatsApp Normal apenas para atender clientes individualmente
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

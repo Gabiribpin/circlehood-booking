@@ -22,7 +22,7 @@ import {
   Phone,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { href: '/services', label: 'Serviços', icon: Scissors },
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
@@ -55,11 +55,18 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  const { data: professional } = await supabase
-    .from('professionals')
-    .select('business_name, slug')
-    .eq('user_id', user.id)
-    .single();
+  const [{ data: professional }, { data: whatsappConfig }] = await Promise.all([
+    supabase.from('professionals').select('business_name, slug').eq('user_id', user.id).single(),
+    supabase.from('whatsapp_config').select('provider, is_active').eq('user_id', user.id).single(),
+  ]);
+
+  const hasMetaBusiness = whatsappConfig?.provider === 'meta' && whatsappConfig?.is_active === true;
+
+  const NAV_ITEMS = BASE_NAV_ITEMS.map((item) =>
+    item.href === '/campaigns'
+      ? { ...item, badge: !hasMetaBusiness ? '🔒' : null }
+      : item
+  );
 
   return (
     <div className="min-h-screen flex">
@@ -85,6 +92,9 @@ export default async function DashboardLayout({
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {'badge' in item && item.badge && (
+                <span className="ml-auto text-xs" title="Requer WhatsApp Business">{item.badge}</span>
+              )}
             </Link>
           ))}
         </nav>

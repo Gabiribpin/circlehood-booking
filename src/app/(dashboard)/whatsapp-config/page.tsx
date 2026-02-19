@@ -233,6 +233,30 @@ export default function WhatsAppConfigPage() {
         <TabsContent value="setup">
           <Card className="p-6 space-y-5">
 
+            {/* Badge — conexão ativa */}
+            {provider === 'evolution' && connectionStatus === 'connected' && (
+              <div className="mb-2 p-3 bg-green-50 border-2 border-green-500 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📱</span>
+                  <div>
+                    <p className="font-semibold text-green-900">WhatsApp Normal Conectado</p>
+                    {evolutionPhone && <p className="text-sm text-green-700">Número: {evolutionPhone}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+            {provider === 'meta' && metaConfig.isActive && (
+              <div className="mb-2 p-3 bg-blue-50 border-2 border-blue-500 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">💼</span>
+                  <div>
+                    <p className="font-semibold text-blue-900">WhatsApp Business Oficial Conectado</p>
+                    {metaConfig.businessPhone && <p className="text-sm text-blue-700">Número: {metaConfig.businessPhone}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Seletor de Provider */}
             <div>
               <Label className="mb-2 block">Provider WhatsApp</Label>
@@ -240,26 +264,28 @@ export default function WhatsAppConfigPage() {
                 <button
                   type="button"
                   onClick={() => setProvider('meta')}
-                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors text-left ${
                     provider === 'meta'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   }`}
                 >
-                  📘 Meta Business API
-                  <p className="text-xs font-normal mt-1 opacity-70">Oficial do Facebook</p>
+                  💼 WhatsApp Business Oficial
+                  <p className="text-xs font-normal mt-1 opacity-80">Recomendado para campanhas e negócios</p>
+                  <p className="text-xs font-normal opacity-60">Requer aprovação do Facebook</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setProvider('evolution')}
-                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-colors text-left ${
                     provider === 'evolution'
                       ? 'border-green-500 bg-green-50 text-green-700'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   }`}
                 >
-                  🟢 Evolution API
-                  <p className="text-xs font-normal mt-1 opacity-70">Open source, sem aprovação</p>
+                  📱 WhatsApp Normal
+                  <p className="text-xs font-normal mt-1 opacity-80">Rápido e fácil (sem aprovação)</p>
+                  <p className="text-xs font-normal opacity-60">⚠️ Não use para envio em massa</p>
                 </button>
               </div>
             </div>
@@ -347,22 +373,42 @@ export default function WhatsAppConfigPage() {
 
                 {/* Conectado */}
                 {connectionStatus === 'connected' && (
-                  <div className="p-5 bg-green-50 border border-green-200 rounded-xl text-center space-y-2">
-                    <p className="text-4xl">✅</p>
-                    <p className="font-semibold text-green-800 text-lg">WhatsApp conectado!</p>
-                    <p className="text-sm text-green-700">Bot ativo para {evolutionPhone}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => {
-                        if (pollingRef.current) clearInterval(pollingRef.current);
-                        setConnectionStatus('idle');
-                        setQrCode(null);
-                      }}
-                    >
-                      Reconectar / Trocar número
-                    </Button>
+                  <div className="space-y-4">
+                    <div className="p-5 bg-green-50 border border-green-200 rounded-xl text-center space-y-2">
+                      <p className="text-4xl">✅</p>
+                      <p className="font-semibold text-green-800 text-lg">WhatsApp conectado!</p>
+                      <p className="text-sm text-green-700">Bot ativo para {evolutionPhone}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          if (pollingRef.current) clearInterval(pollingRef.current);
+                          setConnectionStatus('idle');
+                          setQrCode(null);
+                        }}
+                      >
+                        Reconectar / Trocar número
+                      </Button>
+                    </div>
+                    <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">⚠️</span>
+                        <div>
+                          <p className="font-semibold text-yellow-900 mb-2">Importante: Uso recomendado</p>
+                          <ul className="text-sm text-yellow-800 space-y-1">
+                            <li>✅ Responder clientes que te contatam</li>
+                            <li>✅ Agendar horários individualmente</li>
+                            <li>✅ Atendimento normal do dia a dia</li>
+                            <li>❌ NÃO enviar mensagens em massa</li>
+                            <li>❌ NÃO fazer campanhas de marketing</li>
+                          </ul>
+                          <p className="text-xs text-yellow-700 mt-2">
+                            Envios massivos podem resultar em bloqueio do número pelo WhatsApp
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
