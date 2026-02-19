@@ -101,21 +101,32 @@ export class AIBot {
       : '';
   }
 
+  private getPersonalityInstructions(personality: string): string {
+    switch (personality) {
+      case 'professional':
+        return 'Seja profissional, formal e direto ao ponto. SEM emojis. Tom corporativo e respeitoso.';
+      case 'casual':
+        return 'Seja bem informal e descontraído. Use gírias e MUITOS emojis. Tom de amigo próximo.';
+      case 'friendly':
+      default:
+        return 'Seja amigável, caloroso e acolhedor. Use emojis moderadamente. Tom próximo mas respeitoso.';
+    }
+  }
+
   private buildSystemPrompt(context: ConversationContext): string {
     const { businessInfo, language, phone, history } = context;
     const botConfig = businessInfo.botConfig;
 
-    console.log('📝 Contexto sendo passado:', {
-      phone,
-      language,
-      historyLength: history.length,
-      historyPreview: history.slice(0, 2),
-      botConfig: botConfig ? { bot_name: botConfig.bot_name, personality: botConfig.bot_personality } : null,
-    });
+    console.log('📝 buildSystemPrompt | historyLength:', history.length, '| botConfig:', botConfig
+      ? `bot_name="${botConfig.bot_name}" personality="${botConfig.bot_personality}" greeting=${!!botConfig.greeting_message}`
+      : 'NULL'
+    );
 
     const conversationHistory = history.length > 0
       ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Assistente'}: ${m.content}`).join('\n')
       : '(sem histórico anterior)';
+
+    const isFirstContact = history.length === 0;
 
     // Variáveis disponíveis para substituição no prompt customizado
     const vars: Record<string, string> = {
@@ -147,63 +158,72 @@ export class AIBot {
     const alwaysConfirm = botConfig?.always_confirm_booking ?? false;
     const askAdditional = botConfig?.ask_for_additional_info ?? false;
 
-    const personalityMap: Record<string, string> = {
-      friendly: 'Tom: amigável e caloroso — use emojis moderadamente.',
-      professional: 'Tom: profissional e formal — evite emojis.',
-      casual: 'Tom: descontraído e informal — use emojis livremente.',
-    };
-    const personalityText = personalityMap[personality] ?? 'Tom: amigável e caloroso.';
+    const personalityInstructions = this.getPersonalityInstructions(personality);
 
-    return `Você é ${botName}, assistente virtual de ${businessInfo.business_name}.
-${personalityText}
-
-IDIOMA: Detecte o idioma da mensagem e responda NO MESMO IDIOMA.
-
-NÚMERO DO CLIENTE: ${phone}
-⚠️ NUNCA peça o telefone — você já tem: ${phone}
+    return `═══════════════════════════════════════════
+IDENTIDADE
+═══════════════════════════════════════════
+Você se chama: ${botName}
+Você representa: ${businessInfo.business_name}
+⚠️ SEMPRE se apresente como "${botName}" — NUNCA use outro nome.
 
 ═══════════════════════════════════════════
-HISTÓRICO DA CONVERSA:
+PERSONALIDADE
+═══════════════════════════════════════════
+${personalityInstructions}
+
+═══════════════════════════════════════════
+IDIOMA E CLIENTE
+═══════════════════════════════════════════
+Detecte o idioma da mensagem e responda NO MESMO IDIOMA.
+Número do cliente: ${phone} — NUNCA peça o telefone, você já tem.
+
+═══════════════════════════════════════════
+PRIMEIRA MENSAGEM
+═══════════════════════════════════════════
+${isFirstContact && greetingMsg
+        ? `Este é o PRIMEIRO CONTATO. Responda EXATAMENTE com:\n"${greetingMsg}"`
+        : isFirstContact
+          ? `Este é o primeiro contato. Apresente-se como ${botName} e pergunte como pode ajudar.`
+          : 'Continue a conversa naturalmente com base no histórico abaixo.'
+      }
+
+═══════════════════════════════════════════
+HISTÓRICO DA CONVERSA
+═══════════════════════════════════════════
 ${conversationHistory}
+
 ═══════════════════════════════════════════
-
-REGRAS DE COMPORTAMENTO INTELIGENTE:
-
-1. USE O HISTÓRICO OBRIGATORIAMENTE:
-   - Cliente já disse o nome? → USE o nome, não peça de novo
-   - Cliente já tem agendamento? → MENCIONE ao cumprimentar
-   - Cliente já conhece serviços? → NÃO liste tudo de novo
-   - Continue a conversa naturalmente, nunca recomece do zero
-
-2. RECONHEÇA CLIENTE RECORRENTE:
-   ❌ ERRADO: "Bem-vindo! Nossos serviços são..."
-   ✅ CORRETO: "Oi [Nome]! Tudo bem? Posso ajudar com algo?"
-
+REGRAS DE COMPORTAMENTO
+═══════════════════════════════════════════
+1. HISTÓRICO: Se cliente já disse o nome → USE, não peça de novo. Continue naturalmente.
+2. RECORRENTE: ❌ "Bem-vindo! Nossos serviços são..." ✅ "Oi [Nome]! Como posso ajudar?"
 3. ${autoBook
-      ? 'AGENDAMENTO DIRETO — confirme sem dizer "verificar disponibilidade".'
-      : 'AGENDAMENTO — pergunte confirmação antes de registrar.'}
-
+        ? 'AGENDAMENTO: Confirme DIRETAMENTE — nunca diga "vou verificar disponibilidade".'
+        : 'AGENDAMENTO: Pergunte confirmação antes de registrar.'}
 4. ${alwaysConfirm
-      ? 'Sempre peça confirmação explícita do cliente antes de registrar.'
-      : 'Confirme o agendamento diretamente após coletar nome, serviço, data e horário.'}
-
+        ? 'CONFIRMAÇÃO OBRIGATÓRIA: SEMPRE pergunte "Confirma o agendamento?" antes de criar.'
+        : 'CONFIRMAÇÃO: Após coletar nome, serviço, data e horário, confirme diretamente.'}
 5. ${askAdditional
-      ? 'Pergunte informações adicionais relevantes (ex: tipo de cabelo, sensibilidade).'
-      : 'Seja direto — não peça informações desnecessárias.'}
-
+        ? 'INFORMAÇÕES: Pergunte sobre preferências, sensibilidades e observações do cliente.'
+        : 'INFORMAÇÕES: Colete apenas o essencial — não prolongue a conversa desnecessariamente.'}
 6. NUNCA diga "te envio confirmação" — esta mensagem JÁ É a confirmação.
-${greetingMsg ? `\nMENSAGEM DE BOAS-VINDAS:\n${greetingMsg}\n` : ''}${unavailableMsg ? `\nQUANDO INDISPONÍVEL:\n${unavailableMsg}\n` : ''}
-INFORMAÇÕES DO NEGÓCIO:
+${unavailableMsg ? `7. QUANDO INDISPONÍVEL: ${unavailableMsg}` : ''}
+
+═══════════════════════════════════════════
+INFORMAÇÕES DO NEGÓCIO
+═══════════════════════════════════════════
 - Nome: ${businessInfo.business_name}
 - Descrição: ${businessInfo.description}
 - Serviços: ${this.formatServices(businessInfo.services)}
 - Horário: ${this.formatSchedule(businessInfo.schedule)}
 - Localização: ${businessInfo.location}
+${businessInfo.ai_instructions ? `\nINSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}` : ''}
 
-${businessInfo.ai_instructions ? `INSTRUÇÕES PERSONALIZADAS:\n${businessInfo.ai_instructions}\n` : ''}
-FORMATO DE AGENDAMENTO:
-Colete: nome completo, serviço, data e horário.
-${confirmationMsg || `Confirme com:\n"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos! 💅"`}`;
+═══════════════════════════════════════════
+FORMATO DE CONFIRMAÇÃO DE AGENDAMENTO
+═══════════════════════════════════════════
+${confirmationMsg || `"Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos! 💅"`}`;
   }
 
   private getLanguageName(code: string): string {
@@ -318,6 +338,12 @@ ${confirmationMsg || `Confirme com:\n"Agendado [Nome]! ✅\n[Data] [Hora] - [Ser
         return acc;
       },
       {}
+    );
+
+    // Log explícito para diagnóstico no Vercel
+    console.log('🤖 Bot config loaded:', botConfig
+      ? JSON.stringify({ bot_name: botConfig.bot_name, personality: botConfig.bot_personality, has_greeting: !!botConfig.greeting_message, auto_book: botConfig.auto_book_if_available })
+      : 'NULL — nenhuma configuração encontrada para user_id=' + businessId
     );
 
     return {
