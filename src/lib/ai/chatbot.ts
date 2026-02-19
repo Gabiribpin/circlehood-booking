@@ -30,21 +30,18 @@ export class AIBot {
     // 1. Buscar contexto do usuário
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Detectar idioma se ainda não foi detectado, e persistir
+    // 2. Usar idioma salvo ou 'pt' como padrão (o prompt detecta dinamicamente)
     if (!context.language) {
-      context.language = await detectLanguage(message);
-      await this.supabase
-        .from('whatsapp_conversations')
-        .update({ language: context.language })
-        .eq('user_id', businessId)
-        .eq('customer_phone', phone);
+      context.language = 'pt';
     }
 
     // 3. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
     // 4. Gerar resposta baseada na intenção
+    console.log('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
     const response = await this.generateResponse(message, intent, context);
+    console.log('✅ Anthropic respondeu para', phone);
 
     // 5. Salvar no histórico (usar conversationId já carregado, sem lookup extra)
     await this.saveToHistory(context.conversationId, message, response);
@@ -259,6 +256,7 @@ Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está r
     userMessage: string,
     botResponse: string
   ) {
+    console.log('💾 saveToHistory iniciado | conversationId:', conversationId);
     if (!conversationId) {
       console.error('saveToHistory: conversationId vazio, abortando');
       return;

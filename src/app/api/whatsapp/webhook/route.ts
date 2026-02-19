@@ -3,6 +3,8 @@ import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
 import { parseEvolutionPhone } from '@/lib/whatsapp/evolution';
 
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   // Verificação do webhook Meta Business (setup inicial)
   const searchParams = request.nextUrl.searchParams;
