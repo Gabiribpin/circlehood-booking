@@ -112,7 +112,13 @@ Quando o cliente quiser agendar, colete:
 2. Serviço desejado
 3. Data e horário preferido
 
-Depois confirme todos os detalhes antes de finalizar. (O telefone já está registrado automaticamente.)`;
+Ao confirmar o agendamento, use este formato:
+"Agendado [Nome]! ✅
+[Data] [Hora] - [Serviço] €[Preço]
+Nos vemos! 💅"
+
+⚠️ NUNCA diga "te envio confirmação" — a própria mensagem JÁ É a confirmação.
+Você PODE dizer "te mando um lembrete antes" se quiser. (O telefone já está registrado automaticamente.)`;
   }
 
   private getLanguageName(code: string): string {
