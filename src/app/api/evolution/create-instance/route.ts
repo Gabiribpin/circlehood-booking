@@ -62,15 +62,15 @@ export async function POST(request: NextRequest) {
       }
       instanceToken = existing.token;
 
-      // Buscar QR code da instância existente
-      const qrRes = await fetch(`${evolutionConfig.baseUrl}/instance/qrcode/${instanceName}`, {
-        headers: { 'apikey': evolutionConfig.globalApiKey },
+      // Buscar QR code da instância existente via /instance/connect
+      const qrRes = await fetch(`${evolutionConfig.baseUrl}/instance/connect/${instanceName}`, {
+        headers: { 'apikey': instanceToken },
       });
-      if (qrRes.ok) {
-        const qrData = await qrRes.json();
-        qrCode = qrData?.base64 ?? null;
-      }
+      const qrRaw = await qrRes.json();
+      console.log('[create-instance] connect response:', JSON.stringify(qrRaw));
+      qrCode = qrRaw?.base64 ?? qrRaw?.qrcode?.base64 ?? qrRaw?.code ?? null;
     } else {
+      console.log('[create-instance] createData:', JSON.stringify(createData));
       instanceToken = createData?.hash?.apikey ?? createData?.instance?.token ?? '';
       qrCode = createData?.qrcode?.base64 ?? null;
     }
