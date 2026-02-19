@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 import { AlertsWidget } from './components/alerts-widget';
 import { RegionBroadcast } from '@/components/dashboard/region-broadcast';
+import { NextStepsCard } from '@/components/dashboard/next-steps-card';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -245,6 +246,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Card "Comece a Divulgar" — aparece quando onboarding 5/5 */}
+      {!showOnboarding && <NextStepsCard />}
 
       {/* Alertas CRM */}
       <AlertsWidget />

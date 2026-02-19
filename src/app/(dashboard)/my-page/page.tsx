@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { MyPageEditor } from '@/components/dashboard/my-page-editor';
+import { QrCodeDownload } from '@/components/dashboard/qr-code-download';
 
 export default async function MyPageEditorPage() {
   const supabase = await createClient();
@@ -25,9 +26,12 @@ export default async function MyPageEditorPage() {
     .order('sort_order', { ascending: true });
 
   return (
-    <MyPageEditor
-      professional={professional}
-      services={services || []}
-    />
+    <div>
+      <QrCodeDownload slug={professional.slug} businessName={professional.business_name} />
+      <MyPageEditor
+        professional={professional}
+        services={services || []}
+      />
+    </div>
   );
 }
