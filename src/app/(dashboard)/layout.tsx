@@ -19,7 +19,6 @@ import {
   ImageIcon,
   MessageSquare,
   Zap,
-  Plug,
   Phone,
 } from 'lucide-react';
 
@@ -34,7 +33,6 @@ const NAV_ITEMS = [
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/automations', label: 'Automações', icon: Zap },
-  { href: '/integrations', label: 'Integrações', icon: Plug },
   { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/gallery', label: 'Galeria', icon: ImageIcon },

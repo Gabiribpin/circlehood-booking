@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useId } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2 } from 'lucide-react';
@@ -27,6 +27,12 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uniqueId = useId();
+
+  function triggerFileInput() {
+    inputRef.current?.click();
+  }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -80,14 +86,15 @@ export function ImageUpload({
   return (
     <div className={className}>
       <input
+        ref={inputRef}
         type="file"
         accept={accept}
         onChange={handleFileSelect}
         disabled={uploading}
         className="hidden"
-        id={`upload-${bucket}`}
+        id={`upload-${uniqueId}`}
       />
-      <label htmlFor={`upload-${bucket}`} className="cursor-pointer">
+      <div onClick={triggerFileInput} className="cursor-pointer">
         {children || (
           <Button
             type="button"
@@ -105,7 +112,7 @@ export function ImageUpload({
             </span>
           </Button>
         )}
-      </label>
+      </div>
       {(preview || currentImageUrl) && (
         <p className="text-xs text-green-600 dark:text-green-400 mt-2">
           ✓ Imagem atualizada
