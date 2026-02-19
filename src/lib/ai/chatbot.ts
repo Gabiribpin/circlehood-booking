@@ -14,14 +14,31 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-// Sugere primeiro slot disponível (09:00–19:00) sem conflito com bookings existentes
+// Sugere primeiro slot disponível (09:00–19:00) sem conflito com bookings existentes.
+// Se date === hoje (Dublin), ignora horários que já passaram (+1h de margem).
+// Retorna null se não houver slot disponível para este dia.
 function suggestAlternative(
+  date: string,
   existingBookings: Array<{ start_time: string; end_time?: string | null }>,
   durationMinutes: number
-): string {
+): string | null {
+  // Hora atual em Dublin
+  const nowDublin = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const todayStr = nowDublin.toISOString().split('T')[0];
+  const isToday = date === todayStr;
+
+  // Horário mínimo: se hoje, hora atual + 1h de margem (arredondado para cima na hora cheia)
+  const minMinutes = isToday ? (nowDublin.getHours() + 1) * 60 : 0;
+
+  if (isToday) {
+    console.log(`⏰ Hoje Dublin ${nowDublin.getHours()}:${String(nowDublin.getMinutes()).padStart(2, '0')} → mínimo ${Math.floor(minMinutes / 60)}:00`);
+  }
+
   const slots = Array.from({ length: 11 }, (_, i) => `${String(9 + i).padStart(2, '0')}:00`);
   for (const slot of slots) {
     const slotStart = timeToMinutes(slot);
+    if (slotStart < minMinutes) continue; // horário já passou
+
     const slotEnd = slotStart + durationMinutes;
     const hasConflict = existingBookings.some((b) => {
       const bStart = timeToMinutes(b.start_time);
@@ -30,7 +47,7 @@ function suggestAlternative(
     });
     if (!hasConflict) return slot;
   }
-  return 'outro dia';
+  return null; // sem slot disponível neste dia
 }
 
 interface ConversationContext {
@@ -287,12 +304,39 @@ export class AIBot {
           const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
           if (reqStart < bEnd && reqEnd > bStart) {
             const occupied = b.start_time.slice(0, 5);
-            const suggested = suggestAlternative(existingBookings, duration);
             console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
+
+            // Tentar horário hoje (respeitando hora atual)
+            const todaySlot = suggestAlternative(bookingDate, existingBookings, duration);
+            if (todaySlot) {
+              return {
+                success: false,
+                error: 'unavailable',
+                message: `Desculpe, já tenho um compromisso às ${occupied}. Que tal às ${todaySlot} ainda hoje?`,
+              };
+            }
+
+            // Sem slot hoje → tentar amanhã
+            const tomorrowDate = new Date(bookingDate + 'T12:00:00Z');
+            tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+            const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+            const { data: tomorrowBookings } = await this.supabase
+              .from('bookings')
+              .select('start_time, end_time')
+              .eq('professional_id', professionalId)
+              .eq('booking_date', tomorrowStr)
+              .neq('status', 'cancelled')
+              .neq('status', 'completed');
+
+            const tomorrowSlot = suggestAlternative(tomorrowStr, tomorrowBookings ?? [], duration) ?? '09:00';
+            const tomorrowLabel = new Date(tomorrowStr + 'T12:00:00Z')
+              .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
             return {
               success: false,
               error: 'unavailable',
-              message: `Desculpe, já tenho um compromisso às ${occupied}. Que tal às ${suggested}?`,
+              message: `Desculpe, já tenho um compromisso às ${occupied} e não tenho mais horários hoje. Que tal ${tomorrowLabel} às ${tomorrowSlot}?`,
             };
           }
         }
