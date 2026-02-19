@@ -14,40 +14,46 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-// Sugere primeiro slot disponível (09:00–19:00) sem conflito com bookings existentes.
+// Sugere primeiro slot disponível dentro do expediente real do profissional.
 // Se date === hoje (Dublin), ignora horários que já passaram (+1h de margem).
 // Retorna null se não houver slot disponível para este dia.
 function suggestAlternative(
   date: string,
   existingBookings: Array<{ start_time: string; end_time?: string | null }>,
-  durationMinutes: number
+  durationMinutes: number,
+  workStartTime: string, // ex: "09:00"
+  workEndTime: string    // ex: "18:00"
 ): string | null {
+  const workStartMins = timeToMinutes(workStartTime);
+  const workEndMins = timeToMinutes(workEndTime);
+
   // Hora atual em Dublin
   const nowDublin = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
   const todayStr = nowDublin.toISOString().split('T')[0];
   const isToday = date === todayStr;
 
-  // Horário mínimo: se hoje, hora atual + 1h de margem (arredondado para cima na hora cheia)
-  const minMinutes = isToday ? (nowDublin.getHours() + 1) * 60 : 0;
+  // Horário mínimo: se hoje, próxima hora cheia + 1h de margem; senão, início do expediente
+  const minMinutes = isToday
+    ? Math.ceil((nowDublin.getHours() * 60 + nowDublin.getMinutes() + 60) / 60) * 60
+    : workStartMins;
 
   if (isToday) {
-    console.log(`⏰ Hoje Dublin ${nowDublin.getHours()}:${String(nowDublin.getMinutes()).padStart(2, '0')} → mínimo ${Math.floor(minMinutes / 60)}:00`);
+    console.log(`⏰ Hoje Dublin ${nowDublin.getHours()}:${String(nowDublin.getMinutes()).padStart(2, '0')} → mínimo ${Math.floor(minMinutes / 60)}:00 | expediente ${workStartTime}–${workEndTime}`);
   }
 
-  const slots = Array.from({ length: 11 }, (_, i) => `${String(9 + i).padStart(2, '0')}:00`);
-  for (const slot of slots) {
-    const slotStart = timeToMinutes(slot);
-    if (slotStart < minMinutes) continue; // horário já passou
-
-    const slotEnd = slotStart + durationMinutes;
+  // Iterar slots de 60 em 60 min dentro do expediente
+  for (let slotMins = workStartMins; slotMins + durationMinutes <= workEndMins; slotMins += 60) {
+    if (slotMins < minMinutes) continue;
+    const slotEnd = slotMins + durationMinutes;
+    const slot = `${String(Math.floor(slotMins / 60)).padStart(2, '0')}:${String(slotMins % 60).padStart(2, '0')}`;
     const hasConflict = existingBookings.some((b) => {
       const bStart = timeToMinutes(b.start_time);
       const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
-      return slotStart < bEnd && slotEnd > bStart;
+      return slotMins < bEnd && slotEnd > bStart;
     });
     if (!hasConflict) return slot;
   }
-  return null; // sem slot disponível neste dia
+  return null;
 }
 
 interface ConversationContext {
@@ -306,8 +312,22 @@ export class AIBot {
             const occupied = b.start_time.slice(0, 5);
             console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
 
-            // Tentar horário hoje (respeitando hora atual)
-            const todaySlot = suggestAlternative(bookingDate, existingBookings, duration);
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+            // Buscar expediente de hoje
+            const todayDayName = dayNames[new Date(bookingDate + 'T12:00:00Z').getUTCDay()];
+            const { data: todayWH } = await this.supabase
+              .from('working_hours')
+              .select('start_time, end_time')
+              .eq('professional_id', professionalId)
+              .eq('day_of_week', todayDayName)
+              .eq('is_available', true)
+              .maybeSingle();
+
+            const todaySlot = todayWH
+              ? suggestAlternative(bookingDate, existingBookings, duration, todayWH.start_time, todayWH.end_time)
+              : null;
+
             if (todaySlot) {
               return {
                 success: false,
@@ -320,18 +340,35 @@ export class AIBot {
             const tomorrowDate = new Date(bookingDate + 'T12:00:00Z');
             tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
             const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+            const tomorrowDayName = dayNames[tomorrowDate.getUTCDay()];
 
-            const { data: tomorrowBookings } = await this.supabase
-              .from('bookings')
-              .select('start_time, end_time')
-              .eq('professional_id', professionalId)
-              .eq('booking_date', tomorrowStr)
-              .neq('status', 'cancelled')
-              .neq('status', 'completed');
+            const [{ data: tomorrowWH }, { data: tomorrowBookings }] = await Promise.all([
+              this.supabase
+                .from('working_hours')
+                .select('start_time, end_time')
+                .eq('professional_id', professionalId)
+                .eq('day_of_week', tomorrowDayName)
+                .eq('is_available', true)
+                .maybeSingle(),
+              this.supabase
+                .from('bookings')
+                .select('start_time, end_time')
+                .eq('professional_id', professionalId)
+                .eq('booking_date', tomorrowStr)
+                .neq('status', 'cancelled')
+                .neq('status', 'completed'),
+            ]);
 
-            const tomorrowSlot = suggestAlternative(tomorrowStr, tomorrowBookings ?? [], duration) ?? '09:00';
-            const tomorrowLabel = new Date(tomorrowStr + 'T12:00:00Z')
-              .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+            if (!tomorrowWH) {
+              return {
+                success: false,
+                error: 'unavailable',
+                message: `Desculpe, já tenho um compromisso às ${occupied} e não tenho mais horários hoje. Amanhã não atendo. Podemos agendar para outro dia?`,
+              };
+            }
+
+            const tomorrowSlot = suggestAlternative(tomorrowStr, tomorrowBookings ?? [], duration, tomorrowWH.start_time, tomorrowWH.end_time) ?? tomorrowWH.start_time.slice(0, 5);
+            const tomorrowLabel = tomorrowDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
             return {
               success: false,
