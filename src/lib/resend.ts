@@ -99,10 +99,17 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
     );
   }
 
-  try {
-    await Promise.allSettled(promises);
-  } catch {
-    // Email failures should not break the booking flow
-    console.error('Failed to send booking emails');
-  }
+  const results = await Promise.allSettled(promises);
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.error(`[Resend] Email ${i === 0 ? 'professional' : 'client'} failed:`, result.reason);
+    } else {
+      const val = result.value as any;
+      if (val?.error) {
+        console.error(`[Resend] Email ${i === 0 ? 'professional' : 'client'} API error:`, JSON.stringify(val.error));
+      } else {
+        console.log(`[Resend] Email ${i === 0 ? 'professional' : 'client'} sent OK, id:`, val?.data?.id);
+      }
+    }
+  });
 }

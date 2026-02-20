@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmationEmail } from '@/lib/resend';
+import { WhatsAppClient } from '@/lib/whatsapp/client';
+import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Get professional info for email
+  // Get professional info for email + whatsapp
   const { data: professional } = await supabase
     .from('professionals')
     .select('user_id, business_name, currency')
@@ -121,27 +123,66 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (professional) {
-    // Get professional's auth email
-    const { data: userData } = await supabase.auth.admin.getUserById(
-      professional.user_id
-    );
+    // 1. Email de confirmação (fire and forget)
+    supabase.auth.admin.getUserById(professional.user_id).then(({ data: userData }) => {
+      if (userData?.user?.email) {
+        sendBookingConfirmationEmail({
+          clientName: client_name,
+          clientEmail: client_email || undefined,
+          professionalEmail: userData.user.email,
+          businessName: professional.business_name,
+          serviceName: service.name,
+          servicePrice: service.price,
+          currency: professional.currency,
+          bookingDate: booking_date,
+          startTime: start_time,
+          endTime: end_time,
+        });
+      }
+    }).catch((err) => console.error('[Booking] Failed to fetch user for email:', err));
 
-    if (userData?.user?.email) {
-      // Fire and forget - don't block response
-      sendBookingConfirmationEmail({
-        clientName: client_name,
-        clientEmail: client_email || undefined,
-        professionalEmail: userData.user.email,
-        businessName: professional.business_name,
-        serviceName: service.name,
-        servicePrice: service.price,
-        currency: professional.currency,
-        bookingDate: booking_date,
-        startTime: start_time,
-        endTime: end_time,
-      }).catch(() => {
-        console.error('Failed to send booking emails');
-      });
+    // 2. WhatsApp de confirmação (fire and forget)
+    if (client_phone) {
+      (async () => {
+        try {
+          const { data: config } = await supabase
+            .from('whatsapp_config')
+            .select('provider, phone_number_id, access_token, evolution_api_url, evolution_api_key, evolution_instance')
+            .eq('user_id', professional.user_id)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (!config) return;
+
+          const formattedDate = booking_date.split('-').reverse().join('/');
+          const formattedStart = start_time.slice(0, 5);
+          const symbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
+          const symbol = symbols[professional.currency] || professional.currency;
+          const formattedPrice = `${symbol}${Number(service.price).toFixed(0)}`;
+
+          const message =
+            `Olá ${client_name}! Seu agendamento foi confirmado 🎉\n` +
+            `\n📅 ${formattedDate} às ${formattedStart}` +
+            `\n✂️ ${service.name} — ${formattedPrice}` +
+            `\n\nNos vemos em breve! 😊`;
+
+          if (config.provider === 'evolution' && config.evolution_api_url && config.evolution_api_key && config.evolution_instance) {
+            await sendEvolutionMessage(client_phone, message, {
+              apiUrl: config.evolution_api_url,
+              apiKey: config.evolution_api_key,
+              instance: config.evolution_instance,
+            });
+          } else if (config.phone_number_id && config.access_token) {
+            const whatsapp = new WhatsAppClient({
+              phoneNumberId: config.phone_number_id,
+              accessToken: config.access_token,
+            });
+            await whatsapp.sendMessage(client_phone, message);
+          }
+        } catch (err) {
+          console.error('[Booking] WhatsApp confirmation failed:', err);
+        }
+      })();
     }
   }
 
