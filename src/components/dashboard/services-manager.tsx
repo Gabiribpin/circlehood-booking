@@ -306,8 +306,9 @@ export function ServicesManager({
                 <Input
                   id="duration"
                   type="number"
-                  min="15"
-                  step="15"
+                  min="1"
+                  max="1440"
+                  step="1"
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(e.target.value)}
                   required
