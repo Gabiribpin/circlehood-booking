@@ -41,6 +41,7 @@ interface BookingWithService {
   cancellation_reason?: string | null;
   cancelled_by?: string | null;
   cancelled_at?: string | null;
+  completed_at?: string | null;
   created_at: string;
   services: { name: string; price: number } | null;
 }
@@ -140,6 +141,13 @@ function BookingCard({
               </div>
             )}
 
+            {/* Info de conclusão */}
+            {booking.status === 'completed' && booking.completed_at && (
+              <p className="text-xs text-muted-foreground mt-1">
+                ✅ Concluído em {new Date(booking.completed_at).toLocaleDateString('pt-BR')}
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 mt-2">
               {booking.client_phone && (
                 <>
@@ -214,7 +222,11 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
   const [cancelling, setCancelling] = useState(false);
 
   async function handleStatusChange(bookingId: string, status: string) {
-    await supabase.from('bookings').update({ status }).eq('id', bookingId);
+    const updateData: Record<string, any> = { status };
+    if (status === 'completed') {
+      updateData.completed_at = new Date().toISOString();
+    }
+    await supabase.from('bookings').update(updateData).eq('id', bookingId);
     router.refresh();
   }
 

@@ -32,6 +32,7 @@ export interface Service {
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  lifetime_days?: number | null;
 }
 
 export interface WorkingHours {

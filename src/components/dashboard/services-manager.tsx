@@ -62,6 +62,7 @@ export function ServicesManager({
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [price, setPrice] = useState('');
   const [serviceLocation, setServiceLocation] = useState('in_salon');
+  const [lifetimeDays, setLifetimeDays] = useState('');
 
   function openCreate() {
     setEditingService(null);
@@ -70,6 +71,7 @@ export function ServicesManager({
     setDurationMinutes('60');
     setPrice('');
     setServiceLocation('in_salon');
+    setLifetimeDays('');
     setDialogOpen(true);
   }
 
@@ -80,6 +82,7 @@ export function ServicesManager({
     setDurationMinutes(String(service.duration_minutes));
     setPrice(String(service.price));
     setServiceLocation((service as any).service_location || 'in_salon');
+    setLifetimeDays(service.lifetime_days ? String(service.lifetime_days) : '');
     setDialogOpen(true);
   }
 
@@ -94,6 +97,7 @@ export function ServicesManager({
       price: parseFloat(price),
       professional_id: professionalId,
       service_location: serviceLocation,
+      lifetime_days: lifetimeDays ? parseInt(lifetimeDays) : null,
     };
 
     if (editingService) {
@@ -208,6 +212,11 @@ export function ServicesManager({
                         {formatPrice(service.price, currency)}
                       </span>
                     </div>
+                    {service.lifetime_days && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        🔁 Refazer a cada {service.lifetime_days} dias
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
@@ -330,6 +339,25 @@ export function ServicesManager({
                   <SelectItem value="both">Ambos (cliente escolhe)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lifetime">Vida útil (opcional)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="lifetime"
+                  type="number"
+                  min="1"
+                  max="365"
+                  placeholder="Ex: 20"
+                  value={lifetimeDays}
+                  onChange={(e) => setLifetimeDays(e.target.value)}
+                  className="w-28"
+                />
+                <span className="text-sm text-muted-foreground">dias</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cliente recebe lembrete para remarcar após este período
+              </p>
             </div>
             <DialogFooter>
               <Button
