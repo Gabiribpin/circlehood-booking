@@ -601,9 +601,9 @@ function ManageView() {
           <CardDescription>Formato do arquivo (primeira linha é o cabeçalho):</CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,notas
-Maria Silva,+5511999999999,maria@exemplo.com,Cliente VIP
-Ana Costa,+5511988888888,ana@exemplo.com,`}</pre>
+          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,aniversario,notas
+Maria Silva,+5511999999999,maria@exemplo.com,15/05/1990,Cliente VIP
+Ana Costa,+353851234567,ana@exemplo.com,,`}</pre>
         </CardContent>
       </Card>
     </div>
