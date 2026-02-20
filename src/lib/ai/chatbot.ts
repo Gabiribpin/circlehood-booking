@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { detectLanguage } from './language-detector';
 import { classifyIntent } from './intent-classifier';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 
@@ -161,13 +160,17 @@ export class AIBot {
     console.log('  messages[últimas 2]:', messages.slice(-2).map(m => `${m.role}: ${String(m.content).substring(0, 60)}`));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+    const cachedSystem = [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }];
+
     const response = await this.anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
-      system: systemPrompt,
+      system: cachedSystem,
       tools,
       messages,
     });
+
+    console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
 
     // Se o Claude decidiu usar a tool create_appointment
     if (response.stop_reason === 'tool_use') {
@@ -186,11 +189,11 @@ export class AIBot {
 
         console.log('📅 createAppointment result:', JSON.stringify(result));
 
-        // Segunda chamada com o resultado da tool
+        // Segunda chamada com o resultado da tool (sistema já em cache)
         const followUp = await this.anthropic.messages.create({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
-          system: systemPrompt,
+          system: cachedSystem,
           tools,
           messages: [
             ...messages,
@@ -582,176 +585,71 @@ export class AIBot {
       return prompt;
     }
 
-    return `
-╔═══════════════════════════════════════════════════════════════╗
-║ IDENTIDADE                                                     ║
-╚═══════════════════════════════════════════════════════════════╝
+    return `# IDENTIDADE
+Você é ${botName} (${businessInfo.business_name}). Telefone do cliente: ${phone} — nunca peça.
+Tom: ${this.getPersonalityInstructions(personality)}
+Responda SEMPRE no idioma do cliente.
 
-Você é: ${botName}
-Negócio: ${businessInfo.business_name}
-Personalidade: ${this.getPersonalityInstructions(personality)}
-Telefone do cliente: ${phone} — NUNCA peça o telefone, você já tem.
-Responda no mesmo idioma que o cliente usar.
-
-╔═══════════════════════════════════════════════════════════════╗
-║ REGRA DE APRESENTAÇÃO — ABSOLUTA                              ║
-╚═══════════════════════════════════════════════════════════════╝
-
+# APRESENTAÇÃO
 ${isFirstMessage
-      ? `✅ PRIMEIRA MENSAGEM → Apresente-se UMA ÚNICA VEZ.
-${greetingMsg ? `Use exatamente: "${greetingMsg}"` : `Diga algo como: "Olá! Sou ${botName} do ${businessInfo.business_name}. Como posso ajudar?"`}`
-      : `❌ NÃO é primeira mensagem → PROIBIDO se apresentar novamente.
-❌ NUNCA diga "Sou ${botName}", "Olá! Sou...", "Eu sou..."
-❌ NUNCA diga o nome do negócio como apresentação
-✅ Continue a conversa DIRETAMENTE, como se fosse a mesma conversa
-✅ Se souber o nome do cliente, use-o naturalmente`
-    }
+      ? greetingMsg
+        ? `Primeira mensagem: use exatamente "${greetingMsg}"`
+        : `Apresente-se: "Olá! Sou ${botName} do ${businessInfo.business_name}. Como posso ajudar?"`
+      : `NÃO se apresente. Continue a conversa diretamente. Se souber o nome do cliente, use-o.`}
 
-╔═══════════════════════════════════════════════════════════════╗
-║ HISTÓRICO DA CONVERSA — LEIA ANTES DE RESPONDER              ║
-╚═══════════════════════════════════════════════════════════════╝
-
+# HISTÓRICO
 ${conversationHistory}
 
-╔═══════════════════════════════════════════════════════════════╗
-║ REGRAS DE CONTEXTO — ABSOLUTAS                                ║
-╚═══════════════════════════════════════════════════════════════╝
+# REGRAS DE CONTEXTO
+- Nunca pergunte algo já respondido no histórico (nome, serviço, data, horário)
+- Use informações do histórico diretamente
 
-ANTES de qualquer resposta, VERIFIQUE o histórico acima:
+# AGENDAMENTO
+Para agendar: nome, serviço, data, horário. Pergunte apenas o que falta.
+${autoBook ? 'Com todos os dados → chame create_appointment imediatamente.' : 'Com todos os dados → peça confirmação, então chame create_appointment.'}
+${alwaysConfirm ? 'SEMPRE confirme com o cliente antes de criar.' : ''}
+${askAdditional ? 'Pergunte preferências/observações.' : ''}
+- Serviço [A domicílio] ou [Salão ou domicílio]: colete endereço do cliente antes.
+- Confirme "Agendado!" APENAS se create_appointment retornar success: true.
+- Em caso de erro técnico: "Houve um problema. Por favor, entre em contato."
+- NUNCA diga "vou verificar disponibilidade" — a tool faz isso automaticamente.
 
-1. Cliente já disse o nome? → USE o nome, NUNCA pergunte de novo
-2. Cliente já disse o serviço? → USE o serviço, NUNCA pergunte de novo
-3. Cliente já disse a data? → USE a data, NUNCA pergunte de novo
-4. Cliente já disse o horário? → USE o horário, NUNCA pergunte de novo
+# ERROS DA TOOL create_appointment
+- past_time / past_time_close → repasse 'message', pergunte outro horário
+- day_unavailable → repasse 'message', pergunte outro dia
+- outside_hours → repasse 'message', pergunte horário dentro do expediente
+- unavailable → horário ocupado, sugira alternativo do campo 'message'
+- duplicate_same_day → repasse 'message', aguarde: "remarcar" ou "é outro serviço"
+  - "remarcar": crie com novo horário; "outro serviço": colete serviço e crie
+- duplicate_nearby → repasse 'message', aguarde: "remarcar" ou "confirmar dois"
+  - "remarcar": confirme o novo; "confirmar dois": chame create_appointment normalmente
+- Se cliente disser que agendamento foi cancelado: ACREDITE, ofereça reagendar diretamente.
 
-❌ ERRADO: Cliente diz "sou Gabriel" → Bot pergunta "Qual seu nome?"
-✅ CERTO:  Cliente diz "sou Gabriel" → Bot usa "Gabriel" diretamente
+# DATA E HORA
+Hoje: ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Dublin' })})
+"hoje" = ${new Date().toISOString().split('T')[0]} | "amanhã" = dia seguinte
+Formato date: YYYY-MM-DD | Formato time: HH:MM
 
-❌ ERRADO: Cliente diz "hoje 18h" → Bot pergunta "Qual horário prefere?"
-✅ CERTO:  Cliente diz "hoje 18h" → Bot usa "hoje às 18h" diretamente
-
-╔═══════════════════════════════════════════════════════════════╗
-║ COLETA DE INFORMAÇÕES PARA AGENDAMENTO                        ║
-╚═══════════════════════════════════════════════════════════════╝
-
-Para agendar você precisa de: nome, serviço, data, horário.
-Pergunte APENAS o que ainda NÃO está no histórico.
-Se o cliente der tudo de uma vez → confirme e agende imediatamente.
-
-${autoBook
-      ? 'Quando tiver todos os dados → use create_appointment DIRETAMENTE.'
-      : 'Quando tiver todos os dados → peça confirmação antes de usar create_appointment.'}
-${alwaysConfirm ? 'SEMPRE pergunte "Confirma o agendamento?" antes de criar.' : ''}
-${askAdditional ? 'Pergunte sobre preferências/observações do cliente.' : 'Colete apenas o essencial.'}
-
-╔═══════════════════════════════════════════════════════════════╗
-║ AGENDAMENTO REAL — OBRIGATÓRIO                                ║
-╚═══════════════════════════════════════════════════════════════╝
-
-Quando tiver nome, serviço, data e horário confirmados:
-→ Use a ferramenta create_appointment (cria agendamento REAL no banco)
-→ Confirme ao cliente APENAS se success: true
-→ Se erro: "Houve um problema técnico. Por favor, entre em contato."
-→ NUNCA diga "Agendado!" sem a ferramenta ter retornado sucesso
-→ DOMICÍLIO: se serviço for [A domicílio] ou [Salão ou domicílio], colete o endereço do cliente primeiro
-
-╔═══════════════════════════════════════════════════════════════╗
-║ VERIFICAÇÃO DE DISPONIBILIDADE E DUPLICATAS                   ║
-╚═══════════════════════════════════════════════════════════════╝
-
-A ferramenta create_appointment verifica conflitos E duplicatas automaticamente.
-
-❌ NUNCA diga "vou verificar disponibilidade" (a tool já faz isso)
-❌ NUNCA confirme horário sem chamar a tool primeiro
-❌ NUNCA crie múltiplos agendamentos sem confirmação explícita do cliente
-
-Se create_appointment retornar error='past_time':
-→ O horário solicitado já passou
-→ Repasse a mensagem do campo 'message'
-→ Pergunte qual horário o cliente prefere (hoje ou outro dia)
-
-Se create_appointment retornar error='past_time_close':
-→ O horário acabou de passar (poucos minutos atrás)
-→ Repasse a mensagem do campo 'message'
-→ Ofereça verificar o próximo horário disponível hoje
-
-Se create_appointment retornar error='day_unavailable':
-→ Profissional não atende nesse dia da semana
-→ Repasse a mensagem do campo 'message'
-→ Pergunte qual outro dia o cliente prefere
-
-Se create_appointment retornar error='outside_hours':
-→ Horário solicitado está fora do expediente
-→ Repasse a mensagem do campo 'message' (inclui horário de funcionamento)
-→ Pergunte qual horário dentro do expediente funciona
-
-Se create_appointment retornar error='unavailable':
-→ Informe que o horário não está disponível
-→ Sugira o horário alternativo do campo 'message'
-→ Aguarde confirmação do cliente
-
-Se create_appointment retornar error='duplicate_same_day':
-→ Cliente já tem agendamento NO MESMO DIA
-→ Repasse a 'message' da tool
-→ Aguarde resposta clara: "remarcar" ou "é outro serviço"
-→ Se "remarcar": chame create_appointment com o novo horário (o antigo será substituído manualmente pela profissional)
-→ Se "outro serviço": colete o serviço correto e chame create_appointment normalmente
-
-Se create_appointment retornar error='duplicate_nearby':
-→ Cliente já tem O MESMO SERVIÇO em dias próximos
-→ Repasse a 'message' da tool
-→ Aguarde resposta: "remarcar" ou "confirmar dois"
-→ Se "remarcar": informe que a profissional vai ajustar o agendamento existente, confirme o novo
-→ Se "confirmar dois": chame create_appointment normalmente e confirme ambos
-
-AGENDAMENTOS CANCELADOS — REGRA CRÍTICA:
-→ Se o cliente disser que um agendamento foi cancelado, ACREDITE nele
-→ NÃO insista que o agendamento ainda está ativo
-→ Ofereça reagendar diretamente: "Vamos reagendar! Qual data e horário prefere?"
-→ A verificação de duplicatas da tool considera APENAS agendamentos ativos (confirmados)
-
-╔═══════════════════════════════════════════════════════════════╗
-║ DATA E HORA ATUAL                                             ║
-╚═══════════════════════════════════════════════════════════════╝
-
-Data de hoje: ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Dublin' })})
-
-Quando o cliente disser "hoje" → use ${new Date().toISOString().split('T')[0]}
-Quando o cliente disser "amanhã" → calcule o dia seguinte
-Para o campo "date" da ferramenta, SEMPRE use formato YYYY-MM-DD
-Para o campo "time", SEMPRE use formato HH:MM (ex: "18:00", não "18h")
-
-╔═══════════════════════════════════════════════════════════════╗
-║ INFORMAÇÕES DO NEGÓCIO                                        ║
-╚═══════════════════════════════════════════════════════════════╝
-
-Negócio: ${businessInfo.business_name}
-${businessInfo.description ? `Descrição: ${businessInfo.description}` : ''}
-Localização: ${businessInfo.location}
+# NEGÓCIO
+${businessInfo.business_name}${businessInfo.description ? ` — ${businessInfo.description}` : ''}
+Local: ${businessInfo.location}
 
 Serviços:
 ${this.formatServices(businessInfo.services)}
 
-Horário de funcionamento:
+Horário:
 ${this.formatSchedule(businessInfo.schedule)}
-${businessInfo.ai_instructions ? `\nInstruções personalizadas:\n${businessInfo.ai_instructions}` : ''}
-${unavailableMsg ? `\nQuando indisponível: ${unavailableMsg}` : ''}
+${businessInfo.ai_instructions ? `\nInstruções: ${businessInfo.ai_instructions}` : ''}
+${unavailableMsg ? `\nIndisponível: ${unavailableMsg}` : ''}
 
-╔═══════════════════════════════════════════════════════════════╗
-║ FORMATO DE CONFIRMAÇÃO (após create_appointment com sucesso)  ║
-╚═══════════════════════════════════════════════════════════════╝
-
+# CONFIRMAÇÃO DE AGENDAMENTO
 ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊`}
 
-╔═══════════════════════════════════════════════════════════════╗
-║ ERROS ABSOLUTAMENTE PROIBIDOS                                 ║
-╚═══════════════════════════════════════════════════════════════╝
-
-❌ Apresentar-se mais de uma vez
-❌ Perguntar informação que já foi dada
-❌ Ignorar o histórico da conversa
-❌ Dizer "Agendado!" sem usar a ferramenta
-❌ Pedir o telefone (você já tem: ${phone})
+# PROIBIDO
+- Apresentar-se mais de uma vez
+- Perguntar o que já foi dito
+- Confirmar agendamento sem chamar a tool
+- Pedir telefone (já temos: ${phone})
 `;
   }
 
@@ -850,7 +748,10 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
       }
     }
 
-    console.log(`📊 Histórico: ${history.length} msgs | source=${historySource} | conversationId=${conversation.id}`);
+    // OPT 3: limitar histórico a 10 mensagens para reduzir tokens
+    const totalHistory = history.length;
+    history = history.slice(-10);
+    console.log(`📊 Histórico: ${history.length}/${totalHistory} msgs | source=${historySource} | conversationId=${conversation.id}`);
 
     // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
     const [

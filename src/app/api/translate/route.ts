@@ -18,16 +18,15 @@ export async function POST(request: NextRequest) {
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
 
-    const translations: Record<string, string> = {};
-
-    for (const targetLang of targetLanguages) {
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [
-          {
-            role: 'user',
-            content: `Translate this text from ${from} to ${targetLang}.
+    const results = await Promise.all(
+      targetLanguages.map(async (targetLang) => {
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          messages: [
+            {
+              role: 'user',
+              content: `Translate this text from ${from} to ${targetLang}.
 Keep the same tone and style. Preserve any {variables} exactly as they are.
 If the text contains HTML tags, preserve them exactly — only translate the visible text content inside the tags.
 Return ONLY the translated text, with no explanations or extra comments.
@@ -36,13 +35,18 @@ Text to translate:
 ${text}
 
 Translation:`,
-          },
-        ],
-      });
+            },
+          ],
+        });
+        return {
+          lang: targetLang,
+          text: response.content[0].type === 'text' ? response.content[0].text.trim() : '',
+        };
+      })
+    );
 
-      translations[targetLang] =
-        response.content[0].type === 'text' ? response.content[0].text.trim() : '';
-    }
+    const translations: Record<string, string> = {};
+    results.forEach(({ lang, text: t }) => { translations[lang] = t; });
 
     return Response.json(translations);
   } catch (error) {
