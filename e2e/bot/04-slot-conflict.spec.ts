@@ -47,13 +47,17 @@ function incrementTime(time: string, minutes: number): string {
 }
 
 test.describe('Bot — Conflito de Horário', () => {
-  let monday: string;
+  // Usa quinta-feira da PRÓXIMA semana (+7 dias) — bem menos provável ter agenda cheia
+  let testDate: string;
   let day: number;
   let month: number;
 
   test.beforeAll(() => {
-    monday = nextWeekday(1);
-    [day, month] = monday.split('-').slice(1).reverse().map(Number);
+    const thursday = nextWeekday(4); // próxima quinta
+    const d = new Date(thursday);
+    d.setDate(d.getDate() + 7); // + 1 semana
+    testDate = d.toISOString().split('T')[0];
+    [day, month] = testDate.split('-').slice(1).reverse().map(Number);
   });
 
   test.beforeEach(async () => {
@@ -61,21 +65,21 @@ test.describe('Bot — Conflito de Horário', () => {
   });
 
   test.afterEach(async () => {
-    await cleanSeedBookings(monday);
+    await cleanSeedBookings(testDate);
   });
 
   test('rejeita slot ocupado e NÃO cria booking duplicado', async ({ request }) => {
     test.setTimeout(60_000);
 
     // Criar um booking existente no horário das 15h
-    await seedBooking(monday, '15:00');
+    await seedBooking(testDate, '15:00');
 
     await sendBotMessage(request, 'oi');
 
     // Tentar agendar no slot ocupado
     await sendBotMessage(
       request,
-      `quero cortar cabelo na segunda dia ${day}/${month} às 15h`
+      `quero cortar cabelo no dia ${day}/${month} às 15h`
     );
 
     const reply = await getLastBotMessage();
@@ -95,19 +99,19 @@ test.describe('Bot — Conflito de Horário', () => {
   test('aceita slot livre mesmo com outro booking no mesmo dia', async ({ request }) => {
     test.setTimeout(90_000);
 
-    // Criar booking às 14h — o slot das 13h deve estar livre
-    await seedBooking(monday, '14:00');
+    // Criar booking às 14h — o slot das 11h deve estar livre (na semana seguinte, sem agenda)
+    await seedBooking(testDate, '14:00');
 
     await sendBotMessage(request, 'oi');
 
     await sendBotMessage(
       request,
-      `quero cortar cabelo na segunda dia ${day}/${month} às 13h`
+      `quero cortar cabelo no dia ${day}/${month} às 11h`
     );
 
     const askName = await getLastBotMessage();
     expect(askName).not.toBeNull();
-    // 13h está livre → bot pede o nome
+    // 11h está livre → bot pede o nome
     expect(askName!.toLowerCase()).toMatch(/nome|como (você|te|vc) chama/i);
 
     await sendBotMessage(request, 'Carla Livre');
@@ -116,6 +120,6 @@ test.describe('Bot — Conflito de Horário', () => {
 
     const bookings = await getTestBookings();
     expect(bookings.length).toBe(1);
-    expect(bookings[0].start_time).toMatch(/^13:/);
+    expect(bookings[0].start_time).toMatch(/^11:/);
   });
 });
