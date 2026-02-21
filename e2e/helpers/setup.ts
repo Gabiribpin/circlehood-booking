@@ -32,9 +32,13 @@ export async function cleanTestState() {
 
   // 3. Limpar Redis (Tier 1)
   if (TEST.REDIS_URL) {
-    const redis = new Redis(TEST.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
-    await redis.del(`conversation:${TEST.USER_ID}_${TEST.PHONE}`);
-    redis.disconnect();
+    try {
+      const redis = new Redis(TEST.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
+      await redis.del(`conversation:${TEST.USER_ID}_${TEST.PHONE}`);
+      redis.disconnect();
+    } catch (e) {
+      console.warn('⚠️  Redis cleanup falhou (não crítico):', (e as Error).message);
+    }
   }
 
   // 4. Limpar in-memory Vercel (Tier 3)
