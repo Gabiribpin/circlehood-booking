@@ -87,10 +87,47 @@ export class AIBot {
       context.language = 'pt';
     }
 
-    // 3. Classificar intenção
+    // 3. Saudação direta na PRIMEIRA mensagem (bypass Claude — garante texto exato)
+    const isFirstMessage = context.history.length === 0;
+    if (isFirstMessage) {
+      const botConfig = context.businessInfo.botConfig;
+      const botName = botConfig?.bot_name ?? null;
+      const greetingMsg = botConfig?.greeting_message ?? '';
+      const businessName = context.businessInfo.business_name ?? '';
+
+      let greeting: string | null = null;
+      if (botName && greetingMsg) {
+        greeting = `Olá! Sou ${botName}. ${greetingMsg}`;
+      } else if (botName) {
+        greeting = `Olá! Sou ${botName}, assistente do ${businessName}. Como posso ajudar? 😊`;
+      } else if (greetingMsg) {
+        greeting = greetingMsg;
+      }
+
+      if (greeting) {
+        console.log(`👋 Saudação direta (bypass Claude): "${greeting}"`);
+        const cacheKey = `${businessId}_${phone}`;
+        const cached = memoryCache.get(cacheKey) || [];
+        cached.push(
+          { role: 'user', content: message, ts: Date.now() },
+          { role: 'assistant', content: greeting, ts: Date.now() + 1 },
+        );
+        memoryCache.set(cacheKey, cached.slice(-20));
+        await Promise.allSettled([
+          ConversationCache.addMessages(cacheKey, [
+            { role: 'user', content: message, timestamp: Date.now() },
+            { role: 'assistant', content: greeting, timestamp: Date.now() + 1 },
+          ]),
+          this.saveToHistory(context.conversationId, context.phone, message, greeting),
+        ]);
+        return greeting;
+      }
+    }
+
+    // 4. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
-    // 4. Gerar resposta
+    // 5. Gerar resposta
     console.log('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
     const response = await this.generateResponse(message, intent, context);
     console.log('✅ Anthropic respondeu para', phone);
