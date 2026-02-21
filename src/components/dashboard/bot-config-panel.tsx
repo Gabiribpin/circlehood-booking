@@ -100,10 +100,12 @@ export function BotConfigPanel() {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
-    setMessage(error
-      ? { type: 'error', text: `Erro: ${error.message}` }
-      : { type: 'success', text: '✅ Configuração do bot salva!' }
-    );
+    if (error) {
+      setMessage({ type: 'error', text: `Erro: ${error.message}` });
+    } else {
+      setMessage({ type: 'success', text: '✅ Configuração do bot salva!' });
+      setTimeout(() => setMessage(null), 5000);
+    }
     setSaving(false);
   }
 
@@ -118,7 +120,10 @@ export function BotConfigPanel() {
       {/* Seção 1: Identidade */}
       <div className="space-y-4">
         <div>
-          <Label htmlFor="bot_name">Nome do bot</Label>
+          <Label htmlFor="bot_name">
+            Nome do bot
+            <span className="ml-2 text-xs text-gray-500 font-normal">(opcional)</span>
+          </Label>
           <Input
             id="bot_name"
             placeholder="Ex: Sofia, Maria, Assistente..."
@@ -126,7 +131,12 @@ export function BotConfigPanel() {
             onChange={(e) => setConfig({ ...config, bot_name: e.target.value })}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Como o bot se apresenta. Se vazio, usa o nome do negócio.
+            Como o bot se apresenta.{' '}
+            {!config.bot_name && (
+              <span className="text-blue-600">
+                (Atualmente usando nome do negócio como padrão)
+              </span>
+            )}
           </p>
         </div>
 
@@ -148,35 +158,82 @@ export function BotConfigPanel() {
       {/* Seção 2: Comportamento */}
       <div>
         <h4 className="font-medium text-sm mb-3">Comportamento de agendamento</h4>
-        <div className="space-y-3">
-          {[
-            {
-              key: 'auto_book_if_available' as const,
-              title: 'Confirmar agendamento diretamente',
-              desc: 'O bot confirma sem dizer "vou verificar disponibilidade"',
-            },
-            {
-              key: 'always_confirm_booking' as const,
-              title: 'Pedir confirmação explícita',
-              desc: 'Sempre perguntar "Confirma o agendamento?" antes de registrar',
-            },
-            {
-              key: 'ask_for_additional_info' as const,
-              title: 'Pedir informações adicionais',
-              desc: 'Perguntar sobre tipo de cabelo, sensibilidades, etc.',
-            },
-          ].map((item) => (
-            <div key={item.key} className="flex items-center justify-between py-2 border-b last:border-0">
-              <div>
-                <p className="font-medium text-sm">{item.title}</p>
-                <p className="text-xs text-gray-500">{item.desc}</p>
-              </div>
-              <Switch
-                checked={config[item.key]}
-                onCheckedChange={(checked) => setConfig({ ...config, [item.key]: checked })}
-              />
+
+        {/* Modo de confirmação - Radio buttons */}
+        <div className="space-y-2 mb-4">
+          <Label>Quando cliente quer agendar:</Label>
+
+          <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <input
+              type="radio"
+              name="booking_mode"
+              checked={config.always_confirm_booking === false && config.auto_book_if_available === true}
+              onChange={() => setConfig({
+                ...config,
+                always_confirm_booking: false,
+                auto_book_if_available: true,
+              })}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-sm">⚡ Confirmar automaticamente</p>
+              <p className="text-xs text-gray-500">
+                Bot agenda direto se horário disponível. Mais rápido e fluido.
+              </p>
             </div>
-          ))}
+          </label>
+
+          <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <input
+              type="radio"
+              name="booking_mode"
+              checked={config.always_confirm_booking === true}
+              onChange={() => setConfig({
+                ...config,
+                always_confirm_booking: true,
+                auto_book_if_available: false,
+              })}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-sm">✋ Pedir confirmação antes</p>
+              <p className="text-xs text-gray-500">
+                Bot pergunta &quot;Confirma agendamento?&quot; antes de registrar. Mais seguro.
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <input
+              type="radio"
+              name="booking_mode"
+              checked={config.always_confirm_booking === false && config.auto_book_if_available === false}
+              onChange={() => setConfig({
+                ...config,
+                always_confirm_booking: false,
+                auto_book_if_available: false,
+              })}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-sm">🤝 Decidir por contexto</p>
+              <p className="text-xs text-gray-500">
+                Bot decide quando pedir confirmação baseado na situação.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        {/* Switch de informações adicionais */}
+        <div className="flex items-center justify-between py-3 border-t">
+          <div>
+            <p className="font-medium text-sm">Pedir informações adicionais</p>
+            <p className="text-xs text-gray-500">Perguntar sobre tipo de cabelo, sensibilidades, etc.</p>
+          </div>
+          <Switch
+            checked={config.ask_for_additional_info}
+            onCheckedChange={(checked) => setConfig({ ...config, ask_for_additional_info: checked })}
+          />
         </div>
       </div>
 
@@ -195,25 +252,43 @@ export function BotConfigPanel() {
             />
             <p className="text-xs text-gray-500 mt-1">Mensagem enviada quando o cliente entra em contato pela primeira vez.</p>
           </div>
-          <div>
-            <Label htmlFor="unavailable_message">Quando indisponível</Label>
+          <div className="opacity-60">
+            <Label htmlFor="unavailable_message">
+              Quando indisponível
+              <span className="ml-2 text-xs text-yellow-600 font-normal">
+                ⚠️ Em manutenção
+              </span>
+            </Label>
             <Textarea
               id="unavailable_message"
               rows={2}
-              placeholder="Infelizmente não temos esse horário disponível. Posso oferecer..."
-              value={config.unavailable_message}
-              onChange={(e) => setConfig({ ...config, unavailable_message: e.target.value })}
+              value={config.unavailable_message || 'O bot sugere automaticamente horários alternativos quando indisponível.'}
+              disabled
+              className="bg-gray-50 cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              O bot automaticamente oferece alternativas quando um horário está ocupado.
+            </p>
           </div>
-          <div>
-            <Label htmlFor="confirmation_message">Confirmação de agendamento</Label>
+          <div className="opacity-60">
+            <Label htmlFor="confirmation_message">
+              Confirmação de agendamento
+              <span className="ml-2 text-xs text-yellow-600 font-normal">
+                ⚠️ Em manutenção - usando template padrão
+              </span>
+            </Label>
             <Textarea
               id="confirmation_message"
-              rows={2}
-              placeholder='Agendado [Nome]! ✅&#10;[Data] [Hora] - [Serviço]&#10;Até logo! 💅'
-              value={config.confirmation_message}
-              onChange={(e) => setConfig({ ...config, confirmation_message: e.target.value })}
+              rows={3}
+              value={config.confirmation_message || 'Agendado [Nome Cliente]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊'}
+              disabled
+              className="bg-gray-50 cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              <strong>Template atual (padrão do sistema):</strong><br />
+              O bot usa automaticamente: &quot;Agendado [Nome]! ✅ [Data] [Hora] - [Serviço] €[Preço]&quot;<br />
+              <em className="text-yellow-700">Personalização em breve com substituição automática de variáveis.</em>
+            </p>
           </div>
         </div>
       </div>
@@ -247,9 +322,27 @@ export function BotConfigPanel() {
         </div>
       )}
 
-      <Button onClick={handleSave} disabled={saving} className="w-full">
-        {saving ? 'A salvar...' : 'Salvar Configuração do Bot'}
-      </Button>
+      <div className="flex gap-3">
+        <Button
+          onClick={() => {
+            if (confirm('Restaurar todas as configurações para os valores padrão?')) {
+              setConfig(DEFAULT_CONFIG);
+            }
+          }}
+          variant="outline"
+          className="flex-1"
+          type="button"
+        >
+          ↺ Restaurar Padrões
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1"
+        >
+          {saving ? 'A salvar...' : 'Salvar Configuração'}
+        </Button>
+      </div>
     </div>
   );
 }

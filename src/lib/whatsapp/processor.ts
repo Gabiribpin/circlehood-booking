@@ -17,16 +17,15 @@ export async function processWhatsAppMessage(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Buscar config — Evolution filtra por instância (não precisa is_active)
-    // Meta filtra apenas por is_active (sem identificador de instância)
+    // Buscar config — filtra sempre por is_active=true
+    // Evolution também filtra por instância para identificar o profissional
     let query = supabase
       .from('whatsapp_config')
-      .select('*');
+      .select('*')
+      .eq('is_active', true);
 
     if (detectedProvider === 'evolution' && evolutionInstance) {
       query = query.eq('evolution_instance', evolutionInstance);
-    } else {
-      query = query.eq('is_active', true);
     }
 
     const { data: config } = await query.single();

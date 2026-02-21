@@ -38,7 +38,7 @@ export default function WhatsAppConfigPage() {
   const [aiSettings, setAiSettings] = useState({
     languages: ['pt', 'en'],
     instructions: '',
-    welcomeMessage: '',
+    // welcomeMessage removido - bot usa greeting_message do BotConfigPanel
     autoReminders: true,
     autoBirthdays: true,
     autoWaitlist: true,
@@ -101,7 +101,7 @@ export default function WhatsAppConfigPage() {
         setAiSettings(prev => ({
           ...prev,
           instructions: aiData.instructions ?? '',
-          welcomeMessage: aiData.welcome_message ?? '',
+          // welcomeMessage removido - bot usa bot_config.greeting_message
         }));
       }
 
@@ -205,6 +205,48 @@ export default function WhatsAppConfigPage() {
       return;
     }
 
+    // Validação 1: Formato do número de telefone
+    const phoneDigitsOnly = metaConfig.businessPhone.replace(/[\s\-\(\)]/g, '');
+    const phoneRegex = /^\+?\d{10,15}$/;
+    if (!phoneRegex.test(phoneDigitsOnly)) {
+      setMetaMessage({
+        type: 'error',
+        text: 'Número de telefone inválido. Use formato internacional (ex: +353851234567)',
+      });
+      setSaving(false);
+      return;
+    }
+
+    // Validação 2: Phone Number ID (deve ser numérico)
+    if (!/^\d+$/.test(metaConfig.phoneNumberId)) {
+      setMetaMessage({
+        type: 'error',
+        text: 'Phone Number ID inválido. Deve conter apenas números.',
+      });
+      setSaving(false);
+      return;
+    }
+
+    // Validação 3: Access Token (deve começar com EAA)
+    if (!metaConfig.accessToken.startsWith('EAA')) {
+      setMetaMessage({
+        type: 'error',
+        text: 'Access Token inválido. Tokens da Meta começam com "EAA".',
+      });
+      setSaving(false);
+      return;
+    }
+
+    // Validação 4: Verify Token (mínimo 10 caracteres)
+    if (metaConfig.verifyToken.length < 10) {
+      setMetaMessage({
+        type: 'error',
+        text: 'Verify Token muito curto. Use no mínimo 10 caracteres para segurança.',
+      });
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('whatsapp_config')
       .upsert({
@@ -218,10 +260,12 @@ export default function WhatsAppConfigPage() {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
-    setMetaMessage(error
-      ? { type: 'error', text: `Erro: ${error.message}` }
-      : { type: 'success', text: '✅ Configuração salva com sucesso!' }
-    );
+    if (error) {
+      setMetaMessage({ type: 'error', text: `Erro: ${error.message}` });
+    } else {
+      setMetaMessage({ type: 'success', text: '✅ Configuração salva com sucesso!' });
+      setTimeout(() => setMetaMessage(null), 5000);
+    }
     setSaving(false);
   }
 
@@ -244,7 +288,7 @@ export default function WhatsAppConfigPage() {
       user_id: user.id,
       language: lang,
       instructions: aiSettings.instructions,
-      welcome_message: aiSettings.welcomeMessage,
+      // welcome_message removido - bot usa bot_config.greeting_message
       updated_at: new Date().toISOString(),
     }));
 
@@ -252,10 +296,12 @@ export default function WhatsAppConfigPage() {
       .from('ai_instructions')
       .upsert(upserts, { onConflict: 'user_id,language' });
 
-    setAiMessage(error
-      ? { type: 'error', text: `Erro: ${error.message}` }
-      : { type: 'success', text: '✅ Configurações de IA salvas!' }
-    );
+    if (error) {
+      setAiMessage({ type: 'error', text: `Erro: ${error.message}` });
+    } else {
+      setAiMessage({ type: 'success', text: '✅ Configurações de IA salvas!' });
+      setTimeout(() => setAiMessage(null), 5000);
+    }
     setSavingAi(false);
   }
 
@@ -278,10 +324,9 @@ export default function WhatsAppConfigPage() {
       <p className="text-gray-500 mb-6">Conecta o teu número ao bot de agendamento automático</p>
 
       <Tabs defaultValue="setup" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="setup">Conexão</TabsTrigger>
           <TabsTrigger value="ai">IA & Automações</TabsTrigger>
-          <TabsTrigger value="templates">Mensagens</TabsTrigger>
         </TabsList>
 
         {/* ─── Tab 1: Conexão ─── */}
@@ -550,36 +595,12 @@ export default function WhatsAppConfigPage() {
             <h2 className="text-xl font-semibold">🤖 Configuração da IA</h2>
 
             <div>
-              <Label className="mb-2 block">Idiomas que o bot atende</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { code: 'pt', label: '🇧🇷 Português' },
-                  { code: 'en', label: '🇬🇧 English' },
-                  { code: 'ro', label: '🇷🇴 Română' },
-                  { code: 'ar', label: '🇸🇦 العربية' },
-                  { code: 'es', label: '🇪🇸 Español' },
-                ].map((lang) => (
-                  <label key={lang.code} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={aiSettings.languages.includes(lang.code)}
-                      onChange={(e) => {
-                        setAiSettings({
-                          ...aiSettings,
-                          languages: e.target.checked
-                            ? [...aiSettings.languages, lang.code]
-                            : aiSettings.languages.filter((l) => l !== lang.code),
-                        });
-                      }}
-                    />
-                    <span className="text-sm">{lang.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="instructions">Instruções personalizadas para a IA</Label>
+              <Label htmlFor="instructions">
+                Instruções personalizadas para a IA
+                <span className="ml-2 text-xs text-yellow-600">
+                  ⚠️ Complementares (não substituem regras padrão)
+                </span>
+              </Label>
               <Textarea
                 id="instructions"
                 rows={5}
@@ -587,37 +608,44 @@ export default function WhatsAppConfigPage() {
                 value={aiSettings.instructions}
                 onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                <strong>Nota:</strong> Instruções muito específicas podem ser sobrescritas pelas regras
+                padrão do bot (apresentação, agendamento, cancelamento). Para controle total, use o
+                &quot;Prompt do sistema (avançado)&quot; na seção abaixo.
+              </p>
             </div>
 
-            <div>
-              <Label htmlFor="welcome">Mensagem de boas-vindas</Label>
-              <Textarea
-                id="welcome"
-                rows={3}
-                placeholder="Olá! 👋 Bem-vindo(a)! Como posso ajudar hoje?"
-                value={aiSettings.welcomeMessage}
-                onChange={(e) => setAiSettings({ ...aiSettings, welcomeMessage: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label>Automações</Label>
-              {[
-                { key: 'autoReminders' as const, title: 'Lembretes automáticos', desc: 'Envia lembrete 24h antes do agendamento' },
-                { key: 'autoBirthdays' as const, title: 'Mensagens de aniversário', desc: 'Parabeniza clientes automaticamente' },
-                { key: 'autoWaitlist' as const, title: 'Lista de espera', desc: 'Notifica quando surgir vaga disponível' },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between py-2 border-b last:border-0">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-sm text-blue-900 mb-2">
+                🔔 Automações Ativas
+              </h4>
+              <ul className="text-xs text-blue-800 space-y-1.5 ml-4">
+                <li className="flex items-start">
+                  <span className="mr-2">✅</span>
                   <div>
-                    <p className="font-medium text-sm">{item.title}</p>
-                    <p className="text-xs text-gray-500">{item.desc}</p>
+                    <strong>Lembretes 24h antes:</strong> Sempre ativo. Bot envia lembrete
+                    automático 24h antes de cada agendamento.
                   </div>
-                  <Switch
-                    checked={aiSettings[item.key]}
-                    onCheckedChange={(checked) => setAiSettings({ ...aiSettings, [item.key]: checked })}
-                  />
-                </div>
-              ))}
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">✅</span>
+                  <div>
+                    <strong>Mensagens de aniversário:</strong> Sempre ativo. Bot parabeniza
+                    clientes automaticamente no dia do aniversário.
+                  </div>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2">⏳</span>
+                  <div>
+                    <strong>Lista de espera:</strong> Em desenvolvimento. Notificará clientes
+                    quando surgirem vagas disponíveis.
+                  </div>
+                </li>
+              </ul>
+              <p className="text-xs text-blue-700 mt-3">
+                <strong>Nota:</strong> Estas automações funcionam automaticamente via sistema
+                de agendamento (cron jobs). Não precisam de configuração manual.
+              </p>
             </div>
 
             {aiMessage && (
@@ -639,35 +667,7 @@ export default function WhatsAppConfigPage() {
           </Card>
         </TabsContent>
 
-        {/* ─── Tab 3: Templates ─── */}
-        <TabsContent value="templates">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-2">💬 Templates de Mensagem</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Em breve: editor de mensagens personalizadas para confirmações, lembretes e aniversários.
-            </p>
-            <div className="space-y-3 text-sm text-gray-600">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium">📅 Confirmação de agendamento</p>
-                <p className="text-gray-500 mt-1">
-                  &quot;Olá {'{nome}'}! O teu agendamento de {'{servico}'} está confirmado para {'{data}'} às {'{hora}'}. ✅&quot;
-                </p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium">⏰ Lembrete 24h antes</p>
-                <p className="text-gray-500 mt-1">
-                  &quot;Olá {'{nome}'}! Lembrete: tens {'{servico}'} amanhã às {'{hora}'}. Até já! 💅&quot;
-                </p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium">🎂 Aniversário</p>
-                <p className="text-gray-500 mt-1">
-                  &quot;Feliz aniversário {'{nome}'}! 🎉 Como presente, tens 10% de desconto no próximo serviço!&quot;
-                </p>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
+        {/* Tab Templates removida - configurações de mensagens estão no BotConfigPanel */}
       </Tabs>
     </div>
   );
