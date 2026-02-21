@@ -182,7 +182,7 @@ export default function RegisterPage() {
           <form onSubmit={handleStep1}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                <div data-testid="register-error" className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                   {error}
                 </div>
               )}
@@ -226,7 +226,7 @@ export default function RegisterPage() {
           <form onSubmit={handleRegister}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                <div data-testid="register-error" className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                   {error}
                 </div>
               )}
@@ -258,14 +258,14 @@ export default function RegisterPage() {
                   />
                   {checkingSlug && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   {!checkingSlug && slugAvailable === true && (
-                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                    <CheckCircle2 data-testid="slug-available-icon" className="h-5 w-5 text-green-500 shrink-0" />
                   )}
                   {!checkingSlug && slugAvailable === false && (
-                    <XCircle className="h-5 w-5 text-destructive shrink-0" />
+                    <XCircle data-testid="slug-unavailable-icon" className="h-5 w-5 text-destructive shrink-0" />
                   )}
                 </div>
                 {slugAvailable === false && (
-                  <p className="text-xs text-destructive">Este link já está em uso.</p>
+                  <p data-testid="slug-error" className="text-xs text-destructive">Este link já está em uso.</p>
                 )}
               </div>
 

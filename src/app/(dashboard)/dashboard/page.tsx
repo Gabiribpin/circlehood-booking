@@ -155,7 +155,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 data-testid="dashboard-welcome" className="text-2xl font-bold">
             Ola, {professional.business_name}!
           </h1>
           {professional.subscription_status === 'trial' && (
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
 
       {/* Banner de setup — aparece enquanto não concluiu onboarding */}
       {showOnboardingBanner && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card data-testid="onboarding-banner" className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 flex items-center gap-4">
             <Info className="h-5 w-5 text-primary shrink-0" />
             <div className="flex-1">

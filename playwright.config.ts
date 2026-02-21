@@ -56,6 +56,18 @@ export default defineConfig({
       use: { browserName: 'chromium', headless: true },
     },
 
+    // ─── Jornada do usuário: registro + onboarding (usa sessão salva) ──
+    {
+      name: 'user-journey',
+      testMatch: '**/user-journey/**/*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
+
     // ─── Dashboard autenticado (usa sessão salva pelo auth-setup) ────
     {
       name: 'dashboard',

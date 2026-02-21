@@ -154,7 +154,7 @@ export default function OnboardingPage() {
       <Card>
         <CardContent className="pt-5 pb-4">
           <div className="flex items-center justify-between mb-2 text-sm">
-            <span className="font-medium">{doneCount} de {STEPS.length} concluídos</span>
+            <span data-testid="onboarding-progress-text" className="font-medium">{doneCount} de {STEPS.length} concluídos</span>
             <span className="text-muted-foreground">{progressPct}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
@@ -176,7 +176,7 @@ export default function OnboardingPage() {
         {STEPS.map((step, index) => {
           const done = isStepDone(step.id);
           return (
-            <Card key={step.id} className={done ? 'opacity-75' : 'border-primary/30'}>
+            <Card key={step.id} data-testid={`onboarding-step-${step.id}`} className={done ? 'opacity-75' : 'border-primary/30'}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   <span className="text-2xl mt-0.5 shrink-0">{step.icon}</span>
@@ -236,10 +236,11 @@ export default function OnboardingPage() {
 
       {/* Ações */}
       <div className="flex items-center justify-between pb-4">
-        <Button variant="ghost" onClick={() => router.push('/dashboard')}>
+        <Button data-testid="onboarding-skip" variant="ghost" onClick={() => router.push('/dashboard')}>
           Pular por enquanto
         </Button>
         <Button
+          data-testid="onboarding-finish"
           onClick={handleFinish}
           disabled={saving}
           className={allDone ? 'bg-green-600 hover:bg-green-700' : ''}
