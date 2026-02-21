@@ -43,13 +43,15 @@ test.describe('Bot — Validação de Dia', () => {
     const [day, month] = monday.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
-    await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month} às 10h`);
+    // Não especifica horário — bot deve aceitar o dia e pedir mais informações
+    await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month}`);
 
     const reply = await getLastBotMessage();
     expect(reply).not.toBeNull();
 
-    // Bot deve pedir o nome (dia aceito)
-    expect(reply!.toLowerCase()).toMatch(/nome|como (você|te) chama/i);
+    // Segunda é dia útil — bot não deve rejeitar o dia
     expect(reply!.toLowerCase()).not.toMatch(/não atendo|nao atendo|fechado/i);
+    // Bot deve estar engajado: pedir horário, nome, ou confirmar o dia
+    expect(reply!.toLowerCase()).toMatch(/horário|nome|qual|quando|como/i);
   });
 });

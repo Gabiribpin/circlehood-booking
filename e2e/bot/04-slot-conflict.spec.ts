@@ -95,19 +95,19 @@ test.describe('Bot — Conflito de Horário', () => {
   test('aceita slot livre mesmo com outro booking no mesmo dia', async ({ request }) => {
     test.setTimeout(90_000);
 
-    // Criar booking às 15h — o slot das 10h deve estar livre
-    await seedBooking(monday, '15:00');
+    // Criar booking às 17h — o slot das 16h deve estar livre
+    await seedBooking(monday, '17:00');
 
     await sendBotMessage(request, 'oi');
 
     await sendBotMessage(
       request,
-      `quero cortar cabelo na segunda dia ${day}/${month} às 10h`
+      `quero cortar cabelo na segunda dia ${day}/${month} às 16h`
     );
 
     const askName = await getLastBotMessage();
     expect(askName).not.toBeNull();
-    // 10h está livre → bot pede o nome
+    // 16h está livre → bot pede o nome
     expect(askName!.toLowerCase()).toMatch(/nome|como (você|te|vc) chama/i);
 
     await sendBotMessage(request, 'Carla Livre');
@@ -116,6 +116,6 @@ test.describe('Bot — Conflito de Horário', () => {
 
     const bookings = await getTestBookings();
     expect(bookings.length).toBe(1);
-    expect(bookings[0].start_time).toMatch(/^10:/);
+    expect(bookings[0].start_time).toMatch(/^16:/);
   });
 });
