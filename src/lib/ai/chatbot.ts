@@ -45,9 +45,10 @@ function suggestAlternative(
     if (slotMins < minMinutes) continue;
     const slotEnd = slotMins + durationMinutes;
     const slot = `${String(Math.floor(slotMins / 60)).padStart(2, '0')}:${String(slotMins % 60).padStart(2, '0')}`;
+    const BUFFER = 15; // minutos livres após cada atendimento
     const hasConflict = existingBookings.some((b) => {
       const bStart = timeToMinutes(b.start_time);
-      const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
+      const bEnd = (b.end_time ? timeToMinutes(b.end_time) : bStart + 60) + BUFFER;
       return slotMins < bEnd && slotEnd > bStart;
     });
     if (!hasConflict) return slot;
@@ -485,9 +486,10 @@ export class AIBot {
       if (existingBookings && existingBookings.length > 0) {
         const reqStart = timeToMinutes(bookingTime);
         const reqEnd = reqStart + duration;
+        const BUFFER = 15; // minutos livres após cada atendimento
         for (const b of existingBookings) {
           const bStart = timeToMinutes(b.start_time);
-          const bEnd = b.end_time ? timeToMinutes(b.end_time) : bStart + 60;
+          const bEnd = (b.end_time ? timeToMinutes(b.end_time) : bStart + 60) + BUFFER;
           if (reqStart < bEnd && reqEnd > bStart) {
             const occupied = b.start_time.slice(0, 5);
             console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
