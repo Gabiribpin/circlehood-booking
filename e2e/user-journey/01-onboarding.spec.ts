@@ -431,9 +431,14 @@ test.describe('Página de Onboarding — Checklist', () => {
   test('step WhatsApp mostra badge "Importante" quando não concluído', async ({ page }) => {
     await page.goto('/onboarding');
 
+    // A página é 'use client' com useEffect que carrega dados e mostra spinner.
+    // Aguarda o step "account" (sempre presente após carregamento) aparecer
+    // antes de fazer o check — evita race condition com isVisible().
+    await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
+
     const wpStep = page.locator('[data-testid="onboarding-step-whatsapp"]');
-    // WhatsApp: mostra "Importante" se não estiver conectado
-    const isDone = await wpStep.locator('text=Concluído').isVisible();
+    // count() > 0 é determinístico (snapshot atual, não retry) após o waitFor acima
+    const isDone = (await wpStep.locator('text=Concluído').count()) > 0;
     if (!isDone) {
       await expect(wpStep.locator('text=Importante')).toBeVisible();
     }

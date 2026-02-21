@@ -30,9 +30,11 @@ test.describe('Dashboard — Configurações', () => {
 
   test('botão Salvar Alterações visível', async ({ page }) => {
     await page.goto(`${BASE}/settings`);
+    // timeout 30s: no CI este teste falhou a 40s (contando goto + assertion lento).
+    // O test timeout global é 45s → há margem suficiente.
     await expect(
       page.getByRole('button', { name: /salvar alterações/i })
-    ).toBeVisible({ timeout: 15_000 });
+    ).toBeVisible({ timeout: 30_000 });
   });
 });
 

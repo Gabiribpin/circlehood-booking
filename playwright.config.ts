@@ -7,10 +7,13 @@ dotenv.config({ path: '.env.local' });
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30_000,
+  // 45s por teste: cold start Vercel pode levar ~5-6s na primeira request de cada job CI
+  timeout: 45_000,
   retries: 0,
   // Workers = 1: testes de bot são sequenciais para evitar race conditions no DB
   workers: 1,
+  // Expect timeout 10s: default 5s não aguenta cold start (~5-6s) → falsos negativos
+  expect: { timeout: 10_000 },
   reporter: [['list'], ['html', { outputFolder: 'e2e-report', open: 'never' }]],
 
   use: {
