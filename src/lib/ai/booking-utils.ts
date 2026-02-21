@@ -12,6 +12,7 @@ export function timeToMinutes(t: string): number {
  * Sugere o primeiro slot disponível dentro do expediente.
  * Aplica buffer de 15 min após cada atendimento.
  * Se date === hoje (Dublin), ignora horários que já passaram (+1h de margem).
+ * Se afterTime for fornecido, a busca começa a partir desse horário (nunca sugere slot anterior).
  * Retorna null se não houver slot disponível para este dia.
  */
 export function suggestAlternative(
@@ -19,7 +20,8 @@ export function suggestAlternative(
   existingBookings: Array<{ start_time: string; end_time?: string | null }>,
   durationMinutes: number,
   workStartTime: string,
-  workEndTime: string
+  workEndTime: string,
+  afterTime?: string
 ): string | null {
   const workStartMins = timeToMinutes(workStartTime);
   const workEndMins = timeToMinutes(workEndTime);
@@ -38,8 +40,12 @@ export function suggestAlternative(
     );
   }
 
-  for (let slotMins = workStartMins; slotMins + durationMinutes <= workEndMins; slotMins += 60) {
-    if (slotMins < minMinutes) continue;
+  // Ponto de partida: o maior entre início do expediente, afterTime (horário pedido)
+  // e o mínimo de hoje (para não sugerir horários passados).
+  const afterMins = afterTime ? timeToMinutes(afterTime) : workStartMins;
+  const startSearchMins = Math.max(workStartMins, afterMins, minMinutes);
+
+  for (let slotMins = startSearchMins; slotMins + durationMinutes <= workEndMins; slotMins += 60) {
     const slotEnd = slotMins + durationMinutes;
     const slot = `${String(Math.floor(slotMins / 60)).padStart(2, '0')}:${String(slotMins % 60).padStart(2, '0')}`;
     const BUFFER = 15;

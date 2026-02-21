@@ -37,6 +37,18 @@ export default defineConfig({
       testMatch: '**/bot/**/*.spec.ts',
     },
 
+    // ─── API pública e ciclo do profissional (sem browser) ───────────
+    {
+      name: 'api-tests',
+      testMatch: '**/api/**/*.spec.ts',
+    },
+
+    // ─── Segurança: auth, autorização, injeção (sem browser) ─────────
+    {
+      name: 'security',
+      testMatch: '**/security/**/*.spec.ts',
+    },
+
     // ─── Dashboard smoke público (sem auth) ──────────────────────────
     {
       name: 'dashboard-public',

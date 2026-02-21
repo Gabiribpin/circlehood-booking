@@ -325,7 +325,7 @@ export class AIBot {
           return reqMins < bEnd && reqEnd > bStart;
         });
         if (conflict) {
-          const alternative = suggestAlternative(normalizedDate, existingBookings, ASSUMED_DURATION, dayWH.start_time, dayWH.end_time);
+          const alternative = suggestAlternative(normalizedDate, existingBookings, ASSUMED_DURATION, dayWH.start_time, dayWH.end_time, normalizedTime);
           return {
             available: false,
             reason: 'slot_taken',
@@ -524,7 +524,7 @@ export class AIBot {
             console.log(`🗓️ Working hours hoje (day_int=${todayDayInt}):`, todayWH ? `${todayWH.start_time}–${todayWH.end_time}` : 'não atende');
 
             const todaySlot = todayWH
-              ? suggestAlternative(bookingDate, existingBookings, duration, todayWH.start_time, todayWH.end_time)
+              ? suggestAlternative(bookingDate, existingBookings, duration, todayWH.start_time, todayWH.end_time, bookingTime)
               : null;
 
             if (todaySlot) {

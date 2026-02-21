@@ -52,11 +52,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Get service details
+  // Get service details — valida que o serviço pertence ao profissional (previne cross-professional attack)
   const { data: service } = await supabase
     .from('services')
     .select('duration_minutes, name, price')
     .eq('id', service_id)
+    .eq('professional_id', professional_id)
     .single();
 
   if (!service) {

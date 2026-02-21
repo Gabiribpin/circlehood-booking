@@ -171,6 +171,42 @@ describe('suggestAlternative', () => {
     expect(suggestAlternative(FUTURE_DATE, [], 120, '09:00', '10:00')).toBeNull();
   });
 
+  it('com afterTime: nunca sugere slot anterior ao horário pedido', () => {
+    // 15:00 está ocupado; sem afterTime retornaria 09:00 (bug original)
+    // com afterTime='15:00': 15:00 conflita, 16:00 conflita por buffer (16:00 + 15min), próximo é 17:00
+    const bookings = [{ start_time: '15:00', end_time: '16:00' }];
+    const result = suggestAlternative(FUTURE_DATE, bookings, 60, WORK_START, WORK_END, '15:00');
+    expect(result).toBe('17:00');
+    // Garante que NÃO retornou slots anteriores às 15:00
+    expect(result).not.toBe('09:00');
+    expect(result).not.toBe('10:00');
+    expect(result).not.toBe('11:00');
+  });
+
+  it('com afterTime: ignora todos os slots antes mesmo que estejam livres', () => {
+    // 14:00 e 15:00 ocupados; afterTime='14:00'
+    // 09:00–13:00 livres mas devem ser ignorados; próximo após 14:00 é 17:00 (depois do buffer de 15:00–16:15)
+    const bookings = [
+      { start_time: '14:00', end_time: '15:00' },
+      { start_time: '15:00', end_time: '16:00' },
+    ];
+    const result = suggestAlternative(FUTURE_DATE, bookings, 60, WORK_START, WORK_END, '14:00');
+    // Deve ser >= 14:00 (nunca 09:00–13:00)
+    expect(result).not.toBeNull();
+    expect(timeToMinutes(result!)).toBeGreaterThanOrEqual(timeToMinutes('14:00'));
+  });
+
+  it('com afterTime: retorna null quando não há slot livre após o horário pedido', () => {
+    // Expediente 09:00–18:00; afterTime='17:00'; serviço de 60 min; 17:00 ocupado até 18:00
+    const bookings = [{ start_time: '17:00', end_time: '18:00' }];
+    expect(suggestAlternative(FUTURE_DATE, bookings, 60, WORK_START, WORK_END, '17:00')).toBeNull();
+  });
+
+  it('com afterTime: afterTime anterior ao expediente usa início do expediente', () => {
+    // afterTime='07:00' (antes de 09:00): deve começar de 09:00
+    expect(suggestAlternative(FUTURE_DATE, [], 60, WORK_START, WORK_END, '07:00')).toBe('09:00');
+  });
+
   it('ignora horários passados quando date === hoje', () => {
     const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }))
       .toISOString()
