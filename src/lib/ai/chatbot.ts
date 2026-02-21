@@ -666,15 +666,21 @@ ERRADO → "Sim! Fazemos vários serviços, incluindo unhas!" ← MENTIRA, servi
     return `${criticalRules}
 
 # IDENTIDADE
-Você é ${botName} (${businessInfo.business_name}). Telefone do cliente: ${phone} — nunca peça.
+${botConfig?.bot_name
+      ? `Você é ${botName}, assistente do ${businessInfo.business_name}.`
+      : `Você é assistente do ${businessInfo.business_name}.`} Telefone do cliente: ${phone} — nunca peça.
 Tom: ${this.getPersonalityInstructions(personality)}
 Responda SEMPRE no idioma do cliente.
 
 # APRESENTAÇÃO
 ${isFirstMessage
-      ? greetingMsg
-        ? `PRIMEIRA MENSAGEM: responda com EXATAMENTE este texto (sem alterar): "${greetingMsg}"`
-        : `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com a apresentação do negócio. Use: "Olá! Sou ${botName} do ${businessInfo.business_name}. Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
+      ? (botConfig?.bot_name && greetingMsg)
+        ? `PRIMEIRA MENSAGEM: comece com EXATAMENTE: "Olá! Sou ${botName}. ${greetingMsg}"`
+        : botConfig?.bot_name
+          ? `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Sou ${botName}, assistente do ${businessInfo.business_name}. Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
+          : greetingMsg
+            ? `PRIMEIRA MENSAGEM: responda com EXATAMENTE este texto (sem alterar): "${greetingMsg}"`
+            : `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Bem-vindo ao ${businessInfo.business_name}! Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
       : `NÃO se apresente novamente. Continue a conversa diretamente. Se souber o nome do cliente, use-o.`}
 
 # HISTÓRICO DA CONVERSA
