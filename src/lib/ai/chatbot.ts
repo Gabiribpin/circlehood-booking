@@ -97,7 +97,7 @@ export class AIBot {
 
       let greeting: string | null = null;
       if (botName && greetingMsg) {
-        greeting = `Olá! Sou ${botName}. ${greetingMsg}`;
+        greeting = `${greetingMsg}\nSou ${botName}! Como posso ajudar? 😊`;
       } else if (botName) {
         greeting = `Olá! Sou ${botName}, assistente do ${businessName}. Como posso ajudar? 😊`;
       } else if (greetingMsg) {
