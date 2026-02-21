@@ -6,7 +6,12 @@ import { timeToMinutes, suggestAlternative, normalizeDate, normalizeTime } from 
 
 // Tier 3 de fallback: in-memory Map (funciona dentro da mesma instância Vercel)
 // Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
-const memoryCache = new Map<string, Array<{ role: 'user' | 'assistant'; content: string; ts: number }>>();
+// O conversationId é armazenado junto para detectar quando a conversa foi recriada
+// (ex: limpeza de testes), evitando servir histórico stale de uma sessão anterior.
+const memoryCache = new Map<string, {
+  conversationId: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; ts: number }>;
+}>();
 
 /** Limpa a camada in-memory para uma chave específica (usado em testes e pelo endpoint admin). */
 export function clearMemoryCache(cacheKey: string): boolean {
@@ -75,12 +80,12 @@ export class AIBot {
           // Continua para processamento normal (Claude responde às perguntas)
         } else {
           console.log(`👋 Saudação direta (bypass Claude): "${greeting}"`);
-          const cached = memoryCache.get(cacheKey) || [];
-          cached.push(
+          const entry = memoryCache.get(cacheKey) || { conversationId: context.conversationId, messages: [] };
+          entry.messages.push(
             { role: 'user', content: message, ts: Date.now() },
             { role: 'assistant', content: greeting, ts: Date.now() + 1 },
           );
-          memoryCache.set(cacheKey, cached.slice(-20));
+          memoryCache.set(cacheKey, { conversationId: context.conversationId, messages: entry.messages.slice(-20) });
           await Promise.allSettled([
             ConversationCache.addMessages(cacheKey, [
               { role: 'user', content: message, timestamp: Date.now() },
@@ -105,12 +110,12 @@ export class AIBot {
     const cacheKey = `${businessId}_${phone}`;
 
     // Tier 3 (memory) — síncrono, sempre funciona
-    const cached = memoryCache.get(cacheKey) || [];
-    cached.push(
+    const entry = memoryCache.get(cacheKey) || { conversationId: context.conversationId, messages: [] };
+    entry.messages.push(
       { role: 'user', content: message, ts: Date.now() },
       { role: 'assistant', content: response, ts: Date.now() + 1 },
     );
-    memoryCache.set(cacheKey, cached.slice(-20));
+    memoryCache.set(cacheKey, { conversationId: context.conversationId, messages: entry.messages.slice(-20) });
 
     // Tier 1 (Redis) + Tier 2 (Supabase DB) — em paralelo, ambos aguardados
     await Promise.allSettled([
@@ -983,12 +988,21 @@ PROIBIDO ao rejeitar data/horário:
     }
 
     // TIER 3: In-memory Map (fallback local — mesma instância Vercel)
+    // Valida o conversationId para evitar servir histórico stale quando a conversa foi recriada
     if (history.length === 0) {
-      const cached = memoryCache.get(cacheKey) || [];
-      const fresh = cached.filter(m => Date.now() - m.ts < 24 * 60 * 60 * 1000);
-      if (fresh.length > 0) {
-        history = fresh.map(m => ({ role: m.role, content: m.content }));
-        historySource = 'memory';
+      const memEntry = memoryCache.get(cacheKey);
+      if (memEntry) {
+        if (memEntry.conversationId !== conversation.id) {
+          // Conversa foi recriada (ex: limpeza de testes) — descartar cache stale
+          memoryCache.delete(cacheKey);
+          console.log(`🗑️ Tier 3 stale detectado (conversation ID mudou) — cache descartado para ${cacheKey}`);
+        } else {
+          const fresh = memEntry.messages.filter(m => Date.now() - m.ts < 24 * 60 * 60 * 1000);
+          if (fresh.length > 0) {
+            history = fresh.map(m => ({ role: m.role, content: m.content }));
+            historySource = 'memory';
+          }
+        }
       }
     }
 
