@@ -74,10 +74,10 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     let bookings = await getTestBookings();
     expect(bookings).toHaveLength(0);
 
-    // Corrige para segunda — usa 17h para evitar conflito com agenda real
+    // Corrige para segunda — usa 14h (mesmo horário do fluxo feliz, que passou)
     await sendBotMessage(
       request,
-      `tudo bem, então segunda dia ${day}/${month} às 17h`
+      `tudo bem, então quero cortar cabelo na segunda dia ${day}/${month} às 14h`
     );
     const askName = await getLastBotMessage();
     expect(askName).not.toBeNull();
