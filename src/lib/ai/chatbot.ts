@@ -1017,7 +1017,8 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
         cancelled_at: new Date().toISOString(),
         cancellation_reason: 'Cancelado pelo cliente via WhatsApp',
       })
-      .eq('id', bookingId);
+      .eq('id', bookingId)
+      .eq('professional_id', professionalId);
 
     if (error) {
       console.error('cancelAppointment error:', error);
