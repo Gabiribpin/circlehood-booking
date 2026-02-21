@@ -94,12 +94,14 @@ export class AIBot {
       const botName = botConfig?.bot_name ?? null;
       const greetingMsg = botConfig?.greeting_message ?? '';
       const businessName = context.businessInfo.business_name ?? '';
+      const isProfessional = botConfig?.bot_personality === 'professional';
+      const helpSuffix = isProfessional ? 'Como posso ajudar?' : 'Como posso ajudar? 😊';
 
       let greeting: string | null = null;
       if (botName && greetingMsg) {
-        greeting = `${greetingMsg}\nSou ${botName}! Como posso ajudar? 😊`;
+        greeting = `${greetingMsg}\nSou ${botName}! ${helpSuffix}`;
       } else if (botName) {
-        greeting = `Olá! Sou ${botName}, assistente do ${businessName}. Como posso ajudar? 😊`;
+        greeting = `Olá! Sou ${botName}, assistente do ${businessName}. ${helpSuffix}`;
       } else if (greetingMsg) {
         greeting = greetingMsg;
       }
