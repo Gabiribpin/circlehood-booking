@@ -7,7 +7,7 @@ dotenv.config({ path: '.env.local' });
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 20_000,
+  timeout: 30_000,
   retries: 0,
   // Workers = 1: testes de bot são sequenciais para evitar race conditions no DB
   workers: 1,
@@ -18,18 +18,42 @@ export default defineConfig({
     extraHTTPHeaders: {
       'Content-Type': 'application/json',
     },
+    // Screenshots e traces só em falha (para debug)
+    screenshot: 'only-on-failure',
+    trace: 'on-first-retry',
   },
 
   projects: [
+    // ─── Setup: login único, salva sessão ────────────────────────────
+    {
+      name: 'auth-setup',
+      testMatch: 'e2e/auth/setup.ts',
+      use: { browserName: 'chromium', headless: true },
+    },
+
+    // ─── Bot: testes de API (sem browser) ────────────────────────────
     {
       name: 'bot-api',
       testMatch: '**/bot/**/*.spec.ts',
-      // API-only: não precisa de browser
     },
+
+    // ─── Dashboard smoke público (sem auth) ──────────────────────────
+    {
+      name: 'dashboard-public',
+      testMatch: '**/dashboard/01-smoke.spec.ts',
+      use: { browserName: 'chromium', headless: true },
+    },
+
+    // ─── Dashboard autenticado (usa sessão salva pelo auth-setup) ────
     {
       name: 'dashboard',
-      testMatch: '**/dashboard/**/*.spec.ts',
-      use: { browserName: 'chromium', headless: true },
+      testMatch: '**/dashboard/0[2-9]-*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
     },
   ],
 });

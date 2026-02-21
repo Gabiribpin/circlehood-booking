@@ -47,6 +47,7 @@ supabase/.temp/
 e2e-report/
 playwright-report/
 test-results/
+e2e/.auth/
 
 # Credential and migration helper files
 CREDENCIAIS_PROJETO.md

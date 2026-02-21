@@ -7,6 +7,9 @@ export const TEST = {
   PROFESSIONAL_ID: 'e8c8391f-22c0-4dbf-b0b2-718bb2b40974',
   PHONE: '353830326180',
   EVOLUTION_INSTANCE: 'prof-4aa855dd5c8d',
+  // Credenciais do dashboard (conta de teste permanente)
+  USER_EMAIL: process.env.TEST_USER_EMAIL ?? 'rita@teste.com',
+  USER_PASSWORD: process.env.TEST_USER_PASSWORD ?? 'Teste1234',
   CRON_SECRET: process.env.CRON_SECRET ?? '',
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
   SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
