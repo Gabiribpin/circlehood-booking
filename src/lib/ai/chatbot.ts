@@ -2,58 +2,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { classifyIntent } from './intent-classifier';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
+import { timeToMinutes, suggestAlternative, normalizeDate, normalizeTime } from './booking-utils';
 
 // Tier 3 de fallback: in-memory Map (funciona dentro da mesma instância Vercel)
 // Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
 const memoryCache = new Map<string, Array<{ role: 'user' | 'assistant'; content: string; ts: number }>>();
 
-// Converte "HH:MM" ou "HH:MM:SS" em minutos desde meia-noite
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
-
-// Sugere primeiro slot disponível dentro do expediente real do profissional.
-// Se date === hoje (Dublin), ignora horários que já passaram (+1h de margem).
-// Retorna null se não houver slot disponível para este dia.
-function suggestAlternative(
-  date: string,
-  existingBookings: Array<{ start_time: string; end_time?: string | null }>,
-  durationMinutes: number,
-  workStartTime: string, // ex: "09:00"
-  workEndTime: string    // ex: "18:00"
-): string | null {
-  const workStartMins = timeToMinutes(workStartTime);
-  const workEndMins = timeToMinutes(workEndTime);
-
-  // Hora atual em Dublin
-  const nowDublin = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-  const todayStr = nowDublin.toISOString().split('T')[0];
-  const isToday = date === todayStr;
-
-  // Horário mínimo: se hoje, próxima hora cheia + 1h de margem; senão, início do expediente
-  const minMinutes = isToday
-    ? Math.ceil((nowDublin.getHours() * 60 + nowDublin.getMinutes() + 60) / 60) * 60
-    : workStartMins;
-
-  if (isToday) {
-    console.log(`⏰ Hoje Dublin ${nowDublin.getHours()}:${String(nowDublin.getMinutes()).padStart(2, '0')} → mínimo ${Math.floor(minMinutes / 60)}:00 | expediente ${workStartTime}–${workEndTime}`);
-  }
-
-  // Iterar slots de 60 em 60 min dentro do expediente
-  for (let slotMins = workStartMins; slotMins + durationMinutes <= workEndMins; slotMins += 60) {
-    if (slotMins < minMinutes) continue;
-    const slotEnd = slotMins + durationMinutes;
-    const slot = `${String(Math.floor(slotMins / 60)).padStart(2, '0')}:${String(slotMins % 60).padStart(2, '0')}`;
-    const BUFFER = 15; // minutos livres após cada atendimento
-    const hasConflict = existingBookings.some((b) => {
-      const bStart = timeToMinutes(b.start_time);
-      const bEnd = (b.end_time ? timeToMinutes(b.end_time) : bStart + 60) + BUFFER;
-      return slotMins < bEnd && slotEnd > bStart;
-    });
-    if (!hasConflict) return slot;
-  }
-  return null;
+/** Limpa a camada in-memory para uma chave específica (usado em testes e pelo endpoint admin). */
+export function clearMemoryCache(cacheKey: string): boolean {
+  return memoryCache.delete(cacheKey);
 }
 
 interface ConversationContext {
@@ -108,22 +65,31 @@ export class AIBot {
       }
 
       if (greeting) {
-        console.log(`👋 Saudação direta (bypass Claude): "${greeting}"`);
         const cacheKey = `${businessId}_${phone}`;
-        const cached = memoryCache.get(cacheKey) || [];
-        cached.push(
-          { role: 'user', content: message, ts: Date.now() },
-          { role: 'assistant', content: greeting, ts: Date.now() + 1 },
-        );
-        memoryCache.set(cacheKey, cached.slice(-20));
-        await Promise.allSettled([
-          ConversationCache.addMessages(cacheKey, [
-            { role: 'user', content: message, timestamp: Date.now() },
-            { role: 'assistant', content: greeting, timestamp: Date.now() + 1 },
-          ]),
-          this.saveToHistory(context.conversationId, context.phone, message, greeting),
-        ]);
-        return greeting;
+        // Lock distribuído: evita race condition quando mensagens chegam simultaneamente
+        const lockAcquired = await ConversationCache.acquireGreetingLock(cacheKey);
+        if (!lockAcquired) {
+          console.log(`🔒 Greeting já enviado por outro processo — processando como mensagem normal`);
+          // Aguarda brevemente para o histórico ser salvo pelo processo que ganhou o lock
+          await new Promise(r => setTimeout(r, 500));
+          // Continua para processamento normal (Claude responde às perguntas)
+        } else {
+          console.log(`👋 Saudação direta (bypass Claude): "${greeting}"`);
+          const cached = memoryCache.get(cacheKey) || [];
+          cached.push(
+            { role: 'user', content: message, ts: Date.now() },
+            { role: 'assistant', content: greeting, ts: Date.now() + 1 },
+          );
+          memoryCache.set(cacheKey, cached.slice(-20));
+          await Promise.allSettled([
+            ConversationCache.addMessages(cacheKey, [
+              { role: 'user', content: message, timestamp: Date.now() },
+              { role: 'assistant', content: greeting, timestamp: Date.now() + 1 },
+            ]),
+            this.saveToHistory(context.conversationId, context.phone, message, greeting),
+          ]);
+          return greeting;
+        }
       }
     }
 
@@ -205,6 +171,18 @@ export class AIBot {
           required: ['booking_id'],
         },
       },
+      {
+        name: 'check_availability',
+        description: 'Verifica se o profissional atende numa data/horário específico SEM criar agendamento. Checa expediente E conflitos com agendamentos existentes. SEMPRE chame assim que o cliente mencionar uma data/horário, ANTES de pedir nome. Se available=false: informe imediatamente. Se available=true: peça o nome sem prometer "está disponível" (a confirmação real vem só após create_appointment).',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            date: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
+            time: { type: 'string', description: 'Horário no formato HH:MM (opcional — para verificar se está dentro do expediente)' },
+          },
+          required: ['date'],
+        },
+      },
     ];
 
     const messages: Array<{ role: 'user' | 'assistant'; content: any }> = [
@@ -255,6 +233,8 @@ export class AIBot {
         toolResult = await this.getMyAppointments(context.phone, professionalId);
       } else if (toolUseBlock.name === 'cancel_appointment') {
         toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
+      } else if (toolUseBlock.name === 'check_availability') {
+        toolResult = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
       } else {
         console.warn('Tool desconhecida:', toolUseBlock.name);
         break;
@@ -292,38 +272,72 @@ export class AIBot {
     return textBlock?.text ?? '';
   }
 
-  private normalizeDate(dateStr: string): string {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+  private async checkAvailability(date: string, time: string | undefined, professionalId: string) {
+    const normalizedDate = normalizeDate(date);
+    const dayInt = new Date(normalizedDate + 'T12:00:00Z').getUTCDay();
+    const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
-    const lower = dateStr.toLowerCase().trim();
-    if (lower === 'hoje' || lower === 'today') return todayStr;
-    if (lower === 'amanhã' || lower === 'amanha' || lower === 'tomorrow') {
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      return tomorrow.toISOString().split('T')[0];
+    const { data: dayWH } = await this.supabase
+      .from('working_hours')
+      .select('start_time, end_time')
+      .eq('professional_id', professionalId)
+      .eq('day_of_week', dayInt)
+      .eq('is_available', true)
+      .maybeSingle();
+
+    if (!dayWH) {
+      return { available: false, reason: 'day_off', message: `Não atendo ${dayNames[dayInt]}s.` };
     }
-    // Se já está em formato YYYY-MM-DD, retorna como está
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    // Formato DD/MM/YYYY
-    const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
-    // Fallback: hoje
-    console.warn('createAppointment: data não reconhecida:', dateStr, '→ usando hoje');
-    return todayStr;
-  }
 
-  private normalizeTime(timeStr: string): string {
-    const t = timeStr.trim();
-    // "18h" ou "18H"
-    if (/^\d{1,2}[hH]$/.test(t)) return t.replace(/[hH]/, '').padStart(2, '0') + ':00';
-    // "18h30" ou "18H30"
-    const hm = t.match(/^(\d{1,2})[hH](\d{2})$/);
-    if (hm) return `${hm[1].padStart(2,'0')}:${hm[2]}`;
-    // "18:00" ou "18:00:00"
-    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(t)) return t.slice(0, 5).padStart(5, '0');
-    // Fallback: retorna como está
-    return t;
+    const workStart = dayWH.start_time.slice(0, 5);
+    const workEnd = dayWH.end_time.slice(0, 5);
+
+    if (time) {
+      const normalizedTime = normalizeTime(time);
+      const reqMins = timeToMinutes(normalizedTime);
+      const startMins = timeToMinutes(dayWH.start_time);
+      const endMins = timeToMinutes(dayWH.end_time);
+      if (reqMins < startMins || reqMins >= endMins) {
+        return {
+          available: false,
+          reason: 'outside_hours',
+          message: `Atendo ${dayNames[dayInt]}s das ${workStart} às ${workEnd}, mas esse horário está fora do expediente.`,
+          work_hours: `${workStart} – ${workEnd}`,
+        };
+      }
+
+      // Verificar conflitos reais com agendamentos existentes (buffer de 15 min)
+      const { data: existingBookings } = await this.supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('professional_id', professionalId)
+        .eq('booking_date', normalizedDate)
+        .neq('status', 'cancelled')
+        .neq('status', 'completed');
+
+      if (existingBookings && existingBookings.length > 0) {
+        const BUFFER = 15;
+        const ASSUMED_DURATION = 60; // assume 60 min se não soubermos o serviço ainda
+        const reqEnd = reqMins + ASSUMED_DURATION;
+        const conflict = existingBookings.find((b) => {
+          const bStart = timeToMinutes(b.start_time);
+          const bEnd = (b.end_time ? timeToMinutes(b.end_time) : bStart + 60) + BUFFER;
+          return reqMins < bEnd && reqEnd > bStart;
+        });
+        if (conflict) {
+          const alternative = suggestAlternative(normalizedDate, existingBookings, ASSUMED_DURATION, dayWH.start_time, dayWH.end_time);
+          return {
+            available: false,
+            reason: 'slot_taken',
+            message: `Esse horário já está ocupado.${alternative ? ` O próximo horário disponível é às ${alternative}.` : ''}`,
+            work_hours: `${workStart} – ${workEnd}`,
+            suggested_time: alternative ?? null,
+          };
+        }
+      }
+    }
+
+    return { available: true, work_hours: `${workStart} – ${workEnd}` };
   }
 
   private async createAppointment(
@@ -341,8 +355,8 @@ export class AIBot {
   ): Promise<{ success: boolean; error?: string; message?: string; appointment_id?: string; service_name?: string; price?: number; date?: string; time?: string }> {
     try {
       // Normalizar data e hora antes de qualquer operação
-      const bookingDate = this.normalizeDate(data.date);
-      const bookingTime = this.normalizeTime(data.time);
+      const bookingDate = normalizeDate(data.date);
+      const bookingTime = normalizeTime(data.time);
       console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}"`);
 
       // BUG #1 fix: rejeitar horários no passado (Dublin timezone)
@@ -366,7 +380,7 @@ export class AIBot {
         return {
           success: false,
           error: 'past_time',
-          message: `Não posso agendar no passado! Você pediu ${bookingTime} mas já são ${nowLabel} agora. Qual horário você gostaria?`,
+          message: `Esse horário já passou! Já são ${nowLabel} agora. Qual horário você prefere?`,
         };
       }
 
@@ -384,7 +398,40 @@ export class AIBot {
         return { success: false, error: `Serviço "${data.service_name}" não encontrado` };
       }
 
-      // 2. Verificar agendamentos futuros do mesmo cliente (duplicatas)
+      // 2. Validar dia e horário — ANTES de qualquer outra checagem
+      // Evita oferecer datas/dias inválidos em mensagens de erro de duplicata
+      const bookingDayInt = new Date(bookingDate + 'T12:00:00Z').getUTCDay();
+      const { data: dayWH } = await this.supabase
+        .from('working_hours')
+        .select('start_time, end_time')
+        .eq('professional_id', professionalId)
+        .eq('day_of_week', bookingDayInt)
+        .eq('is_available', true)
+        .maybeSingle();
+
+      if (!dayWH) {
+        console.log(`🚫 Profissional não atende dia_int=${bookingDayInt} (${bookingDate})`);
+        return {
+          success: false,
+          error: 'day_unavailable',
+          message: `Desculpe, não atendo nesse dia. Qual outro dia funciona para você?`,
+        };
+      }
+
+      const duration = service.duration_minutes ?? 60;
+      const reqStartMins = timeToMinutes(bookingTime);
+      const workStartMins = timeToMinutes(dayWH.start_time);
+      const workEndMins = timeToMinutes(dayWH.end_time);
+      if (reqStartMins < workStartMins || reqStartMins + duration > workEndMins) {
+        console.log(`🚫 Horário fora do expediente: ${bookingTime} (expediente ${dayWH.start_time}–${dayWH.end_time})`);
+        return {
+          success: false,
+          error: 'outside_hours',
+          message: `Desculpe, atendo das ${dayWH.start_time.slice(0, 5)} às ${dayWH.end_time.slice(0, 5)}. Quer agendar dentro desse horário?`,
+        };
+      }
+
+      // 3. Verificar agendamentos futuros do mesmo cliente (duplicatas)
       const todayISO = new Date().toISOString().split('T')[0];
       const { data: futureBookings } = await this.supabase
         .from('bookings')
@@ -433,38 +480,6 @@ export class AIBot {
             message: `Você já tem ${service.name} marcado para ${nearbyLabel} às ${nearbyTime}. Quer remarcar para ${requestedDateLabel} às ${bookingTime}, ou confirma os dois agendamentos?`,
           };
         }
-      }
-
-      // 3. Validar dia e horário dentro do expediente
-      const bookingDayInt = new Date(bookingDate + 'T12:00:00Z').getUTCDay();
-      const { data: dayWH } = await this.supabase
-        .from('working_hours')
-        .select('start_time, end_time')
-        .eq('professional_id', professionalId)
-        .eq('day_of_week', bookingDayInt)
-        .eq('is_available', true)
-        .maybeSingle();
-
-      if (!dayWH) {
-        console.log(`🚫 Profissional não atende dia_int=${bookingDayInt} (${bookingDate})`);
-        return {
-          success: false,
-          error: 'day_unavailable',
-          message: `Desculpe, não atendo nesse dia. Qual outro dia funciona para você?`,
-        };
-      }
-
-      const duration = service.duration_minutes ?? 60;
-      const reqStartMins = timeToMinutes(bookingTime);
-      const workStartMins = timeToMinutes(dayWH.start_time);
-      const workEndMins = timeToMinutes(dayWH.end_time);
-      if (reqStartMins < workStartMins || reqStartMins + duration > workEndMins) {
-        console.log(`🚫 Horário fora do expediente: ${bookingTime} (expediente ${dayWH.start_time}–${dayWH.end_time})`);
-        return {
-          success: false,
-          error: 'outside_hours',
-          message: `Desculpe, atendo das ${dayWH.start_time.slice(0, 5)} às ${dayWH.end_time.slice(0, 5)}. Quer agendar dentro desse horário?`,
-        };
       }
 
       // 4. Calcular horário de término
@@ -736,6 +751,7 @@ ${conversationHistory}
 # REGRAS DE CONTEXTO
 - Nunca pergunte algo já respondido no histórico (nome, serviço, data, horário)
 - Use informações do histórico para contexto, mas NUNCA para afirmar estado de agendamentos
+- Se o histórico mostrar várias perguntas seguidas sem resposta, responda TODAS numa só mensagem
 
 # AGENDAMENTO PARA TERCEIROS
 Se o cliente pedir para agendar por outra pessoa (amiga, familiar, etc.), responda IMEDIATAMENTE com uma mensagem gentil como:
@@ -814,13 +830,28 @@ Para cancelar um agendamento (apenas após tentativa de retenção):
   - "remarcar": confirme o novo; "confirmar dois": chame create_appointment normalmente
 
 # DATA E HORA
-Hoje: ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Dublin' })})
-"hoje" = ${new Date().toISOString().split('T')[0]} | "amanhã" = dia seguinte
+${(() => {
+      const dublinNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+      const toISO = (d: Date) => d.toISOString().split('T')[0];
+      const toLabel = (d: Date) => d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      const days: string[] = [];
+      for (let i = 0; i <= 7; i++) {
+        const d = new Date(dublinNow);
+        d.setDate(d.getDate() + i);
+        const iso = toISO(d);
+        const label = toLabel(new Date(iso + 'T12:00:00Z'));
+        if (i === 0) days.push(`Hoje: ${iso} (${label})`);
+        else if (i === 1) days.push(`Amanhã: ${iso} (${label})`);
+        else days.push(`${label}: ${iso}`);
+      }
+      return days.join('\n');
+    })()}
 Formato date: YYYY-MM-DD | Formato time: HH:MM
+Use SEMPRE as datas acima — nunca calcule datas manualmente.
 
 # NEGÓCIO
 ${businessInfo.business_name}${businessInfo.description ? ` — ${businessInfo.description}` : ''}
-Local: ${businessInfo.location}
+Local: ${businessInfo.location}${businessInfo.website ? `\nSite/Portfólio: ${businessInfo.website}` : ''}
 
 Serviços:
 ${this.formatServices(businessInfo.services)}
@@ -833,6 +864,24 @@ ${unavailableMsg ? `\nIndisponível: ${unavailableMsg}` : ''}
 # CONFIRMAÇÃO DE AGENDAMENTO
 ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊`}
 
+# VERIFICAÇÃO DE DISPONIBILIDADE — OBRIGATÓRIO ANTES DE COLETAR DADOS
+Quando o cliente mencionar uma data, dia ou horário (ex: "amanhã", "sábado", "dia 25", "às 9h"):
+1. Chame check_availability IMEDIATAMENTE com a data mencionada
+2. Se available=false → informe o motivo NA HORA, antes de pedir nome ou qualquer outro dado
+3. Só pergunte nome/horário DEPOIS que check_availability retornar available=true
+
+FLUXO CORRETO:
+Cliente: "quero cortar amanhã às 9h"
+→ [chama check_availability com date="amanhã", time="09:00"]
+→ available=false → informe o motivo. NUNCA sugira horário alternativo específico — apenas diga quais dias atende e pergunte o que o cliente prefere.
+→ available=true → peça o nome SEM dizer "está disponível" (ex: "Para confirmar, qual é o seu nome?")
+  A disponibilidade real só é garantida após create_appointment.
+
+PROIBIDO ao rejeitar data/horário:
+❌ "Que tal segunda às 9h?" — nunca sugira horário sem verificar com check_availability
+❌ "Posso te oferecer segunda-feira às 9h" — idem
+✅ "Não atendo domingos. Que dia da semana prefere?" — deixe o cliente propor, depois verifique
+
 # PROIBIDO
 - Apresentar-se mais de uma vez
 - Perguntar o que já foi dito
@@ -843,6 +892,7 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
 - Pedir telefone (já temos: ${phone})
 - Confirmar ou insinuar que oferece serviço que não está na lista de "Serviços:" acima
 - Coletar dados (nome, data, horário) para serviço que não existe na lista
+- Pedir nome ou horário antes de chamar check_availability quando cliente menciona data/dia
 `;
   }
 
@@ -866,13 +916,14 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
     }).join('\n');
   }
 
-  private formatSchedule(schedule: any): string {
-    // Formatar horário de funcionamento
-    return Object.entries(schedule)
-      .map(([day, hours]: [string, any]) =>
-        `${day}: ${hours.start} - ${hours.end}`
-      )
-      .join('\n');
+  private formatSchedule(schedule: Record<string, { start: string; end: string }>): string {
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return dayNames.map((name, i) => {
+      const hours = schedule[String(i)];
+      return hours
+        ? `${name}: ${hours.start.slice(0, 5)} – ${hours.end.slice(0, 5)}`
+        : `${name}: ❌ Não atende`;
+    }).join('\n');
   }
 
   private async getConversationContext(
@@ -954,7 +1005,7 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
     ] = await Promise.all([
       this.supabase
         .from('professionals')
-        .select('id, business_name, bio, city')
+        .select('id, business_name, bio, city, slug')
         .eq('user_id', businessId)
         .single(),
       this.supabase
@@ -1011,6 +1062,7 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
         services: services ?? [],
         schedule,
         location: professional?.city ?? '',
+        website: professional?.slug ? `${process.env.NEXT_PUBLIC_BASE_URL}/${professional.slug}` : null,
         ai_instructions: aiInstructions?.instructions ?? '',
         botConfig: botConfig ?? null,
       },

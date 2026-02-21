@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Permite rodar manualmente pela UI do GitHub
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Job 1: Testes unitários (Vitest) — rápido, sem deps externas
+  # Roda em todo push e PR
+  # ─────────────────────────────────────────────────────────────
+  unit:
+    name: Vitest (unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm test
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 2: Dashboard smoke (Playwright Chromium)
+  # Só faz requisições HTTP — roda em todo push e PR
+  # ─────────────────────────────────────────────────────────────
+  smoke:
+    name: Playwright (dashboard smoke)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+
+      - name: Run dashboard smoke tests
+        run: npm run test:e2e:dashboard
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Upload report (só em falha)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-smoke
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 3: Bot E2E (Playwright — API only, sem browser)
+  # Chama Claude API = custa dinheiro.
+  # Roda apenas em push para main ou trigger manual (não em PRs).
+  # ─────────────────────────────────────────────────────────────
+  bot-e2e:
+    name: Playwright (bot E2E)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      # bot-api usa apenas a test runner, sem browser binaries
+
+      - name: Run bot E2E tests
+        run: npm run test:e2e:bot
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+
+      - name: Upload report (só em falha)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-bot
+          path: e2e-report/
+          retention-days: 7

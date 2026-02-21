@@ -43,6 +43,11 @@ next-env.d.ts
 # supabase temp
 supabase/.temp/
 
+# Playwright E2E
+e2e-report/
+playwright-report/
+test-results/
+
 # Credential and migration helper files
 CREDENCIAIS_PROJETO.md
 EXECUTAR_*.md

@@ -87,4 +87,20 @@ export class ConversationCache {
       console.error('❌ Redis del error:', (error as Error).message);
     }
   }
+
+  /**
+   * Tenta adquirir lock de saudação (NX = só seta se não existir).
+   * Retorna true se este processo pode enviar a saudação, false se outro já enviou.
+   * TTL de 30s para auto-expirar em caso de falha.
+   */
+  static async acquireGreetingLock(cacheKey: string): Promise<boolean> {
+    const client = getRedis();
+    if (!client) return true; // sem Redis: permite (risco baixo)
+    try {
+      const result = await client.set(`greeting_lock:${cacheKey}`, '1', 'EX', 30, 'NX');
+      return result === 'OK';
+    } catch {
+      return true; // em erro: permite
+    }
+  }
 }

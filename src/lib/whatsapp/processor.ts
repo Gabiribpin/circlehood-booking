@@ -2,6 +2,7 @@ import { AIBot } from '@/lib/ai/chatbot';
 import { WhatsAppClient } from './client';
 import { sendEvolutionMessage } from './evolution';
 import { createClient } from '@supabase/supabase-js';
+import { ConversationCache } from '@/lib/redis/conversation-cache';
 import type { WhatsAppProvider } from './types';
 
 export async function processWhatsAppMessage(
@@ -12,6 +13,15 @@ export async function processWhatsAppMessage(
   evolutionInstance?: string
 ) {
   try {
+    // Deduplicação por messageId — evita processar retries do Evolution/Meta
+    if (messageId) {
+      const isDuplicate = !(await ConversationCache.acquireGreetingLock(`msg:${messageId}`));
+      if (isDuplicate) {
+        console.log(`⚡ Mensagem duplicada ignorada: ${messageId}`);
+        return;
+      }
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
