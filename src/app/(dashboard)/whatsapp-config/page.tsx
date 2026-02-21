@@ -35,13 +35,10 @@ export default function WhatsAppConfigPage() {
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [greetingMessage, setGreetingMessage] = useState('');
   const [aiSettings, setAiSettings] = useState({
     languages: ['pt', 'en'],
     instructions: '',
-    // welcomeMessage removido - bot usa greeting_message do BotConfigPanel
-    autoReminders: true,
-    autoBirthdays: true,
-    autoWaitlist: true,
   });
 
   const [loading, setLoading] = useState(true);
@@ -91,18 +88,25 @@ export default function WhatsAppConfigPage() {
       // Carregar ai_instructions (pega a mais recente)
       const { data: aiData } = await supabase
         .from('ai_instructions')
-        .select('instructions, welcome_message')
+        .select('instructions')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (aiData) {
-        setAiSettings(prev => ({
-          ...prev,
-          instructions: aiData.instructions ?? '',
-          // welcomeMessage removido - bot usa bot_config.greeting_message
-        }));
+        setAiSettings(prev => ({ ...prev, instructions: aiData.instructions ?? '' }));
+      }
+
+      // Carregar greeting_message do bot_config
+      const { data: bcData } = await supabase
+        .from('bot_config')
+        .select('greeting_message')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (bcData) {
+        setGreetingMessage(bcData.greeting_message ?? '');
       }
 
       setLoading(false);
@@ -283,12 +287,19 @@ export default function WhatsAppConfigPage() {
       return;
     }
 
+    // Salvar greeting_message no bot_config
+    await supabase
+      .from('bot_config')
+      .upsert(
+        { user_id: user.id, greeting_message: greetingMessage || null, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+
     // Upsert em ai_instructions para cada idioma selecionado
     const upserts = aiSettings.languages.map((lang) => ({
       user_id: user.id,
       language: lang,
       instructions: aiSettings.instructions,
-      // welcome_message removido - bot usa bot_config.greeting_message
       updated_at: new Date().toISOString(),
     }));
 
@@ -595,6 +606,20 @@ export default function WhatsAppConfigPage() {
             <h2 className="text-xl font-semibold">🤖 Configuração da IA</h2>
 
             <div>
+              <Label htmlFor="greeting_message">Saudação inicial</Label>
+              <Textarea
+                id="greeting_message"
+                rows={2}
+                placeholder="Olá! 👋 Bem-vinda ao salão da Maria! Como posso ajudar?"
+                value={greetingMessage}
+                onChange={(e) => setGreetingMessage(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Mensagem enviada quando o cliente entra em contato pela primeira vez.
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="instructions">
                 Instruções personalizadas para a IA
                 <span className="ml-2 text-xs text-yellow-600">
@@ -609,42 +634,7 @@ export default function WhatsAppConfigPage() {
                 onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
               />
               <p className="text-xs text-gray-500 mt-1">
-                <strong>Nota:</strong> Instruções muito específicas podem ser sobrescritas pelas regras
-                padrão do bot (apresentação, agendamento, cancelamento). Para controle total, use o
-                &quot;Prompt do sistema (avançado)&quot; na seção abaixo.
-              </p>
-            </div>
-
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-sm text-blue-900 mb-2">
-                🔔 Automações Ativas
-              </h4>
-              <ul className="text-xs text-blue-800 space-y-1.5 ml-4">
-                <li className="flex items-start">
-                  <span className="mr-2">✅</span>
-                  <div>
-                    <strong>Lembretes 24h antes:</strong> Sempre ativo. Bot envia lembrete
-                    automático 24h antes de cada agendamento.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">✅</span>
-                  <div>
-                    <strong>Mensagens de aniversário:</strong> Sempre ativo. Bot parabeniza
-                    clientes automaticamente no dia do aniversário.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">⏳</span>
-                  <div>
-                    <strong>Lista de espera:</strong> Em desenvolvimento. Notificará clientes
-                    quando surgirem vagas disponíveis.
-                  </div>
-                </li>
-              </ul>
-              <p className="text-xs text-blue-700 mt-3">
-                <strong>Nota:</strong> Estas automações funcionam automaticamente via sistema
-                de agendamento (cron jobs). Não precisam de configuração manual.
+                Instruções específicas do seu negócio que o bot deve seguir.
               </p>
             </div>
 
