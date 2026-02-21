@@ -16,11 +16,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // 1. Get service duration
+  // 1. Get service duration — validate service belongs to this professional
   const { data: service } = await supabase
     .from('services')
     .select('duration_minutes')
     .eq('id', serviceId)
+    .eq('professional_id', professionalId)
     .single();
 
   if (!service) {
