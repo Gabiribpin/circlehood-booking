@@ -8,12 +8,11 @@ test.describe('Bot — Validação de Dia', () => {
   });
 
   test('rejeita domingo ANTES de pedir o nome', async ({ request }) => {
-    // Próximo domingo
+    // Próximo domingo no formato YYYY-MM-DD (normalizeDate reconhece sem ambiguidade)
     const sunday = nextWeekday(0);
-    const [day, month] = sunday.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
-    await sendBotMessage(request, `quero cortar cabelo no dia ${day}/${month} às 10h`);
+    await sendBotMessage(request, `quero cortar cabelo no dia ${sunday} às 10h`);
 
     const reply = await getLastBotMessage();
     expect(reply).not.toBeNull();

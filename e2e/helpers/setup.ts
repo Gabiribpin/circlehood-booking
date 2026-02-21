@@ -30,11 +30,14 @@ export async function cleanTestState() {
     await supabase.from('whatsapp_conversations').delete().eq('id', conv.id);
   }
 
-  // 3. Limpar Redis (Tier 1)
+  // 3. Limpar Redis (Tier 1) — conversa + greeting lock (TTL 30s pode vazar entre testes)
   if (TEST.REDIS_URL) {
     try {
       const redis = new Redis(TEST.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
-      await redis.del(`conversation:${TEST.USER_ID}_${TEST.PHONE}`);
+      await redis.del(
+        `conversation:${TEST.USER_ID}_${TEST.PHONE}`,
+        `greeting_lock:${TEST.USER_ID}_${TEST.PHONE}`,
+      );
       redis.disconnect();
     } catch (e) {
       console.warn('⚠️  Redis cleanup falhou (não crítico):', (e as Error).message);
