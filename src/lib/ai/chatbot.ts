@@ -145,6 +145,26 @@ export class AIBot {
           required: ['customer_name', 'customer_phone', 'service_name', 'date', 'time'],
         },
       },
+      {
+        name: 'get_my_appointments',
+        description: 'Consulta os agendamentos futuros confirmados do cliente no banco de dados. Use SEMPRE que o cliente perguntar sobre seus agendamentos e OBRIGATORIAMENTE antes de cancelar qualquer agendamento.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'cancel_appointment',
+        description: 'Cancela um agendamento existente. OBRIGATÓRIO: chame get_my_appointments primeiro para obter o booking_id correto.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            booking_id: { type: 'string', description: 'ID UUID do agendamento obtido via get_my_appointments' },
+          },
+          required: ['booking_id'],
+        },
+      },
     ];
 
     const messages: Array<{ role: 'user' | 'assistant'; content: any }> = [
@@ -172,52 +192,63 @@ export class AIBot {
 
     console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
 
-    // Se o Claude decidiu usar a tool create_appointment
-    if (response.stop_reason === 'tool_use') {
-      const toolUseBlock = response.content.find(
+    // Loop agentic: suporta encadeamento de tools (ex: get_my_appointments → cancel_appointment)
+    let currentResponse = response;
+    let currentMessages: typeof messages = [...messages];
+
+    for (let iteration = 0; iteration < 5; iteration++) {
+      if (currentResponse.stop_reason !== 'tool_use') break;
+
+      const toolUseBlock = currentResponse.content.find(
         (c): c is { type: 'tool_use'; id: string; name: string; input: Record<string, any> } =>
           c.type === 'tool_use'
       );
+      if (!toolUseBlock) break;
 
-      if (toolUseBlock && toolUseBlock.name === 'create_appointment') {
-        console.log('🛠️ Tool use: create_appointment', JSON.stringify(toolUseBlock.input));
+      console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
 
-        const result = await this.createAppointment(
-          toolUseBlock.input as any,
-          professionalId
-        );
+      let toolResult: any;
 
-        console.log('📅 createAppointment result:', JSON.stringify(result));
+      if (toolUseBlock.name === 'create_appointment') {
+        toolResult = await this.createAppointment(toolUseBlock.input as any, professionalId);
+      } else if (toolUseBlock.name === 'get_my_appointments') {
+        toolResult = await this.getMyAppointments(context.phone, professionalId);
+      } else if (toolUseBlock.name === 'cancel_appointment') {
+        toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
+      } else {
+        console.warn('Tool desconhecida:', toolUseBlock.name);
+        break;
+      }
 
-        // Segunda chamada com o resultado da tool (sistema já em cache)
-        const followUp = await this.anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: cachedSystem,
-          tools,
-          messages: [
-            ...messages,
-            { role: 'assistant', content: response.content },
+      console.log(`📊 Tool result [${iteration}]:`, JSON.stringify(toolResult));
+
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant' as const, content: currentResponse.content },
+        {
+          role: 'user' as const,
+          content: [
             {
-              role: 'user',
-              content: [
-                {
-                  type: 'tool_result',
-                  tool_use_id: toolUseBlock.id,
-                  content: JSON.stringify(result),
-                },
-              ],
+              type: 'tool_result',
+              tool_use_id: toolUseBlock.id,
+              content: JSON.stringify(toolResult),
             },
           ],
-        });
+        },
+      ];
 
-        const textFollowUp = (followUp.content as any[]).find(c => c.type === 'text');
-        return textFollowUp?.text ?? '';
-      }
+      currentResponse = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: cachedSystem,
+        tools,
+        messages: currentMessages,
+      });
+
+      console.log(`💰 Cache [${iteration}]: create=${(currentResponse.usage as any).cache_creation_input_tokens ?? 0} read=${(currentResponse.usage as any).cache_read_input_tokens ?? 0}`);
     }
 
-    // Resposta de texto normal
-    const textBlock = (response.content as any[]).find(c => c.type === 'text');
+    const textBlock = (currentResponse.content as any[]).find(c => c.type === 'text');
     return textBlock?.text ?? '';
   }
 
@@ -613,6 +644,21 @@ ${askAdditional ? 'Pergunte preferências/observações.' : ''}
 - Confirme "Agendado!" APENAS se create_appointment retornar success: true.
 - Em caso de erro técnico: "Houve um problema. Por favor, entre em contato."
 - NUNCA diga "vou verificar disponibilidade" — a tool faz isso automaticamente.
+- NUNCA sugira uma lista de horários disponíveis — peça ao cliente qual horário quer e tente create_appointment. Se não estiver disponível, a tool retorna alternativas automaticamente.
+
+# CONSULTA DE AGENDAMENTOS
+- Quando cliente perguntar sobre seus agendamentos: chame get_my_appointments.
+- NUNCA liste ou mencione agendamentos baseado apenas no histórico de conversa — o histórico pode estar desatualizado. Sempre consulte o banco.
+- Se get_my_appointments retornar lista vazia: "Não encontrei agendamentos futuros confirmados para você."
+
+# CANCELAMENTO
+Para cancelar um agendamento:
+1. Chame get_my_appointments para ver os agendamentos reais do cliente
+2. Mostre a lista e peça confirmação de qual cancelar
+3. Chame cancel_appointment com o booking_id
+- Diga "Cancelado!" APENAS se cancel_appointment retornar success: true.
+- NUNCA diga "vou cancelar" ou "cancelei" sem chamar cancel_appointment.
+- Todo agendamento criado pelo bot é REAL no banco — não existe "teste" vs "real".
 
 # ERROS DA TOOL create_appointment
 - past_time / past_time_close → repasse 'message', pergunte outro horário
@@ -623,7 +669,6 @@ ${askAdditional ? 'Pergunte preferências/observações.' : ''}
   - "remarcar": crie com novo horário; "outro serviço": colete serviço e crie
 - duplicate_nearby → repasse 'message', aguarde: "remarcar" ou "confirmar dois"
   - "remarcar": confirme o novo; "confirmar dois": chame create_appointment normalmente
-- Se cliente disser que agendamento foi cancelado: ACREDITE, ofereça reagendar diretamente.
 
 # DATA E HORA
 Hoje: ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Dublin' })})
@@ -648,7 +693,11 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
 # PROIBIDO
 - Apresentar-se mais de uma vez
 - Perguntar o que já foi dito
-- Confirmar agendamento sem chamar a tool
+- Confirmar agendamento sem chamar create_appointment e receber success: true
+- Dizer "cancelado" sem chamar cancel_appointment e receber success: true
+- Listar ou mencionar agendamentos sem chamar get_my_appointments
+- Sugerir lista de horários disponíveis sem tentar create_appointment
+- Inventar distinção entre agendamento "de teste" e "real" — todos são reais
 - Pedir telefone (já temos: ${phone})
 `;
   }
@@ -821,6 +870,77 @@ ${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preç
         ai_instructions: aiInstructions?.instructions ?? '',
         botConfig: botConfig ?? null,
       },
+    };
+  }
+
+  private async getMyAppointments(phone: string, professionalId: string) {
+    const dublinNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+    const today = `${dublinNow.getFullYear()}-${String(dublinNow.getMonth() + 1).padStart(2, '0')}-${String(dublinNow.getDate()).padStart(2, '0')}`;
+
+    const { data: bookings } = await this.supabase
+      .from('bookings')
+      .select('id, booking_date, start_time, services(name, price)')
+      .eq('professional_id', professionalId)
+      .eq('client_phone', phone)
+      .gte('booking_date', today)
+      .eq('status', 'confirmed')
+      .order('booking_date', { ascending: true });
+
+    if (!bookings || bookings.length === 0) {
+      return { appointments: [], message: 'Nenhum agendamento futuro confirmado encontrado.' };
+    }
+
+    return {
+      appointments: bookings.map((b) => ({
+        id: b.id,
+        date: b.booking_date,
+        date_formatted: new Date(b.booking_date + 'T12:00:00Z').toLocaleDateString('pt-BR', {
+          weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+        }),
+        time: b.start_time.slice(0, 5),
+        service: (b.services as any)?.name ?? 'Serviço',
+        price: (b.services as any)?.price ?? 0,
+      })),
+    };
+  }
+
+  private async cancelAppointment(bookingId: string, professionalId: string) {
+    const { data: booking } = await this.supabase
+      .from('bookings')
+      .select('id, status, booking_date, start_time')
+      .eq('id', bookingId)
+      .eq('professional_id', professionalId)
+      .maybeSingle();
+
+    if (!booking) {
+      return { success: false, error: 'Agendamento não encontrado.' };
+    }
+    if (booking.status !== 'confirmed') {
+      return { success: false, error: `Agendamento não pode ser cancelado (status atual: ${booking.status}).` };
+    }
+
+    const { error } = await this.supabase
+      .from('bookings')
+      .update({
+        status: 'cancelled',
+        cancelled_by: 'client',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: 'Cancelado pelo cliente via WhatsApp',
+      })
+      .eq('id', bookingId);
+
+    if (error) {
+      console.error('cancelAppointment error:', error);
+      return { success: false, error: 'Erro ao cancelar. Por favor, tente novamente.' };
+    }
+
+    console.log('✅ Agendamento cancelado:', bookingId);
+    return {
+      success: true,
+      date_formatted: new Date(booking.booking_date + 'T12:00:00Z').toLocaleDateString('pt-BR', {
+        weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+      }),
+      time: booking.start_time.slice(0, 5),
     };
   }
 
