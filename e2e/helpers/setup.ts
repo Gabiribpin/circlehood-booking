@@ -10,11 +10,12 @@ const supabase = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
  */
 export async function cleanTestState() {
   // 1. Cancelar agendamentos de teste
+  // Inclui variante com '+' (Claude pode ter inserido +353... em vez de 353...)
   await supabase
     .from('bookings')
     .update({ status: 'cancelled', cancelled_by: 'system', cancellation_reason: 'E2E test cleanup' })
     .eq('professional_id', TEST.PROFESSIONAL_ID)
-    .eq('client_phone', TEST.PHONE)
+    .in('client_phone', [TEST.PHONE, `+${TEST.PHONE}`])
     .neq('status', 'cancelled');
 
   // 2. Limpar conversa e mensagens (Supabase — Tier 2)
@@ -101,7 +102,7 @@ export async function getTestBookings() {
     .from('bookings')
     .select('id, booking_date, start_time, status, client_name')
     .eq('professional_id', TEST.PROFESSIONAL_ID)
-    .eq('client_phone', TEST.PHONE)
+    .in('client_phone', [TEST.PHONE, `+${TEST.PHONE}`])
     .neq('status', 'cancelled')
     .order('created_at', { ascending: false });
 
