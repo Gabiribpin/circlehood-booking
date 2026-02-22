@@ -116,5 +116,24 @@ export default defineConfig({
       // Testes de API pura — sem browser nem storageState
       // Auth feita via CRON_SECRET e Supabase service role diretamente
     },
+
+    // ─── Mobile responsive (iPhone SE, iPhone 12, Pixel 5) ───────────
+    {
+      name: 'mobile',
+      testMatch: '**/mobile/**/*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+        hasTouch: true,
+        isMobile: true,
+        // Viewport padrão iPhone 12 (cada teste redefine o seu)
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        userAgent:
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
+      },
+      dependencies: ['auth-setup'],
+    },
   ],
 });
