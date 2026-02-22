@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         `
         id,
         booking_date,
-        booking_time,
+        start_time,
         client_name,
         client_phone,
         client_email,
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         const message = formatMessage(MESSAGE_TEMPLATES[language].reminder, {
           name: booking.client_name,
           date: new Date(booking.booking_date).toLocaleDateString('pt-BR'),
-          time: booking.booking_time.substring(0, 5),
+          time: booking.start_time.substring(0, 5),
           service: (booking.services as any)?.name || 'Serviço',
           price: (booking.services as any)?.price || '0',
           location:
