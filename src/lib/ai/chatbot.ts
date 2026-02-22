@@ -704,6 +704,12 @@ export class AIBot {
 
     const criticalRules = `# ⚠️ REGRAS ABSOLUTAS — LEIA PRIMEIRO ⚠️
 
+## REGRA #0: NUNCA COMECE COM SAUDAÇÃO OU APRESENTAÇÃO
+❌ PROIBIDO iniciar qualquer resposta com "Olá!", "Oi!", "Sou [nome]" ou apresentações
+❌ PROIBIDO saudar o cliente em qualquer mensagem que não seja a PRIMEIRA da conversa
+✅ Se a mensagem do cliente menciona data/dia/horário → chame check_availability IMEDIATAMENTE como PRIMEIRA ação
+✅ Se o cliente pede algo → responda DIRETAMENTE ao pedido sem preâmbulos
+
 ## REGRA #1: NUNCA CONFIRME SEM CHAMAR A TOOL
 ❌ PROIBIDO dizer "Agendado!" sem chamar create_appointment
 ❌ PROIBIDO confirmar horário baseado apenas na conversa
@@ -785,7 +791,7 @@ ${isFirstMessage
           : greetingMsg
             ? `PRIMEIRA MENSAGEM: responda com EXATAMENTE este texto (sem alterar): "${greetingMsg}"`
             : `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Bem-vindo ao ${businessInfo.business_name}! Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
-      : `NÃO se apresente novamente. Continue a conversa diretamente. Se souber o nome do cliente, use-o.`}
+      : `PROIBIDO apresentar-se ou saudar o cliente. A conversa já está em curso — vá DIRETAMENTE ao pedido. Se a mensagem menciona data, dia ou horário: chame check_availability IMEDIATAMENTE como PRIMEIRA ação, antes de qualquer texto.`}
 
 # HISTÓRICO DA CONVERSA
 O histórico completo da conversa está disponível nas mensagens acima (contexto da conversa).

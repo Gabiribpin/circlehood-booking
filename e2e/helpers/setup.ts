@@ -61,10 +61,10 @@ export async function cleanTestState() {
  * Por isso, tentamos até 4x com 2s de intervalo antes de desistir — protege
  * contra flakiness sem mascarar falhas reais (4 tentativas = 8s extra máx).
  */
-export async function getLastBotMessage(): Promise<string | null> {
-  for (let attempt = 0; attempt < 4; attempt++) {
+export async function getLastBotMessage(skipContent?: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 6; attempt++) {
     if (attempt > 0) {
-      await new Promise<void>((r) => setTimeout(r, 2000));
+      await new Promise<void>((r) => setTimeout(r, 2500));
     }
 
     const { data: conv } = await supabase
@@ -84,8 +84,10 @@ export async function getLastBotMessage(): Promise<string | null> {
       .order('sent_at', { ascending: false })
       .limit(1);
 
-    if (messages?.[0]?.content) return messages[0].content;
-    // mensagem outbound ainda não salva — aguardar
+    const content = messages?.[0]?.content;
+    // Pular mensagem conhecida (evita retornar resposta de turno anterior)
+    if (content && content !== skipContent) return content;
+    // mensagem outbound ainda não salva (ou é a mesma do turno anterior) — aguardar
   }
 
   return null;

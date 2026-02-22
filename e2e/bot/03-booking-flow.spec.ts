@@ -32,7 +32,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
       request,
       `quero cortar cabelo na segunda dia ${day}/${month} às 14h`
     );
-    const askName = await getLastBotMessage();
+    const askName = await getLastBotMessage(greeting!);
     expect(askName).not.toBeNull();
     // Dia está disponível → bot deve pedir o nome (não rejeitar)
     expect(askName!.toLowerCase()).toMatch(/nome|como (você|te|vc) chama/i);
@@ -40,7 +40,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
 
     // Turno 3: Informar o nome
     await sendBotMessage(request, 'Ana Teste E2E');
-    const confirmation = await getLastBotMessage();
+    const confirmation = await getLastBotMessage(askName!);
     expect(confirmation).not.toBeNull();
     // Bot deve confirmar o agendamento
     expect(confirmation!.toLowerCase()).toMatch(/confirmado|agendado|marcado|ana/i);
@@ -70,7 +70,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
 
     // Pede domingo (inválido)
     await sendBotMessage(request, 'quero marcar para domingo às 9h');
-    const rejection = await getLastBotMessage();
+    const rejection = await getLastBotMessage(greeting03!);
     expect(rejection!.toLowerCase()).toMatch(/não atendo|nao atendo|fechado|domingo/i);
 
     // Sem booking durante a tentativa inválida
@@ -82,7 +82,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
       request,
       `tudo bem, então quero marcar na segunda dia ${day}/${month} às 14h`
     );
-    const response = await getLastBotMessage();
+    const response = await getLastBotMessage(rejection!);
     expect(response).not.toBeNull();
     // Bot aceita a segunda (não rejeita o dia)
     expect(response!.toLowerCase()).not.toMatch(/não atendo|nao atendo|fechado/i);

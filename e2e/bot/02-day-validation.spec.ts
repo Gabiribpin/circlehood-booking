@@ -22,7 +22,8 @@ test.describe('Bot — Validação de Dia', () => {
 
     await sendBotMessage(request, `quero cortar cabelo no domingo dia ${sDay}/${sMonth} às 10h`);
 
-    const reply = await getLastBotMessage();
+    // Passa greeting como skipContent para não retornar o turno 1 caso o turno 2 ainda não tenha chegado
+    const reply = await getLastBotMessage(greeting!);
     expect(reply).not.toBeNull();
 
     // Bot deve rejeitar o dia (não atende domingos)
@@ -41,7 +42,7 @@ test.describe('Bot — Validação de Dia', () => {
 
     await sendBotMessage(request, 'quero marcar para domingo às 9h');
 
-    const reply = await getLastBotMessage();
+    const reply = await getLastBotMessage(greeting!);
     expect(reply).not.toBeNull();
 
     // Bot deve rejeitar, não perguntar nome
@@ -61,7 +62,7 @@ test.describe('Bot — Validação de Dia', () => {
     // Não especifica horário — bot deve aceitar o dia e pedir mais informações
     await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month}`);
 
-    const reply = await getLastBotMessage();
+    const reply = await getLastBotMessage(greeting!);
     expect(reply).not.toBeNull();
 
     // Segunda é dia útil — bot não deve rejeitar o dia

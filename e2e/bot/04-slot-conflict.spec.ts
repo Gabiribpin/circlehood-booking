@@ -85,7 +85,7 @@ test.describe('Bot — Conflito de Horário', () => {
       `quero cortar cabelo no dia ${day}/${month} às 15h`
     );
 
-    const reply = await getLastBotMessage();
+    const reply = await getLastBotMessage(greetingSlot1!);
     expect(reply).not.toBeNull();
 
     // Bot deve informar conflito (não perguntar nome)
@@ -115,13 +115,13 @@ test.describe('Bot — Conflito de Horário', () => {
       `quero cortar cabelo no dia ${day}/${month} às 11h`
     );
 
-    const askName = await getLastBotMessage();
+    const askName = await getLastBotMessage(greetingSlot2!);
     expect(askName).not.toBeNull();
     // 11h está livre → bot pede o nome
     expect(askName!.toLowerCase()).toMatch(/nome|como (você|te|vc) chama/i);
 
     await sendBotMessage(request, 'Carla Livre');
-    const confirmation = await getLastBotMessage();
+    const confirmation = await getLastBotMessage(askName!);
     expect(confirmation!.toLowerCase()).toMatch(/confirmado|agendado|marcado/i);
 
     const bookings = await getTestBookings();
