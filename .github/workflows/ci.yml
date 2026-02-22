@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
   # ─────────────────────────────────────────────────────────────
-  # Job 2: Dashboard smoke público (sem auth) — todo push e PR
+  # Job 2: Smoke cross-browser (Chromium, WebKit, Firefox)
   # ─────────────────────────────────────────────────────────────
   smoke:
     name: Playwright (smoke público)
@@ -37,9 +37,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npx playwright install chromium --with-deps
-      - name: Run smoke tests (sem auth)
-        run: npx playwright test --project=dashboard-public
+      - run: npx playwright install chromium webkit firefox --with-deps
+      - name: Run smoke tests (Chromium, WebKit, Firefox)
+        run: npx playwright test --project=smoke-chromium --project=smoke-webkit --project=smoke-firefox
         env:
           TEST_BASE_URL: https://circlehood-booking.vercel.app
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

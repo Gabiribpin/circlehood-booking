@@ -54,11 +54,27 @@ export default defineConfig({
       testMatch: '**/security/**/*.spec.ts',
     },
 
-    // ─── Dashboard smoke público (sem auth) ──────────────────────────
+    // ─── Smoke público: Chromium (Chrome/Edge) ───────────────────────
     {
-      name: 'dashboard-public',
+      name: 'smoke-chromium',
       testMatch: '**/dashboard/01-smoke.spec.ts',
       use: { browserName: 'chromium', headless: true },
+    },
+
+    // ─── Smoke público: WebKit (Safari) ──────────────────────────────
+    {
+      name: 'smoke-webkit',
+      testMatch: '**/dashboard/01-smoke.spec.ts',
+      retries: 1, // Safari pode ter timing diferente no CI
+      use: { browserName: 'webkit', headless: true },
+    },
+
+    // ─── Smoke público: Firefox ───────────────────────────────────────
+    {
+      name: 'smoke-firefox',
+      testMatch: '**/dashboard/01-smoke.spec.ts',
+      retries: 1, // Firefox pode ter timing diferente no CI
+      use: { browserName: 'firefox', headless: true },
     },
 
     // ─── Jornada do usuário: registro + onboarding (usa sessão salva) ──
