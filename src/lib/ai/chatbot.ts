@@ -216,7 +216,7 @@ export class AIBot {
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         system: cachedSystem,
         tools,
@@ -273,7 +273,7 @@ export class AIBot {
         ];
 
         currentResponse = await this.anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           system: cachedSystem,
           tools,
@@ -301,24 +301,30 @@ export class AIBot {
       return responseText;
 
     } catch (error: any) {
+      const errMsg = error?.message ?? '';
+      const errBody = error?.error ? JSON.stringify(error.error) : undefined;
       console.error('❌ Erro na API Anthropic:', {
         status: error?.status,
-        message: error?.message,
+        message: errMsg,
         type: error?.constructor?.name,
-        error_body: error?.error ? JSON.stringify(error.error) : undefined,
+        error_body: errBody,
       });
 
       if (error?.status === 429) {
         console.error('⚠️ Rate limit atingido');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns minutos. 😊';
       }
-      if (error?.code === 'ETIMEDOUT' || error?.message?.includes('timeout')) {
+      if (error?.code === 'ETIMEDOUT' || errMsg.includes('timeout')) {
         console.error('⏱️ Timeout na API Anthropic');
         return 'Desculpe a demora. Pode repetir sua mensagem? 😊';
       }
       if (error?.status === 401 || error?.status === 403) {
         console.error('🔑 Erro de autenticação na API Anthropic');
         return 'Estou com uma dificuldade técnica no momento. Entre em contato diretamente pelo telefone.';
+      }
+      if (errMsg.includes('credit balance') || errBody?.includes('credit balance')) {
+        console.error('💳 CONTA ANTHROPIC SEM CRÉDITOS — adicionar créditos em console.anthropic.com');
+        return 'Estou temporariamente fora do ar para manutenção. Por favor, entre em contato diretamente pelo telefone. 😊';
       }
 
       return 'Desculpe, tive um problema técnico. Por favor, tente novamente ou entre em contato pelo telefone. 😊';
