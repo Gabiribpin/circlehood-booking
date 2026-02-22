@@ -108,5 +108,13 @@ export default defineConfig({
       },
       dependencies: ['auth-setup'],
     },
+
+    // ─── Notificações e emails (crons, fila, webhook Resend) ─────────
+    {
+      name: 'notifications',
+      testMatch: '**/notifications/**/*.spec.ts',
+      // Testes de API pura — sem browser nem storageState
+      // Auth feita via CRON_SECRET e Supabase service role diretamente
+    },
   ],
 });
