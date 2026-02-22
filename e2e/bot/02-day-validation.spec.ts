@@ -13,8 +13,13 @@ test.describe('Bot — Validação de Dia', () => {
     const [, sMonth, sDay] = sunday.split('-').map(Number);
 
     await sendBotMessage(request, 'oi');
-    // Aguarda 3s para Supabase replica sync antes do segundo turno
-    await new Promise<void>((r) => setTimeout(r, 3000));
+    // Confirmação ativa: espera o turno 1 ser commitado no DB antes de continuar.
+    // Protege contra cold start do Vercel (Redis lazy connect) onde um delay fixo
+    // não é suficiente — o isFirstMessage no turno 2 seria true sem essa garantia.
+    const greeting = await getLastBotMessage();
+    expect(greeting).not.toBeNull();
+    await new Promise<void>((r) => setTimeout(r, 500)); // buffer para Redis propagar
+
     await sendBotMessage(request, `quero cortar cabelo no domingo dia ${sDay}/${sMonth} às 10h`);
 
     const reply = await getLastBotMessage();
@@ -30,7 +35,10 @@ test.describe('Bot — Validação de Dia', () => {
 
   test('rejeita dia de folga antes de perguntar nome', async ({ request }) => {
     await sendBotMessage(request, 'oi');
-    await new Promise<void>((r) => setTimeout(r, 3000));
+    const greeting = await getLastBotMessage();
+    expect(greeting).not.toBeNull();
+    await new Promise<void>((r) => setTimeout(r, 500));
+
     await sendBotMessage(request, 'quero marcar para domingo às 9h');
 
     const reply = await getLastBotMessage();
@@ -46,7 +54,10 @@ test.describe('Bot — Validação de Dia', () => {
     const [day, month] = monday.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
-    await new Promise<void>((r) => setTimeout(r, 3000));
+    const greeting = await getLastBotMessage();
+    expect(greeting).not.toBeNull();
+    await new Promise<void>((r) => setTimeout(r, 500));
+
     // Não especifica horário — bot deve aceitar o dia e pedir mais informações
     await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month}`);
 

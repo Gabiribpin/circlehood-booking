@@ -75,7 +75,9 @@ test.describe('Bot — Conflito de Horário', () => {
     await seedBooking(testDate, '15:00');
 
     await sendBotMessage(request, 'oi');
-    await new Promise<void>((r) => setTimeout(r, 3000));
+    const greetingSlot1 = await getLastBotMessage();
+    expect(greetingSlot1).not.toBeNull();
+    await new Promise<void>((r) => setTimeout(r, 500));
 
     // Tentar agendar no slot ocupado
     await sendBotMessage(
@@ -104,7 +106,9 @@ test.describe('Bot — Conflito de Horário', () => {
     await seedBooking(testDate, '14:00');
 
     await sendBotMessage(request, 'oi');
-    await new Promise<void>((r) => setTimeout(r, 3000));
+    const greetingSlot2 = await getLastBotMessage();
+    expect(greetingSlot2).not.toBeNull();
+    await new Promise<void>((r) => setTimeout(r, 500));
 
     await sendBotMessage(
       request,
