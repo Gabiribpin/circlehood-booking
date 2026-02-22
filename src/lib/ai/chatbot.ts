@@ -214,76 +214,110 @@ export class AIBot {
 
     const cachedSystem = [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }];
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: cachedSystem,
-      tools,
-      messages,
-    });
-
-    console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
-
-    // Loop agentic: suporta encadeamento de tools (ex: get_my_appointments → cancel_appointment)
-    let currentResponse = response;
-    let currentMessages: typeof messages = [...messages];
-
-    for (let iteration = 0; iteration < 5; iteration++) {
-      if (currentResponse.stop_reason !== 'tool_use') break;
-
-      const toolUseBlock = currentResponse.content.find(
-        (c): c is { type: 'tool_use'; id: string; name: string; input: Record<string, any> } =>
-          c.type === 'tool_use'
-      );
-      if (!toolUseBlock) break;
-
-      console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
-
-      let toolResult: any;
-
-      if (toolUseBlock.name === 'create_appointment') {
-        toolResult = await this.createAppointment(toolUseBlock.input as any, professionalId);
-      } else if (toolUseBlock.name === 'get_my_appointments') {
-        toolResult = await this.getMyAppointments(context.phone, professionalId);
-      } else if (toolUseBlock.name === 'cancel_appointment') {
-        toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
-      } else if (toolUseBlock.name === 'check_availability') {
-        toolResult = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
-      } else {
-        console.warn('Tool desconhecida:', toolUseBlock.name);
-        break;
-      }
-
-      console.log(`📊 Tool result [${iteration}]:`, JSON.stringify(toolResult));
-
-      currentMessages = [
-        ...currentMessages,
-        { role: 'assistant' as const, content: currentResponse.content },
-        {
-          role: 'user' as const,
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolUseBlock.id,
-              content: JSON.stringify(toolResult),
-            },
-          ],
-        },
-      ];
-
-      currentResponse = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+    try {
+      const response = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         system: cachedSystem,
         tools,
-        messages: currentMessages,
+        messages,
       });
 
-      console.log(`💰 Cache [${iteration}]: create=${(currentResponse.usage as any).cache_creation_input_tokens ?? 0} read=${(currentResponse.usage as any).cache_read_input_tokens ?? 0}`);
-    }
+      console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
 
-    const textBlock = (currentResponse.content as any[]).find(c => c.type === 'text');
-    return textBlock?.text ?? '';
+      // Loop agentic: suporta encadeamento de tools (ex: get_my_appointments → cancel_appointment)
+      let currentResponse = response;
+      let currentMessages: typeof messages = [...messages];
+
+      for (let iteration = 0; iteration < 5; iteration++) {
+        if (currentResponse.stop_reason !== 'tool_use') break;
+
+        const toolUseBlock = currentResponse.content.find(
+          (c): c is { type: 'tool_use'; id: string; name: string; input: Record<string, any> } =>
+            c.type === 'tool_use'
+        );
+        if (!toolUseBlock) break;
+
+        console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
+
+        let toolResult: any;
+
+        if (toolUseBlock.name === 'create_appointment') {
+          toolResult = await this.createAppointment(toolUseBlock.input as any, professionalId);
+        } else if (toolUseBlock.name === 'get_my_appointments') {
+          toolResult = await this.getMyAppointments(context.phone, professionalId);
+        } else if (toolUseBlock.name === 'cancel_appointment') {
+          toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
+        } else if (toolUseBlock.name === 'check_availability') {
+          toolResult = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
+        } else {
+          console.warn('Tool desconhecida:', toolUseBlock.name);
+          break;
+        }
+
+        console.log(`📊 Tool result [${iteration}]:`, JSON.stringify(toolResult));
+
+        currentMessages = [
+          ...currentMessages,
+          { role: 'assistant' as const, content: currentResponse.content },
+          {
+            role: 'user' as const,
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: toolUseBlock.id,
+                content: JSON.stringify(toolResult),
+              },
+            ],
+          },
+        ];
+
+        currentResponse = await this.anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          system: cachedSystem,
+          tools,
+          messages: currentMessages,
+        });
+
+        console.log(`💰 Cache [${iteration}]: create=${(currentResponse.usage as any).cache_creation_input_tokens ?? 0} read=${(currentResponse.usage as any).cache_read_input_tokens ?? 0}`);
+      }
+
+      const textBlock = (currentResponse.content as any[]).find(c => c.type === 'text');
+      const responseText = textBlock?.text ?? '';
+
+      if (!responseText || responseText.trim().length === 0) {
+        console.error('❌ Claude retornou resposta vazia');
+        return 'Desculpe, não consegui processar sua mensagem. Pode repetir? 😊';
+      }
+
+      // Detectar gibberish: palavras muito longas sem espaços (≥50 chars) são sinal de resposta corrompida
+      const hasGibberish = responseText.split(/\s+/).some((word: string) => word.replace(/[^\w]/g, '').length >= 50);
+      if (hasGibberish) {
+        console.error('❌ Claude retornou gibberish:', responseText.substring(0, 120));
+        return 'Desculpe, tive uma falha técnica no momento. Por favor, tente novamente em alguns instantes. 😊';
+      }
+
+      return responseText;
+
+    } catch (error: any) {
+      console.error('❌ Erro na API Anthropic:', error?.status, error?.message);
+
+      if (error?.status === 429) {
+        console.error('⚠️ Rate limit atingido');
+        return 'Estamos com muito volume agora. Por favor, tente novamente em alguns minutos. 😊';
+      }
+      if (error?.code === 'ETIMEDOUT' || error?.message?.includes('timeout')) {
+        console.error('⏱️ Timeout na API Anthropic');
+        return 'Desculpe a demora. Pode repetir sua mensagem? 😊';
+      }
+      if (error?.status === 401 || error?.status === 403) {
+        console.error('🔑 Erro de autenticação na API Anthropic');
+        return 'Estou com uma dificuldade técnica no momento. Entre em contato diretamente pelo telefone.';
+      }
+
+      return 'Desculpe, tive um problema técnico. Por favor, tente novamente ou entre em contato pelo telefone. 😊';
+    }
   }
 
   private async checkAvailability(date: string, time: string | undefined, professionalId: string) {
@@ -666,10 +700,6 @@ export class AIBot {
     const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon)/i.test(currentMessage.trim());
     const isFirstMessage = history.length === 0 && looksLikeGreeting;
 
-    const conversationHistory = history.length > 0
-      ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Você'}: ${m.content}`).join('\n')
-      : '(Primeira mensagem desta conversa)';
-
     console.log(`📝 Prompt | isFirstMessage=${isFirstMessage} | historyLen=${history.length} | bot="${botName}"`);
 
     const criticalRules = `# ⚠️ REGRAS ABSOLUTAS — LEIA PRIMEIRO ⚠️
@@ -728,7 +758,7 @@ ERRADO → "Sim! Fazemos vários serviços, incluindo unhas!" ← MENTIRA, servi
         '{services}': this.formatServices(businessInfo.services),
         '{schedule}': this.formatSchedule(businessInfo.schedule),
         '{location}': businessInfo.location,
-        '{conversation_history}': conversationHistory,
+        '{conversation_history}': '(histórico disponível nas mensagens acima)',
       };
       let prompt = botConfig.custom_system_prompt;
       for (const [key, value] of Object.entries(vars)) {
@@ -758,13 +788,12 @@ ${isFirstMessage
       : `NÃO se apresente novamente. Continue a conversa diretamente. Se souber o nome do cliente, use-o.`}
 
 # HISTÓRICO DA CONVERSA
-${conversationHistory}
+O histórico completo da conversa está disponível nas mensagens acima (contexto da conversa).
 
-⚠️ ATENÇÃO: Este histórico mostra apenas MENSAGENS trocadas.
-- Mensagens NÃO são fonte confiável de verdade sobre agendamentos
+⚠️ ATENÇÃO: O histórico mostra apenas MENSAGENS trocadas — não é fonte confiável de estado de agendamentos.
 - Se você disse "Agendado!" mas não chamou create_appointment → agendamento pode NÃO EXISTIR
 - SEMPRE use get_my_appointments para verificar agendamentos reais
-- NUNCA liste agendamentos baseado apenas neste histórico
+- NUNCA liste agendamentos baseado apenas no histórico
 
 # REGRAS DE CONTEXTO
 - Nunca pergunte algo já respondido no histórico (nome, serviço, data, horário)

@@ -6,7 +6,7 @@ export async function detectLanguage(text: string): Promise<string> {
   });
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 50,
     messages: [{
       role: 'user',
