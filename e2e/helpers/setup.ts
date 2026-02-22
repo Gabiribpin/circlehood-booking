@@ -54,26 +54,41 @@ export async function cleanTestState() {
 
 /**
  * Busca a última mensagem enviada pelo bot para o número de teste.
+ *
+ * O webhook é síncrono (`await processWhatsAppMessage`), mas erros transientes
+ * no Supabase ou na API Anthropic podem ser engolidos pelo try/catch em
+ * processWhatsAppMessage, fazendo o 200 retornar sem que nada foi salvo.
+ * Por isso, tentamos até 4x com 2s de intervalo antes de desistir — protege
+ * contra flakiness sem mascarar falhas reais (4 tentativas = 8s extra máx).
  */
 export async function getLastBotMessage(): Promise<string | null> {
-  const { data: conv } = await supabase
-    .from('whatsapp_conversations')
-    .select('id')
-    .eq('user_id', TEST.USER_ID)
-    .eq('customer_phone', TEST.PHONE)
-    .maybeSingle();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) {
+      await new Promise<void>((r) => setTimeout(r, 2000));
+    }
 
-  if (!conv) return null;
+    const { data: conv } = await supabase
+      .from('whatsapp_conversations')
+      .select('id')
+      .eq('user_id', TEST.USER_ID)
+      .eq('customer_phone', TEST.PHONE)
+      .maybeSingle();
 
-  const { data: messages } = await supabase
-    .from('whatsapp_messages')
-    .select('content, direction, sent_at')
-    .eq('conversation_id', conv.id)
-    .eq('direction', 'outbound')
-    .order('sent_at', { ascending: false })
-    .limit(1);
+    if (!conv) continue; // conversa ainda não criada — aguardar
 
-  return messages?.[0]?.content ?? null;
+    const { data: messages } = await supabase
+      .from('whatsapp_messages')
+      .select('content, direction, sent_at')
+      .eq('conversation_id', conv.id)
+      .eq('direction', 'outbound')
+      .order('sent_at', { ascending: false })
+      .limit(1);
+
+    if (messages?.[0]?.content) return messages[0].content;
+    // mensagem outbound ainda não salva — aguardar
+  }
+
+  return null;
 }
 
 /**
