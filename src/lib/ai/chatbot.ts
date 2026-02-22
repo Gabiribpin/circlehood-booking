@@ -216,7 +216,7 @@ export class AIBot {
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 1000,
         system: cachedSystem,
         tools,
@@ -273,7 +273,7 @@ export class AIBot {
         ];
 
         currentResponse = await this.anthropic.messages.create({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-sonnet-4-5-20250929',
           max_tokens: 1000,
           system: cachedSystem,
           tools,
