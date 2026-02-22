@@ -13,7 +13,19 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { TEST } from '../helpers/config';
-import { nextWeekday } from '../helpers/setup';
+
+/**
+ * Retorna a próxima ocorrência de um dia da semana com pelo menos 28 dias de antecedência.
+ * Evita interferência com outros jobs que usam farFutureWeekday() (~7 dias).
+ */
+function farFutureWeekday(dayOfWeek: number): string {
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 28);
+  let daysAhead = dayOfWeek - minDate.getDay();
+  if (daysAhead < 0) daysAhead += 7;
+  minDate.setDate(minDate.getDate() + daysAhead);
+  return minDate.toISOString().split('T')[0];
+}
 
 const BASE = TEST.BASE_URL;
 const supabase = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
@@ -101,7 +113,7 @@ test.describe('API — Bloqueio de Data Única (blocked_dates)', () => {
     if (!service) test.skip(true, 'Sem serviços ativos');
 
     // Verificar que a segunda normalmente tem slots
-    const monday = nextWeekday(1);
+    const monday = farFutureWeekday(1);
     const slotsBefore = await getAvailableSlots(request, service!.id, monday);
     if (slotsBefore.length === 0) test.skip(true, 'Segunda não tem slots (dia de folga?)');
 
@@ -123,7 +135,7 @@ test.describe('API — Bloqueio de Data Única (blocked_dates)', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const tuesday = nextWeekday(2);
+    const tuesday = farFutureWeekday(2);
     const slotsBefore = await getAvailableSlots(request, service!.id, tuesday);
     if (slotsBefore.length === 0) test.skip(true, 'Terça não tem slots');
 
@@ -156,9 +168,9 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const wednesday = nextWeekday(3);
-    const friday = nextWeekday(5);
+    const monday = farFutureWeekday(1);
+    const wednesday = farFutureWeekday(3);
+    const friday = farFutureWeekday(5);
 
     // Verificar que quarta normalmente tem slots
     const slotsBeforeBlock = await getAvailableSlots(request, service!.id, wednesday);
@@ -190,12 +202,12 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     if (!service) test.skip(true, 'Sem serviços ativos');
 
     // Bloquear apenas a próxima terça
-    const tuesday = nextWeekday(2);
+    const tuesday = farFutureWeekday(2);
     const periodId = await blockPeriod(tuesday, tuesday, 'Folga E2E');
     cleanupBlockedPeriods.push(periodId);
 
     // Segunda (antes do bloqueio) deve ter slots
-    const monday = nextWeekday(1);
+    const monday = farFutureWeekday(1);
     const slotsMon = await getAvailableSlots(request, service!.id, monday);
     // Só verifica se segunda é dia de trabalho
     if (slotsMon.length === 0) {
@@ -203,7 +215,7 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     }
 
     // Quarta (depois do bloqueio) deve ter slots
-    const wednesday = nextWeekday(3);
+    const wednesday = farFutureWeekday(3);
     const slotsWed = await getAvailableSlots(request, service!.id, wednesday);
 
     // Pelo menos segunda ou quarta deve ter slots disponíveis
@@ -222,8 +234,8 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const wednesday = nextWeekday(3);
+    const monday = farFutureWeekday(1);
+    const wednesday = farFutureWeekday(3);
     const slotsBefore = await getAvailableSlots(request, service!.id, monday);
     if (slotsBefore.length === 0) test.skip(true, 'Segunda não tem slots');
 

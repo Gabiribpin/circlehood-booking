@@ -355,7 +355,8 @@ jobs:
   bot-reschedule:
     name: Playwright (reagendamento bot)
     runs-on: ubuntu-latest
-    needs: unit
+    # Serializado após bot-e2e: ambos usam TEST.PHONE — não podem rodar em paralelo
+    needs: [unit, bot-e2e]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -441,7 +442,8 @@ jobs:
   blocked-periods-bot:
     name: Playwright (bloqueio de período — bot)
     runs-on: ubuntu-latest
-    needs: unit
+    # Serializado após bot-reschedule: compartilha TEST.PHONE
+    needs: [unit, bot-reschedule]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -471,7 +473,8 @@ jobs:
   consistency-bot-page:
     name: Playwright (consistência bot ↔ página)
     runs-on: ubuntu-latest
-    needs: unit
+    # Serializado após blocked-periods-bot: compartilha TEST.PHONE
+    needs: [unit, blocked-periods-bot]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
