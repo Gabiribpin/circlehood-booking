@@ -171,7 +171,38 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 7: Bot E2E (API, chama Claude) — só em push para main
+  # Job 7: Navegação e UX — todo push e PR
+  # ─────────────────────────────────────────────────────────────
+  navigation-e2e:
+    name: Playwright (navegação)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - name: Run navigation tests
+        run: npx playwright test --project=auth-setup --project=navigation
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-navigation
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 8: Bot E2E (API, chama Claude) — só em push para main
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E)

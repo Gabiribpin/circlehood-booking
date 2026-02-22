@@ -82,5 +82,17 @@ export default defineConfig({
       },
       dependencies: ['auth-setup'],
     },
+
+    // ─── Navegação e consistência de UX (usa sessão salva) ───────────
+    {
+      name: 'navigation',
+      testMatch: '**/navigation/**/*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
   ],
 });
