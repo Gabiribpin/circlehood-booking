@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, Trash2 } from 'lucide-react';
-import type { WorkingHours, BlockedDate } from '@/types/database';
+import type { WorkingHours, BlockedDate, BlockedPeriod } from '@/types/database';
 
 interface ScheduleManagerProps {
   workingHours: WorkingHours[];
   blockedDates: BlockedDate[];
+  blockedPeriods: BlockedPeriod[];
   professionalId: string;
 }
 
@@ -37,6 +38,7 @@ interface DayConfig {
 export function ScheduleManager({
   workingHours,
   blockedDates,
+  blockedPeriods,
   professionalId,
 }: ScheduleManagerProps) {
   const router = useRouter();
@@ -59,6 +61,12 @@ export function ScheduleManager({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [blockReason, setBlockReason] = useState('');
   const [savingBlock, setSavingBlock] = useState(false);
+
+  // Blocked periods state
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const [periodReason, setPeriodReason] = useState('');
+  const [savingPeriod, setSavingPeriod] = useState(false);
 
   function updateDay(index: number, updates: Partial<DayConfig>) {
     setDays((prev) =>
@@ -113,6 +121,30 @@ export function ScheduleManager({
     router.refresh();
   }
 
+  async function addBlockedPeriod() {
+    if (!periodStart || !periodEnd) return;
+    if (periodStart > periodEnd) return;
+    setSavingPeriod(true);
+
+    await supabase.from('blocked_periods').insert({
+      professional_id: professionalId,
+      start_date: periodStart,
+      end_date: periodEnd,
+      reason: periodReason || null,
+    });
+
+    setPeriodStart('');
+    setPeriodEnd('');
+    setPeriodReason('');
+    setSavingPeriod(false);
+    router.refresh();
+  }
+
+  async function removeBlockedPeriod(id: string) {
+    await supabase.from('blocked_periods').delete().eq('id', id);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Horários</h1>
@@ -121,6 +153,7 @@ export function ScheduleManager({
         <TabsList>
           <TabsTrigger value="hours">Horários</TabsTrigger>
           <TabsTrigger value="blocked">Dias bloqueados</TabsTrigger>
+          <TabsTrigger value="periods">Férias / Períodos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hours" className="mt-4">
@@ -247,6 +280,88 @@ export function ScheduleManager({
                         variant="ghost"
                         size="icon"
                         onClick={() => removeBlockedDate(bd.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="periods" className="mt-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Bloqueie um intervalo de datas para férias, feriados prolongados ou recesso.
+                Nenhum horário será exibido para clientes durante esse período.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="period-start">Data de início</Label>
+                  <Input
+                    id="period-start"
+                    type="date"
+                    value={periodStart}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="period-end">Data de término</Label>
+                  <Input
+                    id="period-end"
+                    type="date"
+                    value={periodEnd}
+                    min={periodStart || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="period-reason">Motivo (opcional)</Label>
+                <Input
+                  id="period-reason"
+                  value={periodReason}
+                  onChange={(e) => setPeriodReason(e.target.value)}
+                  placeholder="Ex: Férias, Feriado, Recesso..."
+                />
+              </div>
+
+              <Button
+                onClick={addBlockedPeriod}
+                disabled={!periodStart || !periodEnd || periodStart > periodEnd || savingPeriod}
+                className="w-full sm:w-auto"
+              >
+                {savingPeriod && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Bloquear período
+              </Button>
+
+              {blockedPeriods.length > 0 && (
+                <div className="space-y-2 pt-4 border-t">
+                  <h3 className="text-sm font-medium">Períodos bloqueados</h3>
+                  {blockedPeriods.map((bp) => (
+                    <div
+                      key={bp.id}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {bp.start_date.split('-').reverse().join('/')}
+                          {' até '}
+                          {bp.end_date.split('-').reverse().join('/')}
+                        </p>
+                        {bp.reason && (
+                          <p className="text-xs text-muted-foreground">{bp.reason}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeBlockedPeriod(bp.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

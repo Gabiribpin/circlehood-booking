@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Zap,
   Phone,
+  Bell,
 } from 'lucide-react';
 
 const BASE_NAV_ITEMS = [
@@ -31,6 +32,7 @@ const BASE_NAV_ITEMS = [
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/automations', label: 'Automações', icon: Zap },
+  { href: '/notifications', label: 'Notificações', icon: Bell },
   { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
   { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
   { href: '/gallery', label: 'Galeria', icon: ImageIcon },

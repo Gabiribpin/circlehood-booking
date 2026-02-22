@@ -65,3 +65,12 @@ export interface BlockedDate {
   blocked_date: string;
   reason: string | null;
 }
+
+export interface BlockedPeriod {
+  id: string;
+  professional_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+  created_at: string;
+}

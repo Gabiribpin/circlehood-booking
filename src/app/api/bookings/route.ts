@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
           bookingDate: booking_date,
           startTime: start_time,
           endTime: end_time,
+          bookingId: booking.id,
+          professionalId: professional_id,
         });
       }
     }).catch((err) => console.error('[Booking] Failed to fetch user for email:', err));

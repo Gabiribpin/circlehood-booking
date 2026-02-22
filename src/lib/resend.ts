@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -21,6 +22,36 @@ interface BookingEmailData {
   bookingDate: string;
   startTime: string;
   endTime: string;
+  // Tracking (opcional — usado para gravar em notification_logs)
+  bookingId?: string;
+  professionalId?: string;
+}
+
+/** Grava resultado de envio de email em notification_logs para observabilidade. */
+async function logEmailResult(opts: {
+  professionalId: string;
+  bookingId: string;
+  recipient: string;
+  message: string;
+  status: 'sent' | 'failed';
+  errorMessage?: string;
+}) {
+  try {
+    const supabase = createAdminClient();
+    await supabase.from('notification_logs').insert({
+      professional_id: opts.professionalId,
+      booking_id: opts.bookingId,
+      type: 'booking_confirmation',
+      channel: 'email',
+      recipient: opts.recipient,
+      message: opts.message,
+      status: opts.status,
+      error_message: opts.errorMessage ?? null,
+    });
+  } catch (logErr) {
+    // Nunca quebrar o fluxo por falha de log
+    console.error('[Resend] Falha ao gravar notification_logs:', logErr);
+  }
 }
 
 function formatPrice(price: number, currency: string) {
@@ -41,6 +72,8 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
     bookingDate,
     startTime,
     endTime,
+    bookingId,
+    professionalId,
   } = data;
 
   const formattedPrice = formatPrice(servicePrice, currency);
@@ -100,16 +133,61 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
   }
 
   const results = await Promise.allSettled(promises);
-  results.forEach((result, i) => {
+
+  // Destinatários na mesma ordem dos promises
+  const recipients = [
+    { email: professionalEmail, label: 'professional' },
+    ...(clientEmail ? [{ email: clientEmail, label: 'client' }] : []),
+  ];
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const { email, label } = recipients[i];
+    const subject =
+      label === 'professional'
+        ? `Novo agendamento: ${clientName}`
+        : `Agendamento confirmado - ${businessName}`;
+
     if (result.status === 'rejected') {
-      console.error(`[Resend] Email ${i === 0 ? 'professional' : 'client'} failed:`, result.reason);
+      const errorMsg = String(result.reason?.message ?? result.reason ?? 'Unknown error');
+      console.error(`[Resend] Email ${label} failed:`, errorMsg);
+      if (bookingId && professionalId) {
+        await logEmailResult({
+          professionalId,
+          bookingId,
+          recipient: email,
+          message: subject,
+          status: 'failed',
+          errorMessage: errorMsg,
+        });
+      }
     } else {
       const val = result.value as any;
       if (val?.error) {
-        console.error(`[Resend] Email ${i === 0 ? 'professional' : 'client'} API error:`, JSON.stringify(val.error));
+        const errorMsg = JSON.stringify(val.error);
+        console.error(`[Resend] Email ${label} API error:`, errorMsg);
+        if (bookingId && professionalId) {
+          await logEmailResult({
+            professionalId,
+            bookingId,
+            recipient: email,
+            message: subject,
+            status: 'failed',
+            errorMessage: `Resend API error: ${errorMsg}`,
+          });
+        }
       } else {
-        console.log(`[Resend] Email ${i === 0 ? 'professional' : 'client'} sent OK, id:`, val?.data?.id);
+        console.log(`[Resend] Email ${label} sent OK, id:`, val?.data?.id);
+        if (bookingId && professionalId) {
+          await logEmailResult({
+            professionalId,
+            bookingId,
+            recipient: email,
+            message: subject,
+            status: 'sent',
+          });
+        }
       }
     }
-  });
+  }
 }

@@ -37,9 +37,22 @@ export default defineConfig({
     // ─── Bot: testes de API (sem browser) ────────────────────────────
     {
       name: 'bot-api',
-      testMatch: '**/bot/**/*.spec.ts',
+      testMatch: '**/bot/0[1-5]-*.spec.ts',
       // 1 retry: protege contra falhas transitórias de Redis/Supabase replica lag
       retries: 1,
+    },
+
+    // ─── Bot Reagendamento (usa Claude — rodar só localmente) ─────────
+    {
+      name: 'bot-reschedule',
+      testMatch: '**/bot/06-reschedule.spec.ts',
+      // retries: 0 — falhas reais não devem ser mascaradas por retry
+      retries: 0,
+      // 90s por teste: 2 turnos × ~30s Claude + setup/teardown
+      timeout: 90_000,
+      use: {
+        // Sem browser — testes de webhook API
+      },
     },
 
     // ─── API pública e ciclo do profissional (sem browser) ───────────
@@ -155,6 +168,47 @@ export default defineConfig({
         browserName: 'chromium',
         headless: true,
         // Sem storageState — página pública, sem auth
+      },
+    },
+
+    // ─── Timezone / DST (sem Claude, CI habilitado) ──────────────────────
+    {
+      name: 'timezone-dst',
+      testMatch: '**/timezone/**/*.spec.ts',
+      retries: 1, // 1 retry: slots de "hoje" podem mudar entre tentativas
+      use: {
+        timezoneId: 'Europe/Dublin',
+      },
+    },
+
+    // ─── Bloqueio de período — API (sem Claude, CI habilitado) ──────────
+    {
+      name: 'blocked-periods-api',
+      testMatch: '**/blocked-periods/01-api.spec.ts',
+      retries: 1, // 1 retry: protege contra lag de replica do Supabase
+    },
+
+    // ─── Bloqueio de período — Bot (usa Claude, rodar só localmente) ────
+    {
+      name: 'blocked-periods-bot',
+      testMatch: '**/blocked-periods/02-bot.spec.ts',
+      retries: 0,
+      timeout: 90_000,
+      use: {
+        // Sem browser — testes de API + webhook
+      },
+    },
+
+    // ─── Consistência Bot ↔ Página (usa Claude — rodar só localmente) ──
+    {
+      name: 'consistency-bot-page',
+      testMatch: '**/consistency/**/*.spec.ts',
+      // retries: 0 — falhas reais não devem ser mascaradas por retry
+      retries: 0,
+      // 90s por teste: até 2 turnos × ~30s Claude + setup/teardown
+      timeout: 90_000,
+      use: {
+        // Sem browser — testes de API + webhook
       },
     },
 

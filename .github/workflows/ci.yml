@@ -349,7 +349,155 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 12: Bot E2E (API, chama Claude) — desabilitado
+  # Job 13: Bot Reagendamento (chama Claude) — desabilitado
+  # Rodar localmente: npx playwright test --project=bot-reschedule
+  # ─────────────────────────────────────────────────────────────
+  bot-reschedule:
+    name: Playwright (reagendamento bot)
+    if: false  # desabilitado — usa créditos Anthropic. Rodar localmente.
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run bot reschedule tests
+        run: npx playwright test --project=bot-reschedule
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-reschedule
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 15: Timezone / DST — todo push e PR
+  # ─────────────────────────────────────────────────────────────
+  timezone-dst:
+    name: Playwright (timezone/DST)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run timezone/DST tests
+        run: npx playwright test --project=timezone-dst
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TZ: Europe/Dublin
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-timezone
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 16: Bloqueio de período — API (sem Claude) — todo push e PR
+  # ─────────────────────────────────────────────────────────────
+  blocked-periods-api:
+    name: Playwright (bloqueio de período — API)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run blocked periods API tests
+        run: npx playwright test --project=blocked-periods-api
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-blocked-api
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 17: Bloqueio de período — Bot (chama Claude) — desabilitado
+  # Rodar localmente: npx playwright test --project=blocked-periods-bot
+  # ─────────────────────────────────────────────────────────────
+  blocked-periods-bot:
+    name: Playwright (bloqueio de período — bot)
+    if: false  # desabilitado — usa créditos Anthropic. Rodar localmente.
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run blocked periods bot tests
+        run: npx playwright test --project=blocked-periods-bot
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-blocked-bot
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 17: Consistência Bot ↔ Página (chama Claude) — desabilitado
+  # (renumerado de 15 → 17 após adição de bloqueios)
+  # Rodar localmente: npx playwright test --project=consistency-bot-page
+  # ─────────────────────────────────────────────────────────────
+  consistency-bot-page:
+    name: Playwright (consistência bot ↔ página)
+    if: false  # desabilitado — usa créditos Anthropic. Rodar localmente.
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run consistency tests
+        run: npx playwright test --project=consistency-bot-page
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-consistency
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 14: Bot E2E (API, chama Claude) — desabilitado
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E)

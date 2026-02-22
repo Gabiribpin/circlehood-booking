@@ -28,15 +28,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 });
   }
 
-  // 2. Check if date is blocked
-  const { data: blocked } = await supabase
+  // 2a. Check if date is a blocked single day
+  const { data: blockedDay } = await supabase
     .from('blocked_dates')
     .select('id')
     .eq('professional_id', professionalId)
     .eq('blocked_date', date)
     .limit(1);
 
-  if (blocked && blocked.length > 0) {
+  if (blockedDay && blockedDay.length > 0) {
+    return NextResponse.json({ slots: [] });
+  }
+
+  // 2b. Check if date falls within a blocked period (range)
+  const { data: blockedPeriod } = await supabase
+    .from('blocked_periods')
+    .select('id')
+    .eq('professional_id', professionalId)
+    .lte('start_date', date)
+    .gte('end_date', date)
+    .limit(1);
+
+  if (blockedPeriod && blockedPeriod.length > 0) {
     return NextResponse.json({ slots: [] });
   }
 
@@ -84,14 +97,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 7. If today, remove past slots
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  // 7. If today, remove past slots — use Europe/Dublin timezone (Vercel runs in UTC)
+  // Bug sem fix: now.toISOString() devolve data UTC, mas às 23:30 UTC = 00:30 BST
+  // o servidor calcularia "hoje" errado, mostrando slots passados para a data do dia seguinte.
+  const dublinNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const todayStr = `${dublinNow.getFullYear()}-${String(dublinNow.getMonth() + 1).padStart(2, '0')}-${String(dublinNow.getDate()).padStart(2, '0')}`;
   const filteredSlots =
     date === todayStr
       ? slots.filter((s) => {
           const slotMinutes = timeToMinutes(s);
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const currentMinutes = dublinNow.getHours() * 60 + dublinNow.getMinutes();
           return slotMinutes > currentMinutes;
         })
       : slots;

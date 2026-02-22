@@ -30,10 +30,17 @@ export default async function SchedulePage() {
     .eq('professional_id', professional.id)
     .order('blocked_date', { ascending: true });
 
+  const { data: blockedPeriods } = await supabase
+    .from('blocked_periods')
+    .select('*')
+    .eq('professional_id', professional.id)
+    .order('start_date', { ascending: true });
+
   return (
     <ScheduleManager
       workingHours={workingHours || []}
       blockedDates={blockedDates || []}
+      blockedPeriods={blockedPeriods || []}
       professionalId={professional.id}
     />
   );

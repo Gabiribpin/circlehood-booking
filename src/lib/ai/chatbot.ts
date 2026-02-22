@@ -186,6 +186,26 @@ export class AIBot {
         },
       },
       {
+        name: 'reschedule_appointment',
+        description: `Reagenda um agendamento existente para uma nova data/hora de forma atômica: cancela o antigo e cria o novo em sequência com rollback automático em caso de falha.
+Use quando o cliente pedir "mudar horário", "remarcar", "reagendar", "trocar data".
+FLUXO OBRIGATÓRIO:
+1. Chame get_my_appointments para obter o booking_id
+2. Se tiver múltiplos agendamentos: pergunte qual quer reagendar
+3. Quando tiver booking_id + nova data/hora → chame esta tool
+NUNCA peça para o cliente cancelar e criar novo manualmente.
+NUNCA chame cancel_appointment + create_appointment separadamente para reagendar.`,
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            booking_id: { type: 'string', description: 'ID UUID do agendamento obtido via get_my_appointments' },
+            new_date: { type: 'string', description: 'Nova data no formato YYYY-MM-DD' },
+            new_time: { type: 'string', description: 'Novo horário no formato HH:MM' },
+          },
+          required: ['booking_id', 'new_date', 'new_time'],
+        },
+      },
+      {
         name: 'check_availability',
         description: 'Verifica se o profissional atende numa data/horário específico SEM criar agendamento. Checa expediente E conflitos com agendamentos existentes. SEMPRE chame assim que o cliente mencionar uma data/horário, ANTES de pedir nome. Se available=false: informe imediatamente. Se available=true: peça o nome sem prometer "está disponível" (a confirmação real vem só após create_appointment).',
         input_schema: {
@@ -248,6 +268,13 @@ export class AIBot {
           toolResult = await this.getMyAppointments(context.phone, professionalId);
         } else if (toolUseBlock.name === 'cancel_appointment') {
           toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
+        } else if (toolUseBlock.name === 'reschedule_appointment') {
+          toolResult = await this.rescheduleAppointment(
+            toolUseBlock.input.booking_id,
+            toolUseBlock.input.new_date,
+            toolUseBlock.input.new_time,
+            professionalId,
+          );
         } else if (toolUseBlock.name === 'check_availability') {
           toolResult = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
         } else {
@@ -335,6 +362,45 @@ export class AIBot {
     const normalizedDate = normalizeDate(date);
     const dayInt = new Date(normalizedDate + 'T12:00:00Z').getUTCDay();
     const dayNames = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+    // Verificar dia bloqueado (blocked_dates)
+    const { data: blockedDay } = await this.supabase
+      .from('blocked_dates')
+      .select('reason')
+      .eq('professional_id', professionalId)
+      .eq('blocked_date', normalizedDate)
+      .limit(1)
+      .maybeSingle();
+
+    if (blockedDay) {
+      const reason = blockedDay.reason ?? 'indisponível';
+      return {
+        available: false,
+        reason: 'blocked_date',
+        message: `Esse dia está bloqueado (${reason}). Por favor, escolha outra data.`,
+      };
+    }
+
+    // Verificar período bloqueado (blocked_periods — férias, recesso)
+    const { data: blockedPeriod } = await this.supabase
+      .from('blocked_periods')
+      .select('reason, end_date')
+      .eq('professional_id', professionalId)
+      .lte('start_date', normalizedDate)
+      .gte('end_date', normalizedDate)
+      .limit(1)
+      .maybeSingle();
+
+    if (blockedPeriod) {
+      const reason = blockedPeriod.reason ?? 'férias';
+      const endFormatted = new Date(blockedPeriod.end_date + 'T12:00:00Z')
+        .toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+      return {
+        available: false,
+        reason: 'blocked_period',
+        message: `Estou de ${reason} até ${endFormatted}. Escolha uma data após esse período!`,
+      };
+    }
 
     const { data: dayWH } = await this.supabase
       .from('working_hours')
@@ -440,6 +506,44 @@ export class AIBot {
           success: false,
           error: 'past_time',
           message: `Esse horário já passou! Já são ${nowLabel} agora. Qual horário você prefere?`,
+        };
+      }
+
+      // 0. Verificar se data está bloqueada (blocked_dates ou blocked_periods)
+      const { data: blockedDayCA } = await this.supabase
+        .from('blocked_dates')
+        .select('reason')
+        .eq('professional_id', professionalId)
+        .eq('blocked_date', bookingDate)
+        .limit(1)
+        .maybeSingle();
+
+      if (blockedDayCA) {
+        const reason = blockedDayCA.reason ?? 'indisponível';
+        return {
+          success: false,
+          error: 'blocked_date',
+          message: `Esse dia está bloqueado (${reason}). Por favor, escolha outra data.`,
+        };
+      }
+
+      const { data: blockedPeriodCA } = await this.supabase
+        .from('blocked_periods')
+        .select('reason, end_date')
+        .eq('professional_id', professionalId)
+        .lte('start_date', bookingDate)
+        .gte('end_date', bookingDate)
+        .limit(1)
+        .maybeSingle();
+
+      if (blockedPeriodCA) {
+        const reason = blockedPeriodCA.reason ?? 'férias';
+        const endFormatted = new Date(blockedPeriodCA.end_date + 'T12:00:00Z')
+          .toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+        return {
+          success: false,
+          error: 'blocked_period',
+          message: `Estou de ${reason} até ${endFormatted}. Que tal agendarmos para depois disso?`,
         };
       }
 
@@ -858,6 +962,24 @@ PROIBIDO:
 ❌ "Conforme combinamos anteriormente..."
 ❌ Assumir que agendamento existe porque histórico menciona
 
+# REAGENDAMENTO
+Quando o cliente pedir "mudar horário", "remarcar", "reagendar", "trocar data":
+1. Chame get_my_appointments IMEDIATAMENTE para listar agendamentos futuros
+2. Se tiver apenas 1: pergunte a nova data/hora desejada
+3. Se tiver múltiplos: mostre a lista e pergunte qual quer reagendar
+4. Quando souber booking_id + nova data/hora → chame reschedule_appointment
+5. Confirme o reagendamento mostrando: data/hora ANTIGA → data/hora NOVA
+
+ERROS da tool reschedule_appointment:
+- new_slot_unavailable → repasse 'message', pergunte outra data/hora
+- not_found / not_confirmed → informe que não encontrou agendamento válido
+- slot_taken_race → horário foi ocupado durante processamento, peça outro horário
+
+PROIBIDO no reagendamento:
+❌ Chamar cancel_appointment + create_appointment separadamente para reagendar
+❌ Pedir para o cliente cancelar e criar novo manualmente
+❌ Confirmar "reagendado" sem chamar reschedule_appointment e receber success: true
+
 # RETENÇÃO — NUNCA DEIXE O CLIENTE IR SEM TENTAR
 Quando o cliente estiver insatisfeito, quiser cancelar ou ameaçar ir embora:
 1. PRIMEIRO: reconheça a frustração com empatia genuína e peça desculpas
@@ -957,6 +1079,8 @@ PROIBIDO ao rejeitar data/horário:
 - Confirmar ou insinuar que oferece serviço que não está na lista de "Serviços:" acima
 - Coletar dados (nome, data, horário) para serviço que não existe na lista
 - Pedir nome ou horário antes de chamar check_availability quando cliente menciona data/dia
+- Usar cancel_appointment + create_appointment para reagendar (use reschedule_appointment)
+- Confirmar reagendamento sem chamar reschedule_appointment e receber success: true
 `;
   }
 
@@ -1186,6 +1310,127 @@ PROIBIDO ao rejeitar data/horário:
         price: (b.services as any)?.price ?? 0,
       })),
     };
+  }
+
+  private async rescheduleAppointment(
+    bookingId: string,
+    newDate: string,
+    newTime: string,
+    professionalId: string,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+    new_appointment_id?: string;
+    old_date?: string;
+    old_time?: string;
+    new_date_formatted?: string;
+    new_time?: string;
+  }> {
+    try {
+      const normalizedDate = normalizeDate(newDate);
+      const normalizedTime = normalizeTime(newTime);
+
+      // 1. Buscar agendamento existente
+      const { data: existing } = await this.supabase
+        .from('bookings')
+        .select('id, booking_date, start_time, service_id, client_name, client_phone, client_email, notes, service_location, customer_address, status')
+        .eq('id', bookingId)
+        .eq('professional_id', professionalId)
+        .maybeSingle();
+
+      if (!existing) {
+        return { success: false, error: 'not_found', message: 'Agendamento não encontrado.' };
+      }
+      if (existing.status !== 'confirmed') {
+        return { success: false, error: 'not_confirmed', message: `Agendamento não está confirmado (status: ${existing.status}).` };
+      }
+
+      // 2. Verificar disponibilidade do novo horário
+      const avail = await this.checkAvailability(normalizedDate, normalizedTime, professionalId);
+      if (!avail.available) {
+        return { success: false, error: 'new_slot_unavailable', message: avail.message ?? 'Novo horário não disponível.' };
+      }
+
+      // 3. Calcular horário de término
+      const { data: svc } = await this.supabase
+        .from('services')
+        .select('duration_minutes')
+        .eq('id', existing.service_id)
+        .maybeSingle();
+      const duration = svc?.duration_minutes ?? 60;
+      const [h, m] = normalizedTime.split(':').map(Number);
+      const endTotal = h * 60 + m + duration;
+      const endTime = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}:00`;
+
+      // 4. Cancelar agendamento antigo
+      const { error: cancelErr } = await this.supabase
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          cancelled_by: 'client',
+          cancelled_at: new Date().toISOString(),
+          cancellation_reason: 'Reagendado pelo cliente via WhatsApp',
+        })
+        .eq('id', bookingId);
+
+      if (cancelErr) {
+        return { success: false, error: 'cancel_failed', message: 'Erro ao cancelar o agendamento anterior.' };
+      }
+
+      // 5. Criar novo agendamento (sem verificação de duplicata — é um reagendamento explícito)
+      const { data: newBooking, error: insertErr } = await this.supabase
+        .from('bookings')
+        .insert({
+          professional_id: professionalId,
+          service_id: existing.service_id,
+          booking_date: normalizedDate,
+          start_time: `${normalizedTime}:00`,
+          end_time: endTime,
+          client_name: existing.client_name,
+          client_phone: existing.client_phone,
+          client_email: existing.client_email ?? null,
+          notes: existing.notes ?? null,
+          status: 'confirmed',
+          service_location: existing.service_location ?? 'in_salon',
+          customer_address: existing.customer_address ?? null,
+        })
+        .select('id')
+        .single();
+
+      if (insertErr || !newBooking) {
+        // Rollback: restaurar agendamento antigo
+        await this.supabase
+          .from('bookings')
+          .update({ status: 'confirmed', cancelled_by: null, cancelled_at: null, cancellation_reason: null })
+          .eq('id', bookingId);
+
+        if (insertErr?.code === '23505') {
+          return { success: false, error: 'slot_taken_race', message: 'O novo horário foi ocupado durante o processamento. Escolha outro horário.' };
+        }
+        return { success: false, error: 'insert_failed', message: 'Erro ao criar novo agendamento. O horário anterior foi mantido.' };
+      }
+
+      const oldDateFmt = new Date(existing.booking_date + 'T12:00:00Z')
+        .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      const newDateFmt = new Date(normalizedDate + 'T12:00:00Z')
+        .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+      console.log(`✅ Reagendado: ${bookingId} → ${newBooking.id} | ${existing.booking_date} ${existing.start_time} → ${normalizedDate} ${normalizedTime}`);
+
+      return {
+        success: true,
+        new_appointment_id: newBooking.id,
+        old_date: oldDateFmt,
+        old_time: existing.start_time.slice(0, 5),
+        new_date_formatted: newDateFmt,
+        new_time: normalizedTime,
+        message: `Reagendado com sucesso! Cancelei ${oldDateFmt} às ${existing.start_time.slice(0, 5)} e marquei ${newDateFmt} às ${normalizedTime}.`,
+      };
+    } catch (err) {
+      console.error('rescheduleAppointment: erro inesperado:', err);
+      return { success: false, error: 'unexpected', message: 'Erro inesperado ao reagendar.' };
+    }
   }
 
   private async cancelAppointment(bookingId: string, professionalId: string) {
