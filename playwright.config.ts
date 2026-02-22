@@ -133,6 +133,31 @@ export default defineConfig({
       // Auth feita via CRON_SECRET e Supabase service role diretamente
     },
 
+    // ─── Race condition crítica (overbooking prevention) ─────────────
+    {
+      name: 'critical-race',
+      testMatch: '**/critical/02-race-condition.spec.ts',
+      // retries: 0 — race conditions não devem ser mascarados por retry
+      retries: 0,
+      use: {
+        // Sem browser — testes de API pura (request fixture)
+      },
+    },
+
+    // ─── Idempotência crítica (sem browser auth — página pública) ────
+    {
+      name: 'critical-idempotency',
+      testMatch: '**/critical/**/*.spec.ts',
+      // retries: 0 — falha real de race condition não deve ser mascarada por retry
+      retries: 0,
+      // workers: 1 — testes sequenciais para evitar race conditions entre os próprios testes
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        // Sem storageState — página pública, sem auth
+      },
+    },
+
     // ─── Mobile responsive (iPhone SE, iPhone 12, Pixel 5) ───────────
     {
       name: 'mobile',

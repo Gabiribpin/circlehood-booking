@@ -110,6 +110,13 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
+    // 23505 = unique_violation: slot foi ocupado por outra requisição simultânea (race condition)
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'Horario indisponível. Escolha outro horario.' },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to create booking' },
       { status: 500 }
