@@ -296,8 +296,8 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E)
+    if: false  # desabilitado temporariamente para economizar créditos Anthropic
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: unit
     steps:
       - uses: actions/checkout@v4
