@@ -482,7 +482,9 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       // Normalizar data e hora antes de qualquer operação
       const bookingDate = normalizeDate(data.date);
       const bookingTime = normalizeTime(data.time);
-      console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}"`);
+      // Normalizar telefone: remover tudo que não é dígito (ex: +353... → 353...)
+      const clientPhone = (data.customer_phone ?? '').replace(/\D/g, '');
+      console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}" phone="${data.customer_phone}"→"${clientPhone}"`);
 
       // BUG #1 fix: rejeitar horários no passado (Dublin timezone)
       const now = new Date();
@@ -600,7 +602,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .from('bookings')
         .select('id, booking_date, start_time, service_id, services(name)')
         .eq('professional_id', professionalId)
-        .eq('client_phone', data.customer_phone)
+        .eq('client_phone', clientPhone)
         .gte('booking_date', todayISO)
         .neq('status', 'cancelled')
         .neq('status', 'completed')
@@ -753,7 +755,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
           start_time: `${bookingTime}:00`,
           end_time: endTime,
           client_name: data.customer_name,
-          client_phone: data.customer_phone,
+          client_phone: clientPhone,
           notes: data.notes || 'Agendado via WhatsApp Bot',
           status: 'confirmed',
           service_location: data.service_location || 'in_salon',
