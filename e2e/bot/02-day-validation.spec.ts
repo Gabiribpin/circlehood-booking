@@ -8,13 +8,14 @@ test.describe('Bot — Validação de Dia', () => {
   });
 
   test('rejeita domingo ANTES de pedir o nome', async ({ request }) => {
-    // Próximo domingo no formato YYYY-MM-DD (normalizeDate reconhece sem ambiguidade)
+    // Próximo domingo no formato dia/mês (natural language — ISO confunde o LLM)
     const sunday = nextWeekday(0);
+    const [, sMonth, sDay] = sunday.split('-').map(Number);
 
     await sendBotMessage(request, 'oi');
-    // Aguarda 1.5s para Supabase replica sync antes do segundo turno
+    // Aguarda 3s para Supabase replica sync antes do segundo turno
     await new Promise<void>((r) => setTimeout(r, 3000));
-    await sendBotMessage(request, `quero cortar cabelo no dia ${sunday} às 10h`);
+    await sendBotMessage(request, `quero cortar cabelo no domingo dia ${sDay}/${sMonth} às 10h`);
 
     const reply = await getLastBotMessage();
     expect(reply).not.toBeNull();
