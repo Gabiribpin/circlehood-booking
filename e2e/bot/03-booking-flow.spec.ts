@@ -64,6 +64,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     const [day, month] = monday.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
+    await new Promise<void>((r) => setTimeout(r, 1500));
 
     // Pede domingo (inválido)
     await sendBotMessage(request, 'quero marcar para domingo às 9h');

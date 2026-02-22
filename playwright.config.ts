@@ -38,6 +38,8 @@ export default defineConfig({
     {
       name: 'bot-api',
       testMatch: '**/bot/**/*.spec.ts',
+      // 1 retry: protege contra falhas transitórias de Redis/Supabase replica lag
+      retries: 1,
     },
 
     // ─── API pública e ciclo do profissional (sem browser) ───────────

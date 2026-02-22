@@ -12,6 +12,8 @@ test.describe('Bot — Validação de Dia', () => {
     const sunday = nextWeekday(0);
 
     await sendBotMessage(request, 'oi');
+    // Aguarda 1.5s para Supabase replica sync antes do segundo turno
+    await new Promise<void>((r) => setTimeout(r, 1500));
     await sendBotMessage(request, `quero cortar cabelo no dia ${sunday} às 10h`);
 
     const reply = await getLastBotMessage();
@@ -27,6 +29,7 @@ test.describe('Bot — Validação de Dia', () => {
 
   test('rejeita dia de folga antes de perguntar nome', async ({ request }) => {
     await sendBotMessage(request, 'oi');
+    await new Promise<void>((r) => setTimeout(r, 1500));
     await sendBotMessage(request, 'quero marcar para domingo às 9h');
 
     const reply = await getLastBotMessage();
@@ -42,6 +45,7 @@ test.describe('Bot — Validação de Dia', () => {
     const [day, month] = monday.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
+    await new Promise<void>((r) => setTimeout(r, 1500));
     // Não especifica horário — bot deve aceitar o dia e pedir mais informações
     await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month}`);
 
