@@ -936,7 +936,7 @@ PROIBIDO ao rejeitar data/horário:
     businessId: string
   ): Promise<ConversationContext> {
     // 1. Buscar ou criar conversa
-    const { data: conversation, error: convError } = await this.supabase
+    let { data: conversation, error: convError } = await this.supabase
       .from('whatsapp_conversations')
       .upsert(
         { user_id: businessId, customer_phone: phone },
@@ -945,7 +945,22 @@ PROIBIDO ao rejeitar data/horário:
       .select('id, language')
       .single();
 
+    // Fallback: upsert com DO UPDATE no-op pode retornar 0 rows (PostgREST).
+    // Se isso acontecer, busca diretamente a conversa existente.
     if (convError || !conversation) {
+      const { data: existing } = await this.supabase
+        .from('whatsapp_conversations')
+        .select('id, language')
+        .eq('user_id', businessId)
+        .eq('customer_phone', phone)
+        .maybeSingle();
+      if (existing) {
+        conversation = existing;
+        convError = null;
+      }
+    }
+
+    if (!conversation) {
       console.error('Error fetching/creating conversation:', convError);
       return { userId: phone, phone, conversationId: '', language: '', history: [], businessInfo: {} };
     }
