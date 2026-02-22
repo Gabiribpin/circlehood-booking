@@ -96,5 +96,17 @@ export default defineConfig({
       },
       dependencies: ['auth-setup'],
     },
+
+    // ─── UX consistency (estados, feedback, formulários) ─────────────
+    {
+      name: 'ux',
+      testMatch: '**/ux/**/*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
   ],
 });
