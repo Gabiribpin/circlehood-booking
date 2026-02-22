@@ -51,7 +51,16 @@ export class AIBot {
     }
 
     // 3. Saudação direta na PRIMEIRA mensagem (bypass Claude — garante texto exato)
-    const isFirstMessage = context.history.length === 0;
+    //
+    // ATENÇÃO: isFirstMessage só é verdadeiro se AMBAS as condições se verificam:
+    //  a) histórico vazio (nenhuma troca anterior)
+    //  b) mensagem parece uma saudação ("oi", "olá", "hello"…)
+    //
+    // Proteção contra falsos-positivos quando Redis/Supabase falham transitoriamente
+    // (cold start do Vercel): sem essa guarda, uma mensagem de agendamento como
+    // "quero cortar cabelo no domingo" receberia uma saudação em vez de ser processada.
+    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon)/i.test(message.trim());
+    const isFirstMessage = context.history.length === 0 && looksLikeGreeting;
     if (isFirstMessage) {
       const botConfig = context.businessInfo.botConfig;
       const botName = botConfig?.bot_name ?? null;
@@ -134,7 +143,7 @@ export class AIBot {
     intent: string,
     context: ConversationContext
   ): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt(context);
+    const systemPrompt = this.buildSystemPrompt(context, message);
     const professionalId = context.businessInfo.professional_id;
 
     const tools = [
@@ -638,7 +647,7 @@ export class AIBot {
     }
   }
 
-  private buildSystemPrompt(context: ConversationContext): string {
+  private buildSystemPrompt(context: ConversationContext, currentMessage: string): string {
     const { businessInfo, phone, history } = context;
     const botConfig = businessInfo.botConfig;
 
@@ -651,7 +660,11 @@ export class AIBot {
     const alwaysConfirm = botConfig?.always_confirm_booking ?? false;
     const askAdditional = botConfig?.ask_for_additional_info ?? false;
 
-    const isFirstMessage = history.length === 0;
+    // Mesma heurística do processMessage: só é "primeira mensagem" se o histórico está
+    // vazio E a mensagem parece uma saudação. Protege contra cold starts onde Redis
+    // falha e o histórico aparece vazio mesmo não sendo a primeira mensagem real.
+    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon)/i.test(currentMessage.trim());
+    const isFirstMessage = history.length === 0 && looksLikeGreeting;
 
     const conversationHistory = history.length > 0
       ? history.map(m => `${m.role === 'user' ? 'Cliente' : 'Você'}: ${m.content}`).join('\n')
