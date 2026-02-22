@@ -216,7 +216,7 @@ export class AIBot {
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system: cachedSystem,
         tools,
@@ -273,7 +273,7 @@ export class AIBot {
         ];
 
         currentResponse = await this.anthropic.messages.create({
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: cachedSystem,
           tools,
@@ -301,7 +301,12 @@ export class AIBot {
       return responseText;
 
     } catch (error: any) {
-      console.error('❌ Erro na API Anthropic:', error?.status, error?.message);
+      console.error('❌ Erro na API Anthropic:', {
+        status: error?.status,
+        message: error?.message,
+        type: error?.constructor?.name,
+        error_body: error?.error ? JSON.stringify(error.error) : undefined,
+      });
 
       if (error?.status === 429) {
         console.error('⚠️ Rate limit atingido');
