@@ -193,8 +193,10 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     const confirmBtn = page.locator('button:has-text("Confirmar agendamento")');
 
     // Dois cliques rápidos — o segundo deve ser no-op porque disabled=true após o primeiro
+    // force:true ignora actionability checks (elemento pode estar disabled)
+    // mas o browser/React descarta o evento em botão disabled — só 1 POST é feito
     await confirmBtn.click();
-    await confirmBtn.click();
+    await confirmBtn.click({ force: true });
 
     // Aguardar sucesso
     await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
