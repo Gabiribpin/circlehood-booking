@@ -87,9 +87,9 @@ export async function POST(request: NextRequest) {
         id,
         booking_date,
         booking_time,
-        contact_name,
-        contact_phone,
-        contact_email,
+        client_name,
+        client_phone,
+        client_email,
         status,
         professional_id,
         service_id,
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     // Processar cada booking
     for (const booking of bookings) {
       try {
-        const language = detectLanguage(booking.contact_phone);
+        const language = detectLanguage(booking.client_phone);
 
         // Buscar token de reagendamento
         const { data: tokenData } = await supabase
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
         // Formatar mensagem
         const message = formatMessage(MESSAGE_TEMPLATES[language].reminder, {
-          name: booking.contact_name,
+          name: booking.client_name,
           date: new Date(booking.booking_date).toLocaleDateString('pt-BR'),
           time: booking.booking_time.substring(0, 5),
           service: (booking.services as any)?.name || 'Serviço',
@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
         await supabase.from('notification_queue').insert({
           professional_id: booking.professional_id,
           type: 'reminder',
-          recipient_name: booking.contact_name,
-          recipient_phone: booking.contact_phone,
-          recipient_email: booking.contact_email,
+          recipient_name: booking.client_name,
+          recipient_phone: booking.client_phone,
+          recipient_email: booking.client_email,
           message_template: 'reminder',
           message_data: {
             booking_id: booking.id,
@@ -185,14 +185,14 @@ export async function POST(request: NextRequest) {
           booking_id: booking.id,
           type: 'reminder',
           channel: 'whatsapp',
-          recipient: booking.contact_phone,
+          recipient: booking.client_phone,
           message: message,
           status: 'sent',
         });
 
         remindersSent.push({
           booking_id: booking.id,
-          contact: booking.contact_name,
+          contact: booking.client_name,
           language,
         });
       } catch (error: any) {
