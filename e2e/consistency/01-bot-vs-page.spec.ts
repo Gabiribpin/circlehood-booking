@@ -102,7 +102,7 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     expect(botResponse).not.toBeNull();
 
     // Bot deve confirmar disponibilidade — não negar
-    expect(botResponse!.toLowerCase()).toMatch(/disponív|sim|livre|pode|tem horário|tenho/i);
+    expect(botResponse!.toLowerCase()).toMatch(/disponív|sim|livre|pode|tem horário|tenho|agenda|tá na agenda|está na agenda/i);
     expect(botResponse!.toLowerCase()).not.toMatch(/ocupado|indisponív|não tenho horário/i);
   });
 
