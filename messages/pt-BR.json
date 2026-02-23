@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Deletar",
+    "edit": "Editar",
+    "close": "Fechar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso"
+  },
+  "nav": {
+    "dashboard": "Painel",
+    "services": "Serviços",
+    "bookings": "Agendamentos",
+    "schedule": "Horários",
+    "analytics": "Análises",
+    "contacts": "Contatos",
+    "settings": "Configurações",
+    "language": "Idioma"
+  },
+  "auth": {
+    "login": "Entrar",
+    "signup": "Criar Conta",
+    "logout": "Sair",
+    "email": "E-mail",
+    "password": "Senha",
+    "forgotPassword": "Esqueci minha senha",
+    "dontHaveAccount": "Não tem conta?",
+    "alreadyHaveAccount": "Já tem conta?"
+  },
+  "dashboard": {
+    "welcome": "Bem-vindo, {name}!",
+    "totalBookings": "Total de Agendamentos",
+    "totalRevenue": "Receita Total",
+    "thisWeek": "Esta Semana",
+    "thisMonth": "Este Mês"
+  },
+  "services": {
+    "title": "Serviços",
+    "addService": "Adicionar Serviço",
+    "editService": "Editar Serviço",
+    "deleteService": "Deletar Serviço",
+    "serviceName": "Nome do Serviço",
+    "price": "Preço",
+    "duration": "Duração",
+    "minutes": "{count} minutos",
+    "noServices": "Nenhum serviço cadastrado ainda"
+  },
+  "bookings": {
+    "title": "Agendamentos",
+    "newBooking": "Novo Agendamento",
+    "client": "Cliente",
+    "service": "Serviço",
+    "date": "Data",
+    "time": "Horário",
+    "status": "Status",
+    "confirmed": "Confirmado",
+    "cancelled": "Cancelado",
+    "completed": "Concluído",
+    "pending": "Pendente",
+    "cancelBooking": "Cancelar Agendamento",
+    "confirmCancel": "Tem certeza que deseja cancelar?"
+  },
+  "public": {
+    "bookNow": "Agendar Agora",
+    "selectService": "Selecione um serviço",
+    "selectDate": "Selecione uma data",
+    "selectTime": "Selecione um horário",
+    "yourName": "Seu nome",
+    "yourEmail": "Seu e-mail",
+    "yourPhone": "Seu telefone",
+    "confirmBooking": "Confirmar Agendamento",
+    "bookingSuccess": "Agendamento confirmado!",
+    "bookingError": "Erro ao agendar. Tente novamente.",
+    "noSlotsAvailable": "Sem horários disponíveis"
+  },
+  "whatsapp": {
+    "usageTitle": "Uso do WhatsApp (Hoje)",
+    "messagesSent": "Mensagens enviadas",
+    "safeUsage": "Uso seguro",
+    "warning": "Atenção",
+    "danger": "Limite quase atingido",
+    "limitProtects": "Limite protege contra bloqueio",
+    "conversationalFree": "Bot conversacional não conta no limite"
+  },
+  "settings": {
+    "title": "Configurações",
+    "profile": "Perfil",
+    "business": "Negócio",
+    "schedule": "Horários",
+    "whatsapp": "WhatsApp",
+    "payments": "Pagamentos",
+    "businessName": "Nome do Negócio",
+    "businessDescription": "Descrição",
+    "businessAddress": "Endereço",
+    "businessPhone": "Telefone",
+    "preferredLanguage": "Idioma Preferido",
+    "languageDescription": "O dashboard será exibido neste idioma"
+  }
+}

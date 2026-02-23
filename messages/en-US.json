@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "services": "Services",
+    "bookings": "Bookings",
+    "schedule": "Schedule",
+    "analytics": "Analytics",
+    "contacts": "Contacts",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "dontHaveAccount": "Don't have an account?",
+    "alreadyHaveAccount": "Already have an account?"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name}!",
+    "totalBookings": "Total Bookings",
+    "totalRevenue": "Total Revenue",
+    "thisWeek": "This Week",
+    "thisMonth": "This Month"
+  },
+  "services": {
+    "title": "Services",
+    "addService": "Add Service",
+    "editService": "Edit Service",
+    "deleteService": "Delete Service",
+    "serviceName": "Service Name",
+    "price": "Price",
+    "duration": "Duration",
+    "minutes": "{count} minutes",
+    "noServices": "No services yet"
+  },
+  "bookings": {
+    "title": "Bookings",
+    "newBooking": "New Booking",
+    "client": "Client",
+    "service": "Service",
+    "date": "Date",
+    "time": "Time",
+    "status": "Status",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "pending": "Pending",
+    "cancelBooking": "Cancel Booking",
+    "confirmCancel": "Are you sure you want to cancel?"
+  },
+  "public": {
+    "bookNow": "Book Now",
+    "selectService": "Select a service",
+    "selectDate": "Select a date",
+    "selectTime": "Select a time",
+    "yourName": "Your name",
+    "yourEmail": "Your email",
+    "yourPhone": "Your phone",
+    "confirmBooking": "Confirm Booking",
+    "bookingSuccess": "Booking confirmed!",
+    "bookingError": "Booking failed. Please try again.",
+    "noSlotsAvailable": "No slots available"
+  },
+  "whatsapp": {
+    "usageTitle": "WhatsApp Usage (Today)",
+    "messagesSent": "Messages sent",
+    "safeUsage": "Safe usage",
+    "warning": "Warning",
+    "danger": "Limit almost reached",
+    "limitProtects": "Limit protects against blocking",
+    "conversationalFree": "Conversational bot doesn't count"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "business": "Business",
+    "schedule": "Schedule",
+    "whatsapp": "WhatsApp",
+    "payments": "Payments",
+    "businessName": "Business Name",
+    "businessDescription": "Description",
+    "businessAddress": "Address",
+    "businessPhone": "Phone",
+    "preferredLanguage": "Preferred Language",
+    "languageDescription": "The dashboard will be shown in this language"
+  }
+}

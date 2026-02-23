@@ -1,0 +1,101 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "services": "Servicios",
+    "bookings": "Reservas",
+    "schedule": "Horarios",
+    "analytics": "Análisis",
+    "contacts": "Contactos",
+    "settings": "Configuración",
+    "language": "Idioma"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "signup": "Crear Cuenta",
+    "logout": "Cerrar Sesión",
+    "email": "Correo",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "dontHaveAccount": "¿No tienes cuenta?",
+    "alreadyHaveAccount": "¿Ya tienes cuenta?"
+  },
+  "dashboard": {
+    "welcome": "¡Bienvenido, {name}!",
+    "totalBookings": "Total de Reservas",
+    "totalRevenue": "Ingresos Totales",
+    "thisWeek": "Esta Semana",
+    "thisMonth": "Este Mes"
+  },
+  "services": {
+    "title": "Servicios",
+    "addService": "Añadir Servicio",
+    "editService": "Editar Servicio",
+    "deleteService": "Eliminar Servicio",
+    "serviceName": "Nombre del Servicio",
+    "price": "Precio",
+    "duration": "Duración",
+    "minutes": "{count} minutos",
+    "noServices": "Sin servicios aún"
+  },
+  "bookings": {
+    "title": "Reservas",
+    "newBooking": "Nueva Reserva",
+    "client": "Cliente",
+    "service": "Servicio",
+    "date": "Fecha",
+    "time": "Hora",
+    "status": "Estado",
+    "confirmed": "Confirmado",
+    "cancelled": "Cancelado",
+    "completed": "Completado",
+    "pending": "Pendiente",
+    "cancelBooking": "Cancelar Reserva",
+    "confirmCancel": "¿Estás seguro de cancelar?"
+  },
+  "public": {
+    "bookNow": "Reservar Ahora",
+    "selectService": "Selecciona un servicio",
+    "selectDate": "Selecciona una fecha",
+    "selectTime": "Selecciona una hora",
+    "yourName": "Tu nombre",
+    "yourEmail": "Tu correo",
+    "yourPhone": "Tu teléfono",
+    "confirmBooking": "Confirmar Reserva",
+    "bookingSuccess": "¡Reserva confirmada!",
+    "bookingError": "Error al reservar. Inténtalo de nuevo.",
+    "noSlotsAvailable": "Sin horarios disponibles"
+  },
+  "whatsapp": {
+    "usageTitle": "Uso de WhatsApp (Hoy)",
+    "messagesSent": "Mensajes enviados",
+    "safeUsage": "Uso seguro",
+    "warning": "Advertencia",
+    "danger": "Límite casi alcanzado",
+    "limitProtects": "Límite protege contra bloqueo",
+    "conversationalFree": "Bot conversacional no cuenta"
+  },
+  "settings": {
+    "title": "Configuración",
+    "profile": "Perfil",
+    "business": "Negocio",
+    "schedule": "Horarios",
+    "whatsapp": "WhatsApp",
+    "payments": "Pagos",
+    "businessName": "Nombre del Negocio",
+    "businessDescription": "Descripción",
+    "businessAddress": "Dirección",
+    "businessPhone": "Teléfono",
+    "preferredLanguage": "Idioma Preferido",
+    "languageDescription": "El dashboard se mostrará en este idioma"
+  }
+}

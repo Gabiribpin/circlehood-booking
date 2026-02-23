@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { classifyIntent } from './intent-classifier';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 import { timeToMinutes, suggestAlternative, normalizeDate, normalizeTime } from './booking-utils';
+import { detectLanguage } from './language-detector';
 
 // Tier 3 de fallback: in-memory Map (funciona dentro da mesma instância Vercel)
 // Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
@@ -45,7 +46,25 @@ export class AIBot {
     // 1. Buscar contexto (Redis → Supabase como fallback)
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Idioma padrão
+    // 2. Detectar idioma na primeira mensagem e salvar no banco
+    if (context.history.length === 0) {
+      try {
+        const detected = await detectLanguage(message);
+        context.language = detected;
+        if (context.conversationId) {
+          // fire-and-forget: save detected language, ignore errors
+          void Promise.resolve(
+            this.supabase
+              .from('whatsapp_conversations')
+              .update({ language: detected })
+              .eq('id', context.conversationId)
+          ).catch(() => {});
+        }
+      } catch {
+        context.language = 'pt';
+      }
+    }
+    // Idioma padrão se ainda não detectado
     if (!context.language) {
       context.language = 'pt';
     }
@@ -59,7 +78,7 @@ export class AIBot {
     // Proteção contra falsos-positivos quando Redis/Supabase falham transitoriamente
     // (cold start do Vercel): sem essa guarda, uma mensagem de agendamento como
     // "quero cortar cabelo no domingo" receberia uma saudação em vez de ser processada.
-    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon)/i.test(message.trim());
+    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon|hola\b|buenos días|buenas tardes)/i.test(message.trim());
     const isFirstMessage = context.history.length === 0 && looksLikeGreeting;
     if (isFirstMessage) {
       const botConfig = context.businessInfo.botConfig;
@@ -67,13 +86,20 @@ export class AIBot {
       const greetingMsg = botConfig?.greeting_message ?? '';
       const businessName = context.businessInfo.business_name ?? '';
       const isProfessional = botConfig?.bot_personality === 'professional';
-      const helpSuffix = isProfessional ? 'Como posso ajudar?' : 'Como posso ajudar? 😊';
+
+      // Localise help suffix based on detected language
+      const lang = context.language || 'pt';
+      const helpSuffix = isProfessional
+        ? (lang === 'en' ? 'How can I help?' : lang === 'es' ? '¿Cómo puedo ayudar?' : 'Como posso ajudar?')
+        : (lang === 'en' ? 'How can I help? 😊' : lang === 'es' ? '¿Cómo puedo ayudar? 😊' : 'Como posso ajudar? 😊');
+      const greetWord = lang === 'en' ? 'Hi!' : lang === 'es' ? '¡Hola!' : 'Olá!';
+      const assistantOf = lang === 'en' ? 'assistant at' : lang === 'es' ? 'asistente de' : 'assistente do';
 
       let greeting: string | null = null;
       if (botName && greetingMsg) {
         greeting = `${greetingMsg}\nSou ${botName}! ${helpSuffix}`;
       } else if (botName) {
-        greeting = `Olá! Sou ${botName}, assistente do ${businessName}. ${helpSuffix}`;
+        greeting = `${greetWord} ${lang === 'pt' ? 'Sou' : lang === 'en' ? "I'm" : 'Soy'} ${botName}, ${assistantOf} ${businessName}. ${helpSuffix}`;
       } else if (greetingMsg) {
         greeting = greetingMsg;
       }

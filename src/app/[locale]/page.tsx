@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CircleHoodLogo } from '@/components/branding/logo';
 import {
   CalendarDays,
   Globe,
@@ -9,6 +11,11 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'CircleHood Booking | by CircleHood Tech',
+  description: 'Crie sua página profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.',
+};
 
 const FEATURES = [
   {
@@ -48,7 +55,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="border-b">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold">CircleHood Booking</span>
+          <CircleHoodLogo size="sm" showText={true} />
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="sm">
               <Link href="/login">Entrar</Link>
@@ -63,6 +70,9 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="py-20 sm:py-28 px-4">
         <div className="max-w-3xl mx-auto text-center">
+          <div className="flex justify-center mb-6">
+            <CircleHoodLogo size="lg" showText={true} subtitle="by CircleHood Tech" />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
             Sua página profissional com agendamento online
           </h1>
@@ -230,7 +240,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-8 px-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm font-medium">CircleHood Booking</span>
+          <CircleHoodLogo size="xs" showText={true} subtitle="by CircleHood Tech" />
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} CircleHood Tech. Todos os direitos reservados.
           </p>

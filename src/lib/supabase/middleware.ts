@@ -33,21 +33,27 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect dashboard routes
-  if (
-    !user &&
-    request.nextUrl.pathname.startsWith('/dashboard')
-  ) {
+  const pathname = request.nextUrl.pathname;
+
+  // Strip locale prefix (e.g. /en-US/dashboard → /dashboard) for path checks
+  const localeMatch = pathname.match(/^\/(en-US|es-ES)(\/|$)/);
+  const localePrefix = localeMatch ? localeMatch[1] : '';
+  const pathWithoutLocale = localePrefix
+    ? pathname.replace(`/${localePrefix}`, '') || '/'
+    : pathname;
+
+  // Protect dashboard routes (with or without locale prefix)
+  if (!user && pathWithoutLocale.startsWith('/dashboard')) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = localePrefix ? `/${localePrefix}/login` : '/login';
     return NextResponse.redirect(url);
   }
 
   // Redirect logged-in users away from login page only
   // (/register is allowed while logged in — needed to complete professional setup)
-  if (user && request.nextUrl.pathname === '/login') {
+  if (user && pathWithoutLocale === '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = localePrefix ? `/${localePrefix}/dashboard` : '/dashboard';
     return NextResponse.redirect(url);
   }
 
