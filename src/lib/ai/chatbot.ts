@@ -46,13 +46,29 @@ export class AIBot {
     // 1. Buscar contexto (Redis → Supabase como fallback)
     const context = await this.getConversationContext(phone, businessId);
 
-    // 2. Detectar idioma na primeira mensagem e salvar no banco
-    if (context.history.length === 0) {
+    // 2. Computar looksLikeGreeting/isFirstMessage ANTES da detecção de idioma.
+    //
+    // ATENÇÃO: isFirstMessage só é verdadeiro se AMBAS as condições se verificam:
+    //  a) histórico vazio (nenhuma troca anterior)
+    //  b) mensagem parece uma saudação ("oi", "olá", "hello"…)
+    //
+    // Proteção contra falsos-positivos quando Redis/Supabase falham transitoriamente
+    // (cold start do Vercel): sem essa guarda, uma mensagem de agendamento como
+    // "quero cortar cabelo no domingo" receberia uma saudação em vez de ser processada.
+    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon|hola\b|buenos días|buenas tardes)/i.test(message.trim());
+    const isFirstMessage = context.history.length === 0 && looksLikeGreeting;
+
+    // 3. Detectar idioma APENAS em mensagens genuinamente primeiras (saudações reais).
+    //
+    // NÃO rodar detectLanguage() em cold-start (history vazio + não-saudação):
+    // a chamada ao Anthropic Haiku adiciona 1-3s de latência ao caminho crítico,
+    // quebrando o timing dos testes de bot (buffer 2000ms de Redis insuficiente).
+    if (isFirstMessage) {
       try {
         const detected = await detectLanguage(message);
         context.language = detected;
         if (context.conversationId) {
-          // fire-and-forget: save detected language, ignore errors
+          // fire-and-forget: save detected language to DB, ignore errors
           void Promise.resolve(
             this.supabase
               .from('whatsapp_conversations')
@@ -69,17 +85,7 @@ export class AIBot {
       context.language = 'pt';
     }
 
-    // 3. Saudação direta na PRIMEIRA mensagem (bypass Claude — garante texto exato)
-    //
-    // ATENÇÃO: isFirstMessage só é verdadeiro se AMBAS as condições se verificam:
-    //  a) histórico vazio (nenhuma troca anterior)
-    //  b) mensagem parece uma saudação ("oi", "olá", "hello"…)
-    //
-    // Proteção contra falsos-positivos quando Redis/Supabase falham transitoriamente
-    // (cold start do Vercel): sem essa guarda, uma mensagem de agendamento como
-    // "quero cortar cabelo no domingo" receberia uma saudação em vez de ser processada.
-    const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon|hola\b|buenos días|buenas tardes)/i.test(message.trim());
-    const isFirstMessage = context.history.length === 0 && looksLikeGreeting;
+    // 4. Saudação direta na PRIMEIRA mensagem (bypass Claude — garante texto exato)
     if (isFirstMessage) {
       const botConfig = context.businessInfo.botConfig;
       const botName = botConfig?.bot_name ?? null;
@@ -133,7 +139,7 @@ export class AIBot {
       }
     }
 
-    // 4. Cold-start guard: histórico vazio + mensagem NÃO é saudação
+    // 5. Cold-start guard: histórico vazio + mensagem NÃO é saudação
     //
     // Quando Redis/Supabase não propagou o histórico a tempo (ex: delay de 500 ms entre
     // "oi" e a próxima mensagem), context.history chega vazio para o segundo turno.
