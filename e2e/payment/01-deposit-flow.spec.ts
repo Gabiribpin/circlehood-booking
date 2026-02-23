@@ -22,29 +22,21 @@ const supabase = createClient(
 
 // IDs do profissional de teste (mesmos usados noutros testes)
 const TEST_PROF_EMAIL = process.env.TEST_USER_EMAIL!;
-const TEST_PROF_PASSWORD = process.env.TEST_USER_PASSWORD!;
 
 let professionalId: string;
 let serviceId: string;
-let authToken: string;
 
 test.beforeAll(async () => {
-  // Login para obter token de sessão
-  const { data: authData } = await supabase.auth.signInWithPassword({
-    email: TEST_PROF_EMAIL,
-    password: TEST_PROF_PASSWORD,
-  });
-
-  if (!authData?.session) {
-    throw new Error('Login de teste falhou — verifique TEST_USER_EMAIL/PASSWORD');
-  }
-  authToken = authData.session.access_token;
+  // Buscar user_id pelo email (service role — sem precisar de login)
+  const { data: users } = await supabase.auth.admin.listUsers();
+  const user = users?.users.find((u) => u.email === TEST_PROF_EMAIL);
+  if (!user) throw new Error('Utilizador de teste não encontrado');
 
   // Buscar professional_id
   const { data: prof } = await supabase
     .from('professionals')
     .select('id')
-    .eq('user_id', authData.user!.id)
+    .eq('user_id', user.id)
     .single();
 
   if (!prof) throw new Error('Profissional de teste não encontrado');
@@ -70,9 +62,8 @@ test('A. GET /api/settings/payment retorna 401 sem auth', async ({ request }) =>
 });
 
 test('A. GET /api/settings/payment retorna configuração com auth', async ({ request }) => {
-  const res = await request.get(`${BASE_URL}/api/settings/payment`, {
-    headers: { Authorization: `Bearer ${authToken}` },
-  });
+  // storageState (cookies) do auth-setup garante autenticação
+  const res = await request.get(`${BASE_URL}/api/settings/payment`);
   // Pode ser 200 ou 404 se profissional não tiver config — ambos são válidos
   expect([200, 404]).toContain(res.status());
   if (res.status() === 200) {
@@ -83,10 +74,6 @@ test('A. GET /api/settings/payment retorna configuração com auth', async ({ re
 
 test('A. PUT /api/settings/payment rejeita tipo inválido', async ({ request }) => {
   const res = await request.put(`${BASE_URL}/api/settings/payment`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-    },
     data: {
       require_deposit: true,
       deposit_type: 'invalid_type',
@@ -98,10 +85,6 @@ test('A. PUT /api/settings/payment rejeita tipo inválido', async ({ request }) 
 
 test('A. PUT /api/settings/payment aceita configuração válida', async ({ request }) => {
   const res = await request.put(`${BASE_URL}/api/settings/payment`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-    },
     data: {
       require_deposit: false,
     },

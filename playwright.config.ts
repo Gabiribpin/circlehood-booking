@@ -238,12 +238,14 @@ export default defineConfig({
       // Testes de API pura — sem browser nem storageState
     },
 
-    // ─── Pagamentos: sinal/depósito Stripe (API pura) ────────────────
+    // ─── Pagamentos: sinal/depósito Stripe ───────────────────────────
     {
       name: 'payment',
       testMatch: '**/payment/**/*.spec.ts',
-      // Testes de API pura — sem browser nem storageState
-      // STRIPE_SECRET_KEY opcional: testes graceful-degradam se não configurada
+      use: {
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
     },
 
     // ─── Mobile responsive (iPhone SE, iPhone 12, Pixel 5) ───────────
