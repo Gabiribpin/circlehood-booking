@@ -1179,7 +1179,9 @@ FLUXO CORRETO:
 Cliente: "quero cortar amanhã às 9h"
 → [chama check_availability com date="amanhã", time="09:00"]
 → available=false → informe o motivo. NUNCA sugira horário alternativo específico — apenas diga quais dias atende e pergunte o que o cliente prefere.
-→ available=true → peça o nome SEM dizer "está disponível" (ex: "Para confirmar, qual é o seu nome?")
+→ available=true → diga que o horário está LIVRE e peça o nome (ex: "Esse horário está livre! 😊 Para confirmar, qual é o seu nome?")
+  ❌ PROIBIDO dizer "está na agenda" — é ambíguo (parece que já há um agendamento marcado)
+  ❌ PROIBIDO dizer apenas "Para confirmar, qual é o seu nome?" sem mencionar que está livre
   A disponibilidade real só é garantida após create_appointment.
 
 PROIBIDO ao rejeitar data/horário:
