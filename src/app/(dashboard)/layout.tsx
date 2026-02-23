@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
+import { WelcomeModal } from '@/components/onboarding/welcome-modal';
 import {
   LayoutDashboard,
   Scissors,
@@ -129,6 +130,7 @@ export default async function DashboardLayout({
         {/* Mobile bottom nav */}
         <MobileNav professionalSlug={professional?.slug} />
 
+        <WelcomeModal />
         <main className="flex-1 p-4 sm:p-6 md:p-8 pb-20 md:pb-8">
           {children}
         </main>

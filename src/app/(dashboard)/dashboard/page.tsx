@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 import { AlertsWidget } from './components/alerts-widget';
-import { RegionBroadcast } from '@/components/dashboard/region-broadcast';
+import { WhatsAppUsageWidget } from '@/components/whatsapp/usage-widget';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -167,7 +167,6 @@ export default async function DashboardPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <RegionBroadcast />
           <Button asChild variant="outline" size="sm" className="gap-2">
             <a
               href={`/${professional.slug}`}
@@ -214,6 +213,9 @@ export default async function DashboardPage() {
 
       {/* Alertas CRM */}
       <AlertsWidget />
+
+      {/* Widget de uso WhatsApp */}
+      <WhatsAppUsageWidget />
 
       {/* Stats */}
       <div className="space-y-4">
