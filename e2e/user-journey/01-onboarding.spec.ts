@@ -185,7 +185,8 @@ test.describe('Registro — API /api/register', () => {
 test.describe('Registro — Formulário UI', () => {
   // ── 2a: Senha curta → erro no step 1 ───────────────────────────────────
   test('senha com 5 chars → erro "pelo menos 6 caracteres"', async ({ page }) => {
-    await page.goto('/register');
+    await page.goto('/register', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#email', { timeout: 30_000 });
 
     await page.fill('#email', `short-pwd-${Date.now()}@test.io`);
     await page.fill('#password', '12345'); // 5 chars
