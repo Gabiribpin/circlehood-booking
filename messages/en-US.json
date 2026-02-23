@@ -16,8 +16,19 @@
     "schedule": "Schedule",
     "analytics": "Analytics",
     "contacts": "Contacts",
+    "clients": "Clients",
+    "marketing": "Marketing",
+    "automations": "Automations",
+    "notifications": "Notifications",
+    "whatsapp": "WhatsApp Bot",
+    "pageEditor": "Page Editor",
+    "gallery": "Gallery",
+    "testimonials": "Testimonials",
+    "myPage": "My Page",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "viewPublicPage": "View my public page",
+    "logout": "Log Out"
   },
   "auth": {
     "login": "Log In",

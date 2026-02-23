@@ -5,6 +5,7 @@ import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { WelcomeModal } from '@/components/onboarding/welcome-modal';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   Scissors,
@@ -24,29 +25,33 @@ import {
   Bell,
 } from 'lucide-react';
 
-const BASE_NAV_ITEMS = [
-  { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { href: '/services', label: 'Serviços', icon: Scissors },
-  { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
-  { href: '/schedule', label: 'Horários', icon: Clock },
-  { href: '/clients', label: 'Clientes', icon: Users },
-  { href: '/marketing', label: 'Marketing', icon: QrCode },
-  { href: '/analytics', label: 'Análises', icon: BarChart3 },
-  { href: '/automations', label: 'Automações', icon: Zap },
-  { href: '/notifications', label: 'Notificações', icon: Bell },
-  { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
-  { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
-  { href: '/gallery', label: 'Galeria', icon: ImageIcon },
-  { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
-  { href: '/my-page', label: 'Minha Página', icon: Palette },
-  { href: '/settings', label: 'Configurações', icon: Settings },
-];
+// Nav item definitions — labels injected at render time via t()
+const NAV_ITEM_DEFS = [
+  { href: '/dashboard', tKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/services', tKey: 'services', icon: Scissors },
+  { href: '/bookings', tKey: 'bookings', icon: CalendarDays },
+  { href: '/schedule', tKey: 'schedule', icon: Clock },
+  { href: '/clients', tKey: 'clients', icon: Users },
+  { href: '/marketing', tKey: 'marketing', icon: QrCode },
+  { href: '/analytics', tKey: 'analytics', icon: BarChart3 },
+  { href: '/automations', tKey: 'automations', icon: Zap },
+  { href: '/notifications', tKey: 'notifications', icon: Bell },
+  { href: '/whatsapp-config', tKey: 'whatsapp', icon: Phone },
+  { href: '/my-page-editor', tKey: 'pageEditor', icon: FileEdit },
+  { href: '/gallery', tKey: 'gallery', icon: ImageIcon },
+  { href: '/testimonials', tKey: 'testimonials', icon: MessageSquare },
+  { href: '/my-page', tKey: 'myPage', icon: Palette },
+  { href: '/settings', tKey: 'settings', icon: Settings },
+] as const;
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const t = useTranslations('nav');
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -61,8 +66,6 @@ export default async function DashboardLayout({
     .select('business_name, slug')
     .eq('user_id', user.id)
     .single();
-
-  const NAV_ITEMS = BASE_NAV_ITEMS;
 
   return (
     <div className="min-h-screen flex">
@@ -81,14 +84,14 @@ export default async function DashboardLayout({
         </div>
 
         <nav className="flex-1 px-3 space-y-1">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEM_DEFS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              {t(item.tKey)}
             </Link>
           ))}
         </nav>
@@ -101,7 +104,7 @@ export default async function DashboardLayout({
               rel="noopener noreferrer"
               className="block px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              Ver minha página pública &rarr;
+              {t('viewPublicPage')} &rarr;
             </a>
           )}
           <form action="/api/auth/signout" method="POST">
@@ -110,7 +113,7 @@ export default async function DashboardLayout({
               className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground w-full rounded-md hover:bg-accent transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              Sair
+              {t('logout')}
             </button>
           </form>
           <div className="flex items-center justify-between px-3 pt-2">

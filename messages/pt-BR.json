@@ -16,8 +16,19 @@
     "schedule": "Horários",
     "analytics": "Análises",
     "contacts": "Contatos",
+    "clients": "Clientes",
+    "marketing": "Marketing",
+    "automations": "Automações",
+    "notifications": "Notificações",
+    "whatsapp": "WhatsApp Bot",
+    "pageEditor": "Editor de Página",
+    "gallery": "Galeria",
+    "testimonials": "Depoimentos",
+    "myPage": "Minha Página",
     "settings": "Configurações",
-    "language": "Idioma"
+    "language": "Idioma",
+    "viewPublicPage": "Ver minha página pública",
+    "logout": "Sair"
   },
   "auth": {
     "login": "Entrar",
