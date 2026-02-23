@@ -123,6 +123,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Auto-save contato (fire and forget — não bloqueia nem falha o agendamento)
+  ;(async () => {
+    try {
+      const phone = (client_phone ?? '').replace(/\D/g, '') || client_phone;
+      if (!phone || !professional_id) return;
+      const { data: existing } = await supabase
+        .from('contacts')
+        .select('id')
+        .eq('professional_id', professional_id)
+        .eq('phone', phone)
+        .maybeSingle();
+      if (!existing) {
+        await supabase.from('contacts').insert({
+          professional_id,
+          name: client_name,
+          phone,
+          email: client_email || null,
+        });
+      }
+    } catch (err) {
+      console.error('[Booking] Contact auto-save failed:', err);
+    }
+  })();
+
   // Get professional info for email + whatsapp
   const { data: professional } = await supabase
     .from('professionals')

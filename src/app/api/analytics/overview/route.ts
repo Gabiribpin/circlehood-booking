@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
-  // Auth check
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -13,7 +12,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get professional_id
   const { data: professional } = await supabase
     .from('professionals')
     .select('id')
@@ -24,79 +22,60 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // Parse query params
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'month';
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
 
-  // Calculate date range
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Check cache first
-    const cacheKey = `overview_${period}_${start}_${end}`;
-    const { data: cachedData } = await supabase
-      .from('analytics_cache')
-      .select('data')
-      .eq('professional_id', professional.id)
-      .eq('metric_key', cacheKey)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
-
-    if (cachedData?.data) {
-      return NextResponse.json(cachedData.data);
-    }
-
-    // Query from materialized view
-    const { data: metrics, error } = await supabase
-      .from('daily_metrics')
-      .select('*')
+    // Buscar todos os agendamentos do período com o service_id
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('id, status, client_phone, service_id')
       .eq('professional_id', professional.id)
       .gte('booking_date', start)
       .lte('booking_date', end);
 
-    if (error) throw error;
+    if (bookingsError) throw bookingsError;
 
-    // Aggregate results
-    const overview = {
-      period: { startDate: start, endDate: end },
-      totalRevenue: metrics?.reduce((sum, m) => sum + Number(m.total_revenue || 0), 0) || 0,
-      totalBookings: metrics?.reduce((sum, m) => sum + Number(m.total_bookings || 0), 0) || 0,
-      confirmedBookings: metrics?.reduce((sum, m) => sum + Number(m.confirmed_bookings || 0), 0) || 0,
-      cancelledBookings: metrics?.reduce((sum, m) => sum + Number(m.cancelled_bookings || 0), 0) || 0,
-      uniqueClients: metrics?.reduce((sum, m) => sum + Number(m.unique_clients || 0), 0) || 0,
-      averageTicket:
-        metrics && metrics.length > 0
-          ? metrics.reduce((sum, m) => sum + Number(m.avg_ticket || 0), 0) / metrics.length
-          : 0,
-      cancelledRate:
-        metrics && metrics.reduce((sum, m) => sum + Number(m.total_bookings || 0), 0) > 0
-          ? (metrics.reduce((sum, m) => sum + Number(m.cancelled_bookings || 0), 0) /
-              metrics.reduce((sum, m) => sum + Number(m.total_bookings || 0), 0)) *
-            100
-          : 0,
-      qrScanBookings: metrics?.reduce((sum, m) => sum + Number(m.from_qr_scan || 0), 0) || 0,
-      computedAt: new Date().toISOString(),
-    };
+    const all = bookings ?? [];
 
-    // Cache for 1 hour
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await supabase.from('analytics_cache').upsert(
-      {
-        professional_id: professional.id,
-        metric_key: cacheKey,
-        period_start: start,
-        period_end: end,
-        data: overview,
-        expires_at: expiresAt,
-      },
-      {
-        onConflict: 'professional_id,metric_key,period_start,period_end',
+    // Buscar preços dos serviços utilizados
+    const serviceIds = [...new Set(all.map((b) => b.service_id).filter(Boolean))];
+    const priceMap: Record<string, number> = {};
+
+    if (serviceIds.length > 0) {
+      const { data: services } = await supabase
+        .from('services')
+        .select('id, price')
+        .in('id', serviceIds);
+      for (const s of services ?? []) {
+        priceMap[s.id] = Number(s.price ?? 0);
       }
-    );
+    }
 
-    return NextResponse.json(overview);
+    const confirmed = all.filter((b) => b.status === 'confirmed' || b.status === 'completed');
+    const cancelled = all.filter((b) => b.status === 'cancelled');
+
+    const totalRevenue = confirmed.reduce((sum, b) => sum + (priceMap[b.service_id] ?? 0), 0);
+    const confirmedCount = confirmed.length;
+    const uniqueClients = new Set(confirmed.map((b) => b.client_phone).filter(Boolean)).size;
+    const averageTicket = confirmedCount > 0 ? totalRevenue / confirmedCount : 0;
+    const cancelledRate = all.length > 0 ? (cancelled.length / all.length) * 100 : 0;
+
+    return NextResponse.json({
+      period: { startDate: start, endDate: end },
+      totalRevenue,
+      totalBookings: all.length,
+      confirmedBookings: confirmedCount,
+      cancelledBookings: cancelled.length,
+      uniqueClients,
+      averageTicket,
+      cancelledRate,
+      computedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('Error fetching analytics overview:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

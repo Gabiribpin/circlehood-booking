@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
-  // Auth check
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -13,7 +12,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get professional_id
   const { data: professional } = await supabase
     .from('professionals')
     .select('id')
@@ -24,64 +22,64 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // Parse query params
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'month';
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
-  const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
 
-  // Calculate date range
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Check cache first
-    const cacheKey = `services_ranking_${period}_${limit}_${start}_${end}`;
-    const { data: cachedData } = await supabase
-      .from('analytics_cache')
-      .select('data')
+    // Agendamentos confirmados no período
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('service_id')
       .eq('professional_id', professional.id)
-      .eq('metric_key', cacheKey)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+      .gte('booking_date', start)
+      .lte('booking_date', end)
+      .in('status', ['confirmed', 'completed']);
 
-    if (cachedData?.data) {
-      return NextResponse.json(cachedData.data);
+    if (bookingsError) throw bookingsError;
+
+    // Serviços ativos do profissional
+    const { data: services, error: servicesError } = await supabase
+      .from('services')
+      .select('id, name, price')
+      .eq('professional_id', professional.id)
+      .eq('is_active', true);
+
+    if (servicesError) throw servicesError;
+
+    // Contar agendamentos por serviço
+    const counts: Record<string, number> = {};
+    for (const b of bookings ?? []) {
+      if (b.service_id) counts[b.service_id] = (counts[b.service_id] ?? 0) + 1;
     }
 
-    // Call PostgreSQL function for services ranking
-    const { data: ranking, error } = await supabase.rpc('get_services_ranking', {
-      p_professional_id: professional.id,
-      p_start_date: start,
-      p_end_date: end,
-      p_limit: limit,
-    });
-
-    if (error) throw error;
-
-    const result = {
-      period: { startDate: start, endDate: end },
-      services: ranking || [],
-      computedAt: new Date().toISOString(),
-    };
-
-    // Cache for 1 hour
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await supabase.from('analytics_cache').upsert(
-      {
-        professional_id: professional.id,
-        metric_key: cacheKey,
-        period_start: start,
-        period_end: end,
-        data: result,
-        expires_at: expiresAt,
-      },
-      {
-        onConflict: 'professional_id,metric_key,period_start,period_end',
-      }
+    const days = Math.max(
+      1,
+      Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000),
     );
 
-    return NextResponse.json(result);
+    const ranking = (services ?? [])
+      .filter((s) => counts[s.id] > 0)
+      .map((s) => ({
+        service_id: s.id,
+        service_name: s.name,
+        service_price: Number(s.price),
+        total_bookings: counts[s.id],
+        total_revenue: counts[s.id] * Number(s.price),
+        avg_bookings_per_day: counts[s.id] / days,
+      }))
+      .sort((a, b) => b.total_revenue - a.total_revenue)
+      .slice(0, limit);
+
+    return NextResponse.json({
+      period: { startDate: start, endDate: end },
+      services: ranking,
+      computedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('Error fetching services ranking:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

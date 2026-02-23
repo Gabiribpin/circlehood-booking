@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
-  // Auth check
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -13,7 +12,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get professional_id
   const { data: professional } = await supabase
     .from('professionals')
     .select('id')
@@ -24,74 +22,120 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  // Parse query params
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'month';
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
   const granularity = searchParams.get('granularity') || 'day';
 
-  // Validate granularity
   if (!['day', 'week', 'month'].includes(granularity)) {
     return NextResponse.json({ error: 'Invalid granularity' }, { status: 400 });
   }
 
-  // Calculate date range
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Check cache first
-    const cacheKey = `revenue_${period}_${granularity}_${start}_${end}`;
-    const { data: cachedData } = await supabase
-      .from('analytics_cache')
-      .select('data')
+    // Buscar agendamentos do período
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('booking_date, status, client_phone, service_id')
       .eq('professional_id', professional.id)
-      .eq('metric_key', cacheKey)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+      .gte('booking_date', start)
+      .lte('booking_date', end);
 
-    if (cachedData?.data) {
-      return NextResponse.json(cachedData.data);
+    if (bookingsError) throw bookingsError;
+
+    const all = bookings ?? [];
+
+    // Buscar preços dos serviços
+    const serviceIds = [...new Set(all.map((b) => b.service_id).filter(Boolean))];
+    const priceMap: Record<string, number> = {};
+
+    if (serviceIds.length > 0) {
+      const { data: services } = await supabase
+        .from('services')
+        .select('id, price')
+        .in('id', serviceIds);
+      for (const s of services ?? []) {
+        priceMap[s.id] = Number(s.price ?? 0);
+      }
     }
 
-    // Call PostgreSQL function for time series
-    const { data: timeseries, error } = await supabase.rpc('get_revenue_timeseries', {
-      p_professional_id: professional.id,
-      p_start_date: start,
-      p_end_date: end,
-      p_granularity: granularity,
-    });
+    // Agrupar por período (dia/semana/mês) em JS
+    const groups = new Map<
+      string,
+      { revenue: number; bookings: number; cancelled: number; clients: Set<string> }
+    >();
 
-    if (error) throw error;
+    for (const booking of all) {
+      const key = getPeriodKey(booking.booking_date, granularity);
+      if (!groups.has(key)) {
+        groups.set(key, { revenue: 0, bookings: 0, cancelled: 0, clients: new Set() });
+      }
+      const g = groups.get(key)!;
+      g.bookings++;
+      if (booking.status === 'confirmed' || booking.status === 'completed') {
+        g.revenue += priceMap[booking.service_id] ?? 0;
+        if (booking.client_phone) g.clients.add(booking.client_phone);
+      }
+      if (booking.status === 'cancelled') g.cancelled++;
+    }
 
-    const result = {
+    const data = Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([period, g]) => {
+        const confirmedCount = g.bookings - g.cancelled;
+        return {
+          period,
+          total_revenue: g.revenue,
+          total_bookings: g.bookings,
+          unique_clients: g.clients.size,
+          avg_ticket: confirmedCount > 0 ? g.revenue / confirmedCount : 0,
+          cancelled_rate: g.bookings > 0 ? (g.cancelled / g.bookings) * 100 : 0,
+        };
+      });
+
+    return NextResponse.json({
       period: { startDate: start, endDate: end },
       granularity,
-      data: timeseries || [],
+      data,
       computedAt: new Date().toISOString(),
-    };
-
-    // Cache for 1 hour
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    await supabase.from('analytics_cache').upsert(
-      {
-        professional_id: professional.id,
-        metric_key: cacheKey,
-        period_start: start,
-        period_end: end,
-        data: result,
-        expires_at: expiresAt,
-      },
-      {
-        onConflict: 'professional_id,metric_key,period_start,period_end',
-      }
-    );
-
-    return NextResponse.json(result);
+    });
   } catch (error) {
     console.error('Error fetching revenue timeseries:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+function getPeriodKey(date: string, granularity: string): string {
+  if (granularity === 'day') return date;
+
+  // Parsear sem conversão de timezone
+  const [year, month, day] = date.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+
+  if (granularity === 'month') {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+
+  if (granularity === 'week') {
+    // ISO week number
+    const tmp = new Date(d.getTime());
+    tmp.setHours(0, 0, 0, 0);
+    tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
+    const week1 = new Date(tmp.getFullYear(), 0, 4);
+    const weekNum =
+      1 +
+      Math.round(
+        ((tmp.getTime() - week1.getTime()) / 86400000 -
+          3 +
+          ((week1.getDay() + 6) % 7)) /
+          7,
+      );
+    return `${tmp.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  }
+
+  return date;
 }
 
 function getDateRange(period: string, startDate: string | null, endDate: string | null) {

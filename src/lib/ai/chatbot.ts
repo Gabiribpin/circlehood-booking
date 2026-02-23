@@ -107,7 +107,29 @@ export class AIBot {
       }
     }
 
-    // 4. Classificar intenção
+    // 4. Cold-start guard: histórico vazio + mensagem NÃO é saudação
+    //
+    // Quando Redis/Supabase não propagou o histórico a tempo (ex: delay de 500 ms entre
+    // "oi" e a próxima mensagem), context.history chega vazio para o segundo turno.
+    // Sem histórico, Claude "reinicia" a conversa e gera uma saudação, mesmo com a
+    // regra "PROIBIDO saudar" no system prompt.
+    //
+    // Fix: se o histórico está vazio MAS a mensagem atual não parece uma saudação
+    // (logo, não é a primeira mensagem real), injetar um par user/assistant mínimo.
+    // Isso garante que Claude veja a conversa "já em curso" e vá direto ao pedido.
+    if (context.history.length === 0 && !isFirstMessage) {
+      const guardBotName =
+        context.businessInfo.botConfig?.bot_name ??
+        context.businessInfo.business_name ??
+        'Assistente';
+      context.history = [
+        { role: 'user' as const, content: 'olá' },
+        { role: 'assistant' as const, content: `Olá! Sou ${guardBotName}. Como posso ajudar? 😊` },
+      ];
+      console.log('🔧 Cold-start guard: injetando contexto mínimo (histórico vazio + não-saudação)');
+    }
+
+    // 5. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
     // 5. Gerar resposta
@@ -771,6 +793,28 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       }
 
       console.log('✅ Agendamento criado:', booking.id, '| serviço:', service.name, '| data:', data.date, data.time);
+
+      // Auto-save contato (fire and forget)
+      ;(async () => {
+        try {
+          const { data: existing } = await this.supabase
+            .from('contacts')
+            .select('id')
+            .eq('professional_id', professionalId)
+            .eq('phone', clientPhone)
+            .maybeSingle();
+          if (!existing) {
+            await this.supabase.from('contacts').insert({
+              professional_id: professionalId,
+              name: data.customer_name,
+              phone: clientPhone,
+            });
+          }
+        } catch (err) {
+          console.error('[Bot] Contact auto-save failed:', err);
+        }
+      })();
+
       return {
         success: true,
         appointment_id: booking.id,
