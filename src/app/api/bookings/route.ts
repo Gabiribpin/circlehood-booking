@@ -3,33 +3,58 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmationEmail } from '@/lib/resend';
 import { WhatsAppClient } from '@/lib/whatsapp/client';
 import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
+import { safeSendEmail } from '@/lib/email/safe-send';
+import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
+import { bookingSchema, sanitizeString } from '@/lib/validation/booking-schema';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const {
-    professional_id,
-    service_id,
-    booking_date,
-    start_time,
-    client_name,
-    client_email,
-    client_phone,
-    notes,
-    service_location,
-    customer_address,
-    customer_address_city,
-  } = body;
+  // ─── 1. Parse + validação Zod ────────────────────────────────────────
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Payload JSON inválido.' }, { status: 400 });
+  }
 
-  if (!professional_id || !service_id || !booking_date || !start_time || !client_name || !client_phone) {
+  const parsed = bookingSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
     return NextResponse.json(
-      { error: 'Missing required fields. WhatsApp is mandatory.' },
+      { error: firstIssue?.message ?? 'Dados inválidos.', issues: parsed.error.issues },
       { status: 400 }
     );
   }
 
+  // ─── 2. Sanitização de inputs de texto (XSS) ─────────────────────────
+  const {
+    professional_id,
+    service_id,
+    booking_date,
+    start_time: rawStartTime,
+    service_location,
+    customer_address,
+    customer_address_city,
+    payment_intent_id,
+  } = parsed.data;
+
+  const client_name = sanitizeString(parsed.data.client_name);
+  const client_email = parsed.data.client_email
+    ? sanitizeString(parsed.data.client_email)
+    : undefined;
+  const client_phone = parsed.data.client_phone;
+  const notes = parsed.data.notes ? sanitizeString(parsed.data.notes) : undefined;
+
+  // Normalizar start_time para HH:MM (sem segundos)
+  const start_time = rawStartTime.slice(0, 5);
+
+  // ─── 3. Validar que nome não ficou vazio após sanitização ─────────────
+  if (client_name.length < 2) {
+    return NextResponse.json({ error: 'Nome inválido.' }, { status: 400 });
+  }
+
   const supabase = createAdminClient();
 
-  // Check trial expiration
+  // ─── 4. Check trial expiration ────────────────────────────────────────
   const { data: prof } = await supabase
     .from('professionals')
     .select('subscription_status, trial_ends_at')
@@ -52,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Get service details — valida que o serviço pertence ao profissional (previne cross-professional attack)
+  // ─── 5. Get service — valida que pertence ao profissional ─────────────
   const { data: service } = await supabase
     .from('services')
     .select('duration_minutes, name, price')
@@ -64,22 +89,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 });
   }
 
-  // Calculate end_time
+  // ─── 6. Validar data não é passado (leniente: permite hoje em qualquer fuso) ──
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  yesterday.setUTCHours(0, 0, 0, 0);
+  const bookingDateObj = new Date(booking_date + 'T00:00:00Z');
+  if (bookingDateObj < yesterday) {
+    return NextResponse.json(
+      { error: 'Não é possível agendar em datas passadas.' },
+      { status: 400 }
+    );
+  }
+
+  // ─── 7. Calculate end_time ────────────────────────────────────────────
   const [h, m] = start_time.split(':').map(Number);
   const totalMinutes = h * 60 + m + service.duration_minutes;
   const endH = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
   const endM = (totalMinutes % 60).toString().padStart(2, '0');
   const end_time = `${endH}:${endM}`;
 
-  // Check for double-booking
+  // ─── 8. Check double-booking ──────────────────────────────────────────
   const { data: conflicts } = await supabase
     .from('bookings')
     .select('id')
     .eq('professional_id', professional_id)
     .eq('booking_date', booking_date)
     .eq('status', 'confirmed')
-    .lt('start_time', end_time)
-    .gt('end_time', start_time);
+    .lt('start_time', `${end_time}:00`)
+    .gt('end_time', `${start_time}:00`);
 
   if (conflicts && conflicts.length > 0) {
     return NextResponse.json(
@@ -88,7 +125,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Insert booking
+  // ─── 9. Idempotência — janela de 5 minutos ────────────────────────────
+  // Previne duplicatas por back-button / duplo-tab / retry de rede
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: recentBooking } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('professional_id', professional_id)
+    .eq('service_id', service_id)
+    .eq('booking_date', booking_date)
+    .eq('start_time', `${start_time}:00`)
+    .eq('client_phone', client_phone)
+    .neq('status', 'cancelled')
+    .gte('created_at', fiveMinutesAgo)
+    .maybeSingle();
+
+  if (recentBooking) {
+    return NextResponse.json(
+      { booking: recentBooking, message: 'Agendamento já registrado.' },
+      { status: 200 }
+    );
+  }
+
+  // ─── 10. Insert booking ───────────────────────────────────────────────
   const { data: booking, error } = await supabase
     .from('bookings')
     .insert({
@@ -110,20 +169,31 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    // 23505 = unique_violation: slot foi ocupado por outra requisição simultânea (race condition)
+    // 23505 = unique_violation: slot ocupado por race condition
     if (error.code === '23505') {
       return NextResponse.json(
         { error: 'Horario indisponível. Escolha outro horario.' },
         { status: 409 }
       );
     }
-    return NextResponse.json(
-      { error: 'Failed to create booking' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
   }
 
-  // Auto-save contato (fire and forget — não bloqueia nem falha o agendamento)
+  // ─── 11. Ligar payment_intent_id ao booking (fire-and-forget) ───────────
+  if (payment_intent_id) {
+    void (async () => {
+      try {
+        await supabase
+          .from('payments')
+          .update({ booking_id: booking.id })
+          .eq('stripe_payment_intent_id', payment_intent_id);
+      } catch (err) {
+        console.error('[Booking] Payment link failed:', err);
+      }
+    })();
+  }
+
+  // ─── 11. Auto-save contato (fire-and-forget) ──────────────────────────
   ;(async () => {
     try {
       const phone = (client_phone ?? '').replace(/\D/g, '') || client_phone;
@@ -147,7 +217,7 @@ export async function POST(request: NextRequest) {
     }
   })();
 
-  // Get professional info for email + whatsapp
+  // ─── 12. Get professional info para notificações ──────────────────────
   const { data: professional } = await supabase
     .from('professionals')
     .select('user_id, business_name, currency')
@@ -155,70 +225,126 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (professional) {
-    // 1. Email de confirmação (fire and forget)
-    supabase.auth.admin.getUserById(professional.user_id).then(({ data: userData }) => {
-      if (userData?.user?.email) {
-        sendBookingConfirmationEmail({
-          clientName: client_name,
-          clientEmail: client_email || undefined,
-          professionalEmail: userData.user.email,
-          businessName: professional.business_name,
-          serviceName: service.name,
-          servicePrice: service.price,
-          currency: professional.currency,
-          bookingDate: booking_date,
-          startTime: start_time,
-          endTime: end_time,
-          bookingId: booking.id,
-          professionalId: professional_id,
-        });
-      }
-    }).catch((err) => console.error('[Booking] Failed to fetch user for email:', err));
-
-    // 2. WhatsApp de confirmação (fire and forget)
-    if (client_phone) {
-      (async () => {
-        try {
-          const { data: config } = await supabase
-            .from('whatsapp_config')
-            .select('provider, phone_number_id, access_token, evolution_api_url, evolution_api_key, evolution_instance')
-            .eq('user_id', professional.user_id)
-            .eq('is_active', true)
-            .maybeSingle();
-
-          if (!config) return;
-
-          const formattedDate = booking_date.split('-').reverse().join('/');
-          const formattedStart = start_time.slice(0, 5);
-          const symbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
-          const symbol = symbols[professional.currency] || professional.currency;
-          const formattedPrice = `${symbol}${Number(service.price).toFixed(0)}`;
-
-          const message =
-            `Olá ${client_name}! Seu agendamento foi confirmado 🎉\n` +
-            `\n📅 ${formattedDate} às ${formattedStart}` +
-            `\n✂️ ${service.name} — ${formattedPrice}` +
-            `\n\nNos vemos em breve! 😊`;
-
-          if (config.provider === 'evolution' && config.evolution_api_url && config.evolution_api_key && config.evolution_instance) {
-            await sendEvolutionMessage(client_phone, message, {
-              apiUrl: config.evolution_api_url,
-              apiKey: config.evolution_api_key,
-              instance: config.evolution_instance,
-            });
-          } else if (config.phone_number_id && config.access_token) {
-            const whatsapp = new WhatsAppClient({
-              phoneNumberId: config.phone_number_id,
-              accessToken: config.access_token,
-            });
-            await whatsapp.sendMessage(client_phone, message);
-          }
-        } catch (err) {
-          console.error('[Booking] WhatsApp confirmation failed:', err);
+    // ─── 13. Email de confirmação (fire-and-forget resiliente) ────────
+    ;(async () => {
+      await safeSendEmail(
+        async () => {
+          const { data: userData } = await supabase.auth.admin.getUserById(
+            professional.user_id
+          );
+          if (!userData?.user?.email) return;
+          await sendBookingConfirmationEmail({
+            clientName: client_name,
+            clientEmail: client_email || undefined,
+            professionalEmail: userData.user.email,
+            businessName: professional.business_name,
+            serviceName: service.name,
+            servicePrice: service.price,
+            currency: professional.currency,
+            bookingDate: booking_date,
+            startTime: start_time,
+            endTime: end_time,
+            bookingId: booking.id,
+            professionalId: professional_id,
+          });
+        },
+        {
+          label: 'Email confirmação',
+          onFailure: (error) => {
+            // Registrar falha em notification_logs (fire-and-forget)
+            void (async () => {
+              try {
+                await supabase.from('notification_logs').insert({
+                  professional_id,
+                  booking_id: booking.id,
+                  type: 'booking_confirmation',
+                  channel: 'email',
+                  recipient: client_email ?? 'professional',
+                  message: `Novo agendamento: ${client_name}`,
+                  status: 'failed',
+                  error_message: error,
+                });
+              } catch { /* nunca quebrar o fluxo */ }
+            })();
+          },
         }
+      );
+    })();
+
+    // ─── 14. WhatsApp de confirmação (fire-and-forget resiliente) ─────
+    if (client_phone) {
+      ;(async () => {
+        const { data: config } = await supabase
+          .from('whatsapp_config')
+          .select(
+            'provider, phone_number_id, access_token, evolution_api_url, evolution_api_key, evolution_instance'
+          )
+          .eq('user_id', professional.user_id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!config) return;
+
+        const formattedDate = booking_date.split('-').reverse().join('/');
+        const formattedStart = start_time.slice(0, 5);
+        const symbols: Record<string, string> = {
+          EUR: '€', GBP: '£', USD: '$', BRL: 'R$',
+        };
+        const symbol = symbols[professional.currency] || professional.currency;
+        const formattedPrice = `${symbol}${Number(service.price).toFixed(0)}`;
+
+        const message =
+          `Olá ${client_name}! Seu agendamento foi confirmado 🎉\n` +
+          `\n📅 ${formattedDate} às ${formattedStart}` +
+          `\n✂️ ${service.name} — ${formattedPrice}` +
+          `\n\nNos vemos em breve! 😊`;
+
+        await safeSendWhatsApp(
+          async () => {
+            if (
+              config.provider === 'evolution' &&
+              config.evolution_api_url &&
+              config.evolution_api_key &&
+              config.evolution_instance
+            ) {
+              await sendEvolutionMessage(client_phone, message, {
+                apiUrl: config.evolution_api_url,
+                apiKey: config.evolution_api_key,
+                instance: config.evolution_instance,
+              });
+            } else if (config.phone_number_id && config.access_token) {
+              const whatsapp = new WhatsAppClient({
+                phoneNumberId: config.phone_number_id,
+                accessToken: config.access_token,
+              });
+              await whatsapp.sendMessage(client_phone, message);
+            }
+          },
+          {
+            onFailure: (error) => {
+              void (async () => {
+                try {
+                  await supabase.from('notification_logs').insert({
+                    professional_id,
+                    booking_id: booking.id,
+                    type: 'booking_confirmation',
+                    channel: 'whatsapp',
+                    recipient: client_phone,
+                    message,
+                    status: 'failed',
+                    error_message: error,
+                  });
+                } catch { /* nunca quebrar o fluxo */ }
+              })();
+            },
+          }
+        );
       })();
     }
   }
 
-  return NextResponse.json({ booking }, { status: 201 });
+  return NextResponse.json(
+    { booking, message: 'Agendamento criado com sucesso!' },
+    { status: 201 }
+  );
 }

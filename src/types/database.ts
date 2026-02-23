@@ -19,6 +19,11 @@ export interface Professional {
   trial_ends_at: string;
   subscription_status: 'trial' | 'active' | 'cancelled' | 'expired';
   stripe_customer_id: string | null;
+  require_deposit?: boolean;
+  deposit_type?: 'percentage' | 'fixed' | null;
+  deposit_value?: number | null;
+  stripe_account_id?: string | null;
+  stripe_onboarding_completed?: boolean;
   created_at: string;
 }
 
@@ -57,6 +62,21 @@ export interface Booking {
   status: 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   notes: string | null;
   created_at: string;
+}
+
+export interface Payment {
+  id: string;
+  booking_id: string | null;
+  professional_id: string;
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
+  payment_method: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BlockedDate {

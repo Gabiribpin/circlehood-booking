@@ -105,7 +105,7 @@ export default defineConfig({
     // ─── Dashboard autenticado (usa sessão salva pelo auth-setup) ────
     {
       name: 'dashboard',
-      testMatch: '**/dashboard/0[2-9]-*.spec.ts',
+      testMatch: ['**/dashboard/0[2-9]-*.spec.ts', '**/dashboard/1[0-9]-*.spec.ts'],
       use: {
         browserName: 'chromium',
         headless: true,
@@ -210,6 +210,40 @@ export default defineConfig({
       use: {
         // Sem browser — testes de API + webhook
       },
+    },
+
+    // ─── Performance básica (tempo de carga + console errors) ───────
+    {
+      name: 'performance',
+      testMatch: '**/performance/**/*.spec.ts',
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
+
+    // ─── Fail-safe de notificações (email/WhatsApp resilientes) ─────
+    {
+      name: 'failsafe',
+      testMatch: '**/failsafe/**/*.spec.ts',
+      // Testes de API pura — sem browser nem storageState
+    },
+
+    // ─── Validação de dados de entrada (Zod, XSS, malformed) ────────
+    {
+      name: 'validation',
+      testMatch: '**/validation/**/*.spec.ts',
+      // Testes de API pura — sem browser nem storageState
+    },
+
+    // ─── Pagamentos: sinal/depósito Stripe (API pura) ────────────────
+    {
+      name: 'payment',
+      testMatch: '**/payment/**/*.spec.ts',
+      // Testes de API pura — sem browser nem storageState
+      // STRIPE_SECRET_KEY opcional: testes graceful-degradam se não configurada
     },
 
     // ─── Mobile responsive (iPhone SE, iPhone 12, Pixel 5) ───────────

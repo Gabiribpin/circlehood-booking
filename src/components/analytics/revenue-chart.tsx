@@ -24,11 +24,16 @@ interface RevenueChartProps {
   period: string;
   startDate?: Date;
   endDate?: Date;
+  currency: string;
 }
 
-export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) {
+const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
+
+export function RevenueChart({ period, startDate, endDate, currency }: RevenueChartProps) {
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>('day');
+
+  const sym = currencySymbols[currency] ?? currency;
 
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'revenue', period, granularity, startDate, endDate],
@@ -47,7 +52,7 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
   if (isLoading) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading chart...</p>
+        <p className="text-muted-foreground">Carregando gráfico...</p>
       </div>
     );
   }
@@ -69,26 +74,26 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
           disabled={!data}
         >
           <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          Exportar CSV
         </Button>
         <Select value={granularity} onValueChange={(v) => setGranularity(v as any)}>
           <SelectTrigger className="w-[120px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="day">Daily</SelectItem>
-            <SelectItem value="week">Weekly</SelectItem>
-            <SelectItem value="month">Monthly</SelectItem>
+            <SelectItem value="day">Diário</SelectItem>
+            <SelectItem value="week">Semanal</SelectItem>
+            <SelectItem value="month">Mensal</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={chartType} onValueChange={(v) => setChartType(v as any)}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="line">Line Chart</SelectItem>
-            <SelectItem value="bar">Bar Chart</SelectItem>
+            <SelectItem value="line">Gráfico de Linha</SelectItem>
+            <SelectItem value="bar">Gráfico de Barras</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -111,9 +116,9 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
             <Tooltip
               formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
-                  return [`R$ ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Revenue' : 'Avg Ticket'];
+                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Receita' : 'Ticket Médio'];
                 }
-                return [value, 'Bookings'];
+                return [value, 'Agendamentos'];
               }}
             />
             <Legend />
@@ -123,7 +128,7 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
               dataKey="revenue"
               stroke="#8884d8"
               strokeWidth={2}
-              name="Revenue"
+              name="Receita"
             />
             <Line
               yAxisId="right"
@@ -131,7 +136,7 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
               dataKey="bookings"
               stroke="#82ca9d"
               strokeWidth={2}
-              name="Bookings"
+              name="Agendamentos"
             />
           </LineChart>
         ) : (
@@ -150,14 +155,14 @@ export function RevenueChart({ period, startDate, endDate }: RevenueChartProps) 
             <Tooltip
               formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
-                  return [`R$ ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Revenue' : 'Avg Ticket'];
+                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Receita' : 'Ticket Médio'];
                 }
-                return [value, 'Bookings'];
+                return [value, 'Agendamentos'];
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Revenue" />
-            <Bar yAxisId="right" dataKey="bookings" fill="#82ca9d" name="Bookings" />
+            <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Receita" />
+            <Bar yAxisId="right" dataKey="bookings" fill="#82ca9d" name="Agendamentos" />
           </BarChart>
         )}
       </ResponsiveContainer>

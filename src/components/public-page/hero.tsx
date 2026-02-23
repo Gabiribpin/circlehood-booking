@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
@@ -17,13 +18,16 @@ export function Hero({ professional }: HeroProps) {
 
   return (
     <section className="relative">
-      {/* Cover */}
-      <div className="h-40 sm:h-52 bg-gradient-to-br from-primary/80 to-primary/40 rounded-b-3xl">
+      {/* Cover — LCP crítico, carregado com priority */}
+      <div className="relative h-40 sm:h-52 bg-gradient-to-br from-primary/80 to-primary/40 rounded-b-3xl overflow-hidden">
         {professional.cover_image_url && (
-          <img
+          <Image
             src={professional.cover_image_url}
             alt=""
-            className="w-full h-full object-cover rounded-b-3xl"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover rounded-b-3xl"
           />
         )}
       </div>

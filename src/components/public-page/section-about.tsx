@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { AboutData } from '@/lib/page-sections/types';
 import { Award, Star } from 'lucide-react';
 
@@ -14,11 +15,15 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
 
         {data.imageUrl && (
           <div className="mb-8 flex justify-center">
-            <img
-              src={data.imageUrl}
-              alt={data.heading}
-              className="rounded-lg shadow-lg max-w-md w-full object-cover h-64"
-            />
+            <div className="relative max-w-md w-full h-64">
+              <Image
+                src={data.imageUrl}
+                alt={data.heading}
+                fill
+                sizes="(max-width: 768px) 100vw, 448px"
+                className="rounded-lg shadow-lg object-cover"
+              />
+            </div>
           </div>
         )}
 

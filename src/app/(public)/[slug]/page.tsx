@@ -7,6 +7,7 @@ import { MapPin } from 'lucide-react';
 import type { Professional, Service } from '@/types/database';
 import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
+import { CircleHoodLogoCompact } from '@/components/branding/logo';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -191,9 +192,23 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 professionalId={professional.id}
                 currency={professional.currency}
                 workingHours={workingHours}
+                requireDeposit={professional.require_deposit ?? false}
+                depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
+                depositValue={professional.deposit_value ?? null}
               />
             </>
           )}
+          <footer className="text-center py-6 border-t mt-4">
+            <a
+              href="https://circlehood-tech.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <CircleHoodLogoCompact size="xs" />
+              <span>Powered by <strong>CircleHood Tech</strong></span>
+            </a>
+          </footer>
         </div>
       </div>
     );
@@ -270,9 +285,24 @@ export default async function PublicProfilePage({ params }: PageProps) {
               professionalId={professional.id}
               currency={professional.currency}
               workingHours={workingHours}
+              requireDeposit={professional.require_deposit ?? false}
+              depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
+              depositValue={professional.deposit_value ?? null}
             />
           </div>
         )}
+        {/* Footer: Powered by CircleHood Tech */}
+        <footer className="text-center py-6 border-t mt-4">
+          <a
+            href="https://circlehood-tech.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <CircleHoodLogoCompact size="xs" />
+            <span>Powered by <strong>CircleHood Tech</strong></span>
+          </a>
+        </footer>
         </div>
       </div>
     </>

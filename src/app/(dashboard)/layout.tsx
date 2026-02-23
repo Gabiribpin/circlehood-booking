@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
+import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import {
   LayoutDashboard,
   Scissors,
@@ -72,12 +73,13 @@ export default async function DashboardLayout({
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-muted/30">
-        <div className="p-6">
-          <Link href="/dashboard" className="text-lg font-bold">
-            CircleHood
+        <div className="p-4 pb-3">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <CircleHoodLogoCompact size="sm" />
+            <span className="text-sm font-bold leading-tight">CircleHood<br /><span className="text-xs font-normal text-muted-foreground">Booking</span></span>
           </Link>
           {professional && (
-            <p className="text-sm text-muted-foreground mt-1 truncate">
+            <p className="text-xs text-muted-foreground mt-2 truncate pl-1">
               {professional.business_name}
             </p>
           )}
@@ -119,14 +121,18 @@ export default async function DashboardLayout({
               Sair
             </button>
           </form>
+          <p className="text-[10px] text-muted-foreground/50 px-3 pt-2">
+            by CircleHood Tech
+          </p>
         </div>
       </aside>
 
       {/* Mobile header */}
       <div className="flex-1 flex flex-col">
-        <header className="md:hidden border-b p-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-lg font-bold">
-            CircleHood
+        <header className="md:hidden border-b px-4 py-3 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <CircleHoodLogoCompact size="xs" />
+            <span className="text-sm font-bold">CircleHood Booking</span>
           </Link>
         </header>
 

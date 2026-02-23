@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "CircleHood Booking — Sua página profissional de agendamentos",
   description:
     "Crie sua página profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.",
+  icons: {
+    icon: '/branding/favicon-32.png',
+    apple: '/branding/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({

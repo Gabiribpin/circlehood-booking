@@ -22,7 +22,7 @@ export default async function AnalyticsPage() {
   // Get professional data
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, business_name, bio, phone')
+    .select('id, business_name, currency')
     .eq('user_id', user.id)
     .single();
 
@@ -33,13 +33,13 @@ export default async function AnalyticsPage() {
   return (
     <div className="container mx-auto py-6 px-4 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
         <p className="text-muted-foreground mt-2">
-          Insights and metrics for {professional.business_name}
+          Métricas e insights de {professional.business_name}
         </p>
       </div>
 
-      <AnalyticsDashboard professionalId={professional.id} />
+      <AnalyticsDashboard professionalId={professional.id} currency={professional.currency ?? 'BRL'} />
     </div>
   );
 }

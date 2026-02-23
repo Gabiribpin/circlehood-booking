@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,9 +42,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">CircleHood Booking</CardTitle>
-          <CardDescription>Entre na sua conta para gerenciar seus agendamentos</CardDescription>
+        <CardHeader className="text-center space-y-3">
+          <div className="flex justify-center">
+            <CircleHoodLogoFull />
+          </div>
+          <div>
+            <CardTitle className="text-xl font-bold">Entrar na sua conta</CardTitle>
+            <CardDescription>Gerencie seus agendamentos</CardDescription>
+          </div>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">

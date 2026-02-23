@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 const CATEGORIES = [
   'Nail Tech',
@@ -165,8 +166,11 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-8">
       <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Crie sua página profissional</CardTitle>
+        <CardHeader className="text-center space-y-3">
+          <div className="flex justify-center">
+            <CircleHoodLogoFull />
+          </div>
+          <CardTitle className="text-xl font-bold">Crie sua página profissional</CardTitle>
           <CardDescription>
             {step === 1
               ? 'Comece criando sua conta'

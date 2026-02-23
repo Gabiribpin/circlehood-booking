@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,6 +19,12 @@ import {
 } from 'lucide-react';
 import type { Service } from '@/types/database';
 
+// Lazy load do formulário de pagamento (só carrega quando necessário)
+const PaymentForm = dynamic(
+  () => import('@/components/checkout/payment-form').then((m) => ({ default: m.PaymentForm })),
+  { loading: () => <div className="h-40 animate-pulse rounded-lg bg-muted" />, ssr: false }
+);
+
 interface WorkingHour {
   id: string;
   day_of_week: number;
@@ -31,6 +38,16 @@ interface BookingSectionProps {
   professionalId: string;
   currency: string;
   workingHours: WorkingHour[];
+  requireDeposit?: boolean;
+  depositType?: 'percentage' | 'fixed' | null;
+  depositValue?: number | null;
+}
+
+interface DepositInfo {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
 }
 
 function formatPrice(price: number, currency: string) {
@@ -44,15 +61,17 @@ export function BookingSection({
   professionalId,
   currency,
   workingHours,
+  requireDeposit = false,
+  depositType = null,
+  depositValue = null,
 }: BookingSectionProps) {
-  // Get available days of week from working hours
   const availableDays = new Set(workingHours.map(wh => wh.day_of_week));
 
-  // Function to disable unavailable days
   const disableUnavailableDays = (date: Date) => {
     const dayOfWeek = date.getDay();
     return !availableDays.has(dayOfWeek);
   };
+
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
@@ -68,17 +87,22 @@ export function BookingSection({
   const [customerAddressCity, setCustomerAddressCity] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [depositInfo, setDepositInfo] = useState<DepositInfo | null>(null);
+
+  // Total de passos: se exige sinal, são 5 (+ pagamento); caso contrário, 4
+  const totalSteps = requireDeposit ? 5 : 4;
 
   function goBack() {
     setStep((s) => Math.max(1, s - 1));
     if (step === 3) setSelectedSlot(null);
+    if (step === 5) setDepositInfo(null);
+    setError('');
   }
 
   function selectService(service: Service) {
     setSelectedService(service);
     setSelectedDate(undefined);
     setSelectedSlot(null);
-    // Inicializar local baseado no tipo do serviço
     const loc = (service as any).service_location;
     setSelectedLocation(loc === 'at_home' ? 'at_home' : 'in_salon');
     setCustomerAddress('');
@@ -97,11 +121,61 @@ export function BookingSection({
     setStep(4);
   }
 
-  async function handleSubmit() {
+  // Passo 4 → 5 (ou confirmação direta se sem sinal)
+  async function handleContinue() {
     if (!selectedService || !selectedDate || !selectedSlot || !formData.clientName || !formData.clientPhone) {
       setError('Por favor, preencha todos os campos obrigatórios, incluindo o WhatsApp.');
       return;
     }
+
+    if (!requireDeposit) {
+      // Sem sinal: submeter directamente
+      await submitBooking();
+      return;
+    }
+
+    // Com sinal: criar PaymentIntent
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/payment/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          professional_id: professionalId,
+          service_id: selectedService.id,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Erro ao iniciar pagamento. Tente novamente.');
+        setSubmitting(false);
+        return;
+      }
+
+      const data = await res.json();
+      setDepositInfo({
+        clientSecret: data.client_secret,
+        paymentIntentId: data.payment_intent_id,
+        amount: data.amount,
+        currency: data.currency,
+      });
+      setStep(5);
+    } catch {
+      setError('Erro de rede. Tente novamente.');
+    }
+    setSubmitting(false);
+  }
+
+  // Após pagamento confirmado → criar agendamento
+  async function handlePaymentSuccess(paymentIntentId: string) {
+    await submitBooking(paymentIntentId);
+  }
+
+  async function submitBooking(paymentIntentId?: string) {
+    if (!selectedService || !selectedDate || !selectedSlot) return;
 
     setSubmitting(true);
     setError('');
@@ -124,6 +198,7 @@ export function BookingSection({
           service_location: selectedLocation,
           customer_address: selectedLocation === 'at_home' ? (customerAddress || undefined) : undefined,
           customer_address_city: selectedLocation === 'at_home' ? (customerAddressCity || undefined) : undefined,
+          ...(paymentIntentId && { payment_intent_id: paymentIntentId }),
         }),
       });
 
@@ -134,7 +209,8 @@ export function BookingSection({
         return;
       }
 
-      setStep(5);
+      // Confirmação: paso 5 (sem sinal) ou 6 (com sinal)
+      setStep(requireDeposit ? 6 : 5);
     } catch {
       setError('Erro ao criar agendamento. Tente novamente.');
     }
@@ -145,13 +221,14 @@ export function BookingSection({
 
   const dateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : '';
   const formattedDate = dateStr ? dateStr.split('-').reverse().join('/') : '';
+  const confirmationStep = requireDeposit ? 6 : 5;
 
   return (
     <section className="px-4 sm:px-6 py-6">
       <h2 className="text-lg font-semibold mb-4">Agendar</h2>
 
       {/* Step indicator */}
-      {step < 5 && (
+      {step < confirmationStep && (
         <div className="flex items-center gap-2 mb-4">
           {step > 1 && (
             <Button variant="ghost" size="sm" onClick={goBack} className="gap-1 px-2">
@@ -160,7 +237,7 @@ export function BookingSection({
             </Button>
           )}
           <span className="text-xs text-muted-foreground ml-auto">
-            Passo {step} de 4
+            Passo {step} de {totalSteps}
           </span>
         </div>
       )}
@@ -241,7 +318,7 @@ export function BookingSection({
             <div className="p-3 rounded-lg bg-muted/50 space-y-1">
               <p className="text-sm font-medium">{selectedService.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formattedDate} as {selectedSlot} &mdash;{' '}
+                {formattedDate} às {selectedSlot} &mdash;{' '}
                 {formatPrice(selectedService.price, currency)}
               </p>
             </div>
@@ -316,7 +393,7 @@ export function BookingSection({
 
             <Button
               className="w-full"
-              onClick={handleSubmit}
+              onClick={handleContinue}
               disabled={
                 !formData.clientName ||
                 !formData.clientPhone ||
@@ -324,27 +401,51 @@ export function BookingSection({
                 submitting
               }
             >
-              {submitting && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              Confirmar agendamento
+              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {requireDeposit ? 'Continuar para pagamento' : 'Confirmar agendamento'}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 5: Confirmation */}
-      {step === 5 && (
+      {/* Step 5 (com sinal): Formulário de pagamento Stripe */}
+      {step === 5 && requireDeposit && depositInfo && (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            {/* Summary */}
+            <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+              <p className="text-sm font-medium">{selectedService?.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {formattedDate} às {selectedSlot}
+              </p>
+            </div>
+
+            <PaymentForm
+              clientSecret={depositInfo.clientSecret}
+              paymentIntentId={depositInfo.paymentIntentId}
+              amount={depositInfo.amount}
+              currency={depositInfo.currency}
+              onSuccess={handlePaymentSuccess}
+              onError={(msg) => setError(msg)}
+            />
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confirmação final */}
+      {step === confirmationStep && (
         <Card>
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
             <h3 className="text-xl font-semibold">Agendamento confirmado!</h3>
             <p className="text-sm text-muted-foreground">
-              {selectedService?.name} &mdash; {formattedDate} as {selectedSlot}
+              {selectedService?.name} &mdash; {formattedDate} às {selectedSlot}
             </p>
             {formData.clientEmail && (
               <p className="text-xs text-muted-foreground">
-                Um email de confirmacao foi enviado para {formData.clientEmail}.
+                Um email de confirmação foi enviado para {formData.clientEmail}.
               </p>
             )}
             <Button
@@ -358,6 +459,7 @@ export function BookingSection({
                 setSelectedLocation('in_salon');
                 setCustomerAddress('');
                 setCustomerAddressCity('');
+                setDepositInfo(null);
               }}
             >
               Fazer outro agendamento

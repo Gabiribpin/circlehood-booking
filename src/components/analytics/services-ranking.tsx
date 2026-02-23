@@ -20,9 +20,14 @@ interface ServicesRankingProps {
   startDate?: Date;
   endDate?: Date;
   limit?: number;
+  currency: string;
 }
 
-export function ServicesRanking({ period, startDate, endDate, limit = 10 }: ServicesRankingProps) {
+const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
+
+export function ServicesRanking({ period, startDate, endDate, limit = 10, currency }: ServicesRankingProps) {
+  const sym = currencySymbols[currency] ?? currency;
+
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'services', 'ranking', period, limit, startDate, endDate],
     queryFn: async () => {
@@ -40,7 +45,7 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10 }: Serv
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading services...</p>
+        <p className="text-muted-foreground">Carregando serviços...</p>
       </div>
     );
   }
@@ -50,7 +55,7 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10 }: Serv
   if (services.length === 0) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">No services data for this period</p>
+        <p className="text-muted-foreground">Nenhum dado de serviços neste período</p>
       </div>
     );
   }
@@ -65,18 +70,18 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10 }: Serv
           disabled={!data || services.length === 0}
         >
           <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          Exportar CSV
         </Button>
       </div>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Rank</TableHead>
-            <TableHead>Service</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">Bookings</TableHead>
-            <TableHead className="text-right">Revenue</TableHead>
-            <TableHead className="text-right">Avg/Day</TableHead>
+            <TableHead>Serviço</TableHead>
+            <TableHead className="text-right">Preço</TableHead>
+            <TableHead className="text-right">Agendamentos</TableHead>
+            <TableHead className="text-right">Receita</TableHead>
+            <TableHead className="text-right">Média/Dia</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -87,11 +92,11 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10 }: Serv
               </TableCell>
               <TableCell className="font-medium">{service.service_name}</TableCell>
               <TableCell className="text-right">
-                R$ {Number(service.service_price || 0).toFixed(2)}
+                {sym} {Number(service.service_price || 0).toFixed(2)}
               </TableCell>
               <TableCell className="text-right">{service.total_bookings}</TableCell>
               <TableCell className="text-right font-semibold">
-                R$ {Number(service.total_revenue || 0).toFixed(2)}
+                {sym} {Number(service.total_revenue || 0).toFixed(2)}
               </TableCell>
               <TableCell className="text-right text-muted-foreground">
                 {Number(service.avg_bookings_per_day || 0).toFixed(1)}

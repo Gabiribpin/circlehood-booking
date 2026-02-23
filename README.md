@@ -1,36 +1,153 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <img src="public/branding/circlehood-tech-logo.png" width="96" alt="CircleHood Tech" />
+  <h1>CircleHood Booking</h1>
+  <p><strong>by CircleHood Tech</strong></p>
+  <p>Plataforma de agendamento profissional enterprise-grade para cabeleireiras, nail techs, barbeiros, personal trainers e mais.</p>
+</div>
 
-## Getting Started
+---
 
-First, run the development server:
+## Sobre
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**CircleHood Booking** é um SaaS de agendamento online desenvolvido pela [CircleHood Tech](https://circlehood-tech.com). Cada profissional tem a sua própria página pública (ex: `book.circlehood-tech.com/maria-nails`) onde os clientes podem agendar serviços 24h/dia.
+
+## Stack
+
+- **Next.js 14** App Router (server + client components)
+- **Supabase** — auth, DB (PostgreSQL + RLS), storage
+- **Stripe** — pagamentos e sinais de reserva
+- **Resend** — emails transacionais
+- **Evolution API / Meta Business** — WhatsApp Bot
+- **Anthropic Claude** — bot de agendamento inteligente
+- **Vercel** — deploy + crons
+- **Playwright** — testes E2E
+
+## Funcionalidades
+
+### Para profissionais
+- Página pública personalizada com agendamento online
+- Gestão de serviços, horários e agendamentos
+- CRM de clientes com histórico e segmentação
+- Analytics de receita, serviços e clientes
+- WhatsApp Bot inteligente (agendamento, reagendamento, cancelamento)
+- Sistema de campanhas e automações
+- Galeria de fotos e depoimentos
+- Sinal de reserva configurável (Stripe)
+- Editor de página com secções customizadas
+
+### Técnico / Qualidade
+- Multi-tenant com RLS (Row Level Security)
+- Fail-safe em notificações (retry + timeout)
+- Idempotência anti-duplicatas (janela 5 min)
+- Validação Zod + sanitização XSS
+- Lazy loading de componentes pesados (recharts)
+- ~250+ testes E2E automatizados
+- CI com 18+ jobs organizados em camadas
+
+## Configuração
+
+### Variáveis de ambiente
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Stripe (pagamentos de sinais)
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_DEPOSIT_WEBHOOK_SECRET=
+
+# Stripe (subscriptions)
+STRIPE_PRICE_ID=
+STRIPE_WEBHOOK_SECRET=
+
+# Resend (emails)
+RESEND_API_KEY=
+
+# Anthropic (bot)
+ANTHROPIC_API_KEY=
+
+# Evolution API (WhatsApp)
+EVOLUTION_API_URL=
+EVOLUTION_API_KEY=
+
+# Crons (Vercel)
+CRON_SECRET=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Desenvolvimento local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Testes E2E
 
-## Learn More
+```bash
+# Setup + testes principais
+npx playwright test --project=auth-setup --project=api-tests
 
-To learn more about Next.js, take a look at the following resources:
+# Dashboard autenticado
+npx playwright test --project=auth-setup --project=dashboard
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Pagamentos
+npx playwright test --project=payment
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Migrations (Supabase)
 
-## Deploy on Vercel
+Aplicar pela ordem em `supabase/migrations/`:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Via Supabase CLI
+supabase db push
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estrutura de Pastas
+
+```
+src/
+├── app/
+│   ├── (auth)/          # Login, register, reset password
+│   ├── (dashboard)/     # Painel do profissional (autenticado)
+│   ├── (public)/[slug]  # Página pública do profissional
+│   └── api/             # API routes
+├── components/
+│   ├── analytics/       # Gráficos de receita, serviços, clientes
+│   ├── booking/         # Formulário de agendamento público
+│   ├── branding/        # Logo CircleHood Tech
+│   ├── checkout/        # Stripe Elements (pagamento de sinal)
+│   ├── dashboard/       # Componentes do painel
+│   └── ui/              # shadcn/ui base
+├── lib/
+│   ├── ai/              # WhatsApp Bot (Anthropic Claude)
+│   ├── email/           # Resend + safe-send
+│   ├── payment/         # calculateDeposit, refund
+│   ├── stripe/          # Client + server Stripe
+│   ├── supabase/        # Client, server, admin
+│   ├── validation/      # Zod schemas + XSS sanitization
+│   └── whatsapp/        # Evolution API + safe-send
+└── types/
+    └── database.ts      # TypeScript interfaces
+
+e2e/
+├── auth/                # Setup de sessão
+├── api/                 # Testes de API pública
+├── bot/                 # Testes do WhatsApp Bot
+├── critical/            # Race conditions, idempotência
+├── dashboard/           # Testes autenticados
+├── failsafe/            # Resiliência de notificações
+├── payment/             # Fluxo de pagamento Stripe
+├── performance/         # Tempos de carga
+├── security/            # Auth, autorização, injeção
+└── validation/          # Zod, XSS, dados malformados
+```
+
+---
+
+<div align="center">
+  <p>by <strong>CircleHood Tech</strong> · © 2026 Todos os direitos reservados</p>
+</div>

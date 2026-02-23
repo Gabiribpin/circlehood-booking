@@ -85,6 +85,21 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
   const fromEmail = getFromEmail();
   const promises: Promise<unknown>[] = [];
 
+  const emailHeader = `
+    <div style="background:#000;padding:16px 24px;border-radius:8px 8px 0 0;text-align:center;">
+      <img src="https://circlehood-booking.vercel.app/branding/circlehood-tech-logo.png"
+           alt="CircleHood Tech" width="48" height="48"
+           style="display:inline-block;vertical-align:middle;margin-right:10px;" />
+      <span style="color:#fff;font-size:16px;font-weight:700;vertical-align:middle;">CircleHood Booking</span>
+    </div>`;
+
+  const emailFooter = `
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;text-align:center;">
+      <p style="color:#999;font-size:11px;margin:0;">
+        by <strong>CircleHood Tech</strong> · Plataforma de agendamento profissional
+      </p>
+    </div>`;
+
   // Email to professional
   promises.push(
     resend.emails.send({
@@ -92,17 +107,21 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
       to: professionalEmail,
       subject: `Novo agendamento: ${clientName}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2>Novo agendamento recebido!</h2>
-          <p>Você recebeu um novo agendamento:</p>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px 0; color: #666;">Cliente</td><td style="padding: 8px 0; font-weight: 600;">${clientName}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Servico</td><td style="padding: 8px 0; font-weight: 600;">${serviceName}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Data</td><td style="padding: 8px 0; font-weight: 600;">${formattedDate}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Horario</td><td style="padding: 8px 0; font-weight: 600;">${formattedStart} - ${formattedEnd}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Valor</td><td style="padding: 8px 0; font-weight: 600;">${formattedPrice}</td></tr>
-          </table>
-          <p style="margin-top: 24px; color: #666; font-size: 14px;">Acesse o dashboard para gerenciar seus agendamentos.</p>
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+          ${emailHeader}
+          <div style="padding:24px;">
+            <h2 style="margin:0 0 8px;">Novo agendamento recebido!</h2>
+            <p style="color:#666;margin:0 0 16px;">Você recebeu um novo agendamento:</p>
+            <table style="width:100%;border-collapse:collapse;">
+              <tr><td style="padding:8px 0;color:#666;">Cliente</td><td style="padding:8px 0;font-weight:600;">${clientName}</td></tr>
+              <tr><td style="padding:8px 0;color:#666;">Serviço</td><td style="padding:8px 0;font-weight:600;">${serviceName}</td></tr>
+              <tr><td style="padding:8px 0;color:#666;">Data</td><td style="padding:8px 0;font-weight:600;">${formattedDate}</td></tr>
+              <tr><td style="padding:8px 0;color:#666;">Horário</td><td style="padding:8px 0;font-weight:600;">${formattedStart} - ${formattedEnd}</td></tr>
+              <tr><td style="padding:8px 0;color:#666;">Valor</td><td style="padding:8px 0;font-weight:600;">${formattedPrice}</td></tr>
+            </table>
+            <p style="margin-top:24px;color:#666;font-size:14px;">Acesse o dashboard para gerenciar seus agendamentos.</p>
+            ${emailFooter}
+          </div>
         </div>
       `,
     })
@@ -116,16 +135,20 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
         to: clientEmail,
         subject: `Agendamento confirmado - ${businessName}`,
         html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-            <h2>Agendamento confirmado!</h2>
-            <p>Ola ${clientName}, seu agendamento foi confirmado:</p>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px 0; color: #666;">Servico</td><td style="padding: 8px 0; font-weight: 600;">${serviceName}</td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Data</td><td style="padding: 8px 0; font-weight: 600;">${formattedDate}</td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Horario</td><td style="padding: 8px 0; font-weight: 600;">${formattedStart} - ${formattedEnd}</td></tr>
-              <tr><td style="padding: 8px 0; color: #666;">Valor</td><td style="padding: 8px 0; font-weight: 600;">${formattedPrice}</td></tr>
-            </table>
-            <p style="margin-top: 24px; color: #666; font-size: 14px;">Em caso de duvidas, entre em contato com ${businessName}.</p>
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+            ${emailHeader}
+            <div style="padding:24px;">
+              <h2 style="margin:0 0 8px;">Agendamento confirmado! 🎉</h2>
+              <p style="color:#666;margin:0 0 16px;">Olá ${clientName}, seu agendamento foi confirmado:</p>
+              <table style="width:100%;border-collapse:collapse;">
+                <tr><td style="padding:8px 0;color:#666;">Serviço</td><td style="padding:8px 0;font-weight:600;">${serviceName}</td></tr>
+                <tr><td style="padding:8px 0;color:#666;">Data</td><td style="padding:8px 0;font-weight:600;">${formattedDate}</td></tr>
+                <tr><td style="padding:8px 0;color:#666;">Horário</td><td style="padding:8px 0;font-weight:600;">${formattedStart} - ${formattedEnd}</td></tr>
+                <tr><td style="padding:8px 0;color:#666;">Valor</td><td style="padding:8px 0;font-weight:600;">${formattedPrice}</td></tr>
+              </table>
+              <p style="margin-top:24px;color:#666;font-size:14px;">Em caso de dúvidas, entre em contato com ${businessName}.</p>
+              ${emailFooter}
+            </div>
           </div>
         `,
       })

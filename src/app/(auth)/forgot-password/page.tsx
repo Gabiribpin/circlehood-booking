@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CircleHoodLogoCompact } from '@/components/branding/logo';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -69,8 +70,11 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Esqueceu a senha?</CardTitle>
+        <CardHeader className="text-center space-y-3">
+          <div className="flex justify-center">
+            <CircleHoodLogoCompact size="md" />
+          </div>
+          <CardTitle className="text-xl font-bold">Esqueceu a senha?</CardTitle>
           <CardDescription>
             Digite seu email e enviaremos um link para redefinir sua senha
           </CardDescription>
