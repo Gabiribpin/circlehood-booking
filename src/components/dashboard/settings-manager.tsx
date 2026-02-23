@@ -6,10 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight } from 'lucide-react';
+import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from '@/navigation';
 import type { Professional } from '@/types/database';
+
+const LOCALE_OPTIONS = [
+  { value: 'pt-BR', label: '🇧🇷 Português (Brasil)' },
+  { value: 'en-US', label: '🇺🇸 English (US)' },
+  { value: 'es-ES', label: '🇪🇸 Español' },
+];
 
 interface SettingsManagerProps {
   professional: Professional;
@@ -26,12 +33,14 @@ export function SettingsManager({
   success,
   cancelled,
 }: SettingsManagerProps) {
+  const router = useRouter();
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
 
   // Editable account fields
   const [businessName, setBusinessName] = useState(professional.business_name);
   const [slug, setSlug] = useState(professional.slug);
+  const [locale, setLocale] = useState(professional.locale ?? 'pt-BR');
   const [savingAccount, setSavingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
@@ -76,14 +85,18 @@ export function SettingsManager({
 
       const { error } = await supabase
         .from('professionals')
-        .update({ business_name: businessName.trim(), slug: validSlug })
+        .update({ business_name: businessName.trim(), slug: validSlug, locale })
         .eq('user_id', user.id);
 
       if (error) throw error;
 
       setSlug(validSlug);
       setAccountSaved(true);
-      setTimeout(() => setAccountSaved(false), 3000);
+      // If locale changed, redirect to new locale path after brief confirmation
+      setTimeout(() => {
+        setAccountSaved(false);
+        router.replace('/settings', { locale });
+      }, 1500);
     } catch (err: any) {
       setAccountError(err?.message ?? 'Erro ao salvar. Tente novamente.');
     } finally {
@@ -321,6 +334,27 @@ export function SettingsManager({
             </div>
             <p className="text-xs text-muted-foreground">
               Apenas letras minúsculas, números e hífens. Auto-formatado ao salvar.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="locale" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" /> Idioma do Dashboard
+            </Label>
+            <select
+              id="locale"
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {LOCALE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              O dashboard será exibido neste idioma após salvar.
             </p>
           </div>
 

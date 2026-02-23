@@ -15,6 +15,7 @@ export interface Professional {
   country: string;
   currency: string;
   timezone: string;
+  locale?: string | null;
   is_active: boolean;
   trial_ends_at: string;
   subscription_status: 'trial' | 'active' | 'cancelled' | 'expired';
