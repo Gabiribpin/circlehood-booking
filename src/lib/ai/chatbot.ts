@@ -268,56 +268,63 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
 
       // Loop agentic: suporta encadeamento de tools (ex: get_my_appointments → cancel_appointment)
+      // IMPORTANTE: processa TODOS os tool_use blocks de uma resposta, não só o primeiro.
+      // Anthropic exige tool_result para cada tool_use na mensagem anterior (400 se faltar).
       let currentResponse = response;
       let currentMessages: typeof messages = [...messages];
 
       for (let iteration = 0; iteration < 5; iteration++) {
         if (currentResponse.stop_reason !== 'tool_use') break;
 
-        const toolUseBlock = currentResponse.content.find(
+        const toolUseBlocks = currentResponse.content.filter(
           (c): c is { type: 'tool_use'; id: string; name: string; input: Record<string, any> } =>
             c.type === 'tool_use'
         );
-        if (!toolUseBlock) break;
+        if (toolUseBlocks.length === 0) break;
 
-        console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
+        console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlocks.map(b => b.name).join(', ')}`);
 
-        let toolResult: any;
+        // Executar todos os tools em paralelo (quando possível)
+        const toolResults = await Promise.all(
+          toolUseBlocks.map(async (toolUseBlock) => {
+            console.log(`  → ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
+            let result: any;
 
-        if (toolUseBlock.name === 'create_appointment') {
-          toolResult = await this.createAppointment(toolUseBlock.input as any, professionalId);
-        } else if (toolUseBlock.name === 'get_my_appointments') {
-          toolResult = await this.getMyAppointments(context.phone, professionalId);
-        } else if (toolUseBlock.name === 'cancel_appointment') {
-          toolResult = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
-        } else if (toolUseBlock.name === 'reschedule_appointment') {
-          toolResult = await this.rescheduleAppointment(
-            toolUseBlock.input.booking_id,
-            toolUseBlock.input.new_date,
-            toolUseBlock.input.new_time,
-            professionalId,
-          );
-        } else if (toolUseBlock.name === 'check_availability') {
-          toolResult = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
-        } else {
-          console.warn('Tool desconhecida:', toolUseBlock.name);
-          break;
-        }
+            if (toolUseBlock.name === 'create_appointment') {
+              result = await this.createAppointment(toolUseBlock.input as any, professionalId);
+            } else if (toolUseBlock.name === 'get_my_appointments') {
+              result = await this.getMyAppointments(context.phone, professionalId);
+            } else if (toolUseBlock.name === 'cancel_appointment') {
+              result = await this.cancelAppointment(toolUseBlock.input.booking_id, professionalId);
+            } else if (toolUseBlock.name === 'reschedule_appointment') {
+              result = await this.rescheduleAppointment(
+                toolUseBlock.input.booking_id,
+                toolUseBlock.input.new_date,
+                toolUseBlock.input.new_time,
+                professionalId,
+              );
+            } else if (toolUseBlock.name === 'check_availability') {
+              result = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
+            } else {
+              console.warn('Tool desconhecida:', toolUseBlock.name);
+              result = { error: 'unknown_tool' };
+            }
 
-        console.log(`📊 Tool result [${iteration}]:`, JSON.stringify(toolResult));
+            console.log(`  ← ${toolUseBlock.name} result:`, JSON.stringify(result));
+            return { id: toolUseBlock.id, result };
+          })
+        );
 
         currentMessages = [
           ...currentMessages,
           { role: 'assistant' as const, content: currentResponse.content },
           {
             role: 'user' as const,
-            content: [
-              {
-                type: 'tool_result',
-                tool_use_id: toolUseBlock.id,
-                content: JSON.stringify(toolResult),
-              },
-            ],
+            content: toolResults.map(({ id, result }) => ({
+              type: 'tool_result' as const,
+              tool_use_id: id,
+              content: JSON.stringify(result),
+            })),
           },
         ];
 
@@ -359,9 +366,16 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         error_body: errBody,
       });
 
+      if (error?.status === 529 || errMsg.includes('overloaded')) {
+        console.error('⚠️ API Anthropic sobrecarregada (529)');
+        return 'Estamos com muito volume agora. Por favor, tente novamente em alguns instantes. 😊';
+      }
       if (error?.status === 429) {
         console.error('⚠️ Rate limit atingido');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns minutos. 😊';
+      }
+      if (error?.status === 400) {
+        console.error('❌ API Anthropic retornou 400 (bad request) — possível desalinhamento de tool_use/tool_result', errBody ?? errMsg);
       }
       if (error?.code === 'ETIMEDOUT' || errMsg.includes('timeout')) {
         console.error('⏱️ Timeout na API Anthropic');
