@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check } from 'lucide-react';
+import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { Professional } from '@/types/database';
 
@@ -259,6 +260,32 @@ export function SettingsManager({
               Gerenciar assinatura
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Pagamentos do cliente (sinal/depósito) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Pagamentos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/settings/payment"
+            className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Banknote className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Configurar sinal / depósito</p>
+                <p className="text-xs text-muted-foreground">
+                  Stripe · Cobrar entrada antecipada nos agendamentos
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
         </CardContent>
       </Card>
 

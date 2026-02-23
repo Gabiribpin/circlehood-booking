@@ -31,7 +31,7 @@ const BASE_NAV_ITEMS = [
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/analytics', label: 'Análises', icon: BarChart3 },
   { href: '/automations', label: 'Automações', icon: Zap },
   { href: '/notifications', label: 'Notificações', icon: Bell },
   { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },

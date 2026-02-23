@@ -8,7 +8,6 @@ import {
   Users,
   ExternalLink,
   CalendarRange,
-  Euro,
   Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -140,6 +139,9 @@ export default async function DashboardPage() {
   const todayRevenueTotal = calculateRevenue(todayRevenue);
   const weekRevenueTotal = calculateRevenue(weekRevenue);
   const monthRevenueTotal = calculateRevenue(monthRevenue);
+
+  const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
+  const currencySymbol = currencySymbols[professional.currency as string] ?? professional.currency ?? 'R$';
 
   const trialDaysLeft = Math.max(
     0,
@@ -285,12 +287,12 @@ export default async function DashboardPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Hoje</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      €{todayRevenueTotal.toFixed(0)}
+                      {currencySymbol}{todayRevenueTotal.toFixed(0)}
                     </p>
                   </div>
                 </div>
@@ -301,12 +303,12 @@ export default async function DashboardPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Semana</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      €{weekRevenueTotal.toFixed(0)}
+                      {currencySymbol}{weekRevenueTotal.toFixed(0)}
                     </p>
                   </div>
                 </div>
@@ -317,12 +319,12 @@ export default async function DashboardPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <Euro className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Mês</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      €{monthRevenueTotal.toFixed(0)}
+                      {currencySymbol}{monthRevenueTotal.toFixed(0)}
                     </p>
                   </div>
                 </div>

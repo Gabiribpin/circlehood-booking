@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
     })();
   }
 
-  // ─── 11. Auto-save contato (fire-and-forget) ──────────────────────────
+  // ─── 12. Auto-save contato (fire-and-forget) ──────────────────────────
   ;(async () => {
     try {
       const phone = (client_phone ?? '').replace(/\D/g, '') || client_phone;
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
     }
   })();
 
-  // ─── 12. Get professional info para notificações ──────────────────────
+  // ─── 13. Get professional info para notificações ──────────────────────
   const { data: professional } = await supabase
     .from('professionals')
     .select('user_id, business_name, currency')
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (professional) {
-    // ─── 13. Email de confirmação (fire-and-forget resiliente) ────────
+    // ─── 14. Email de confirmação (fire-and-forget resiliente) ────────
     ;(async () => {
       await safeSendEmail(
         async () => {
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
       );
     })();
 
-    // ─── 14. WhatsApp de confirmação (fire-and-forget resiliente) ─────
+    // ─── 15. WhatsApp de confirmação (fire-and-forget resiliente) ─────
     if (client_phone) {
       ;(async () => {
         const { data: config } = await supabase
