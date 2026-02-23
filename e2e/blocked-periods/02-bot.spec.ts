@@ -115,8 +115,14 @@ test.describe('Bot — Rejeição de Agendamento em Período Bloqueado', () => {
     test.setTimeout(90_000);
 
     const monday = nextWeekday(1);
-    const friday = nextWeekday(5);
-    const wednesday = nextWeekday(3);
+    // Compute wednesday and friday relative to monday (same week) to guarantee start_date < end_date
+    const mondayDate = new Date(monday + 'T12:00:00');
+    const wednesdayDate = new Date(mondayDate);
+    wednesdayDate.setDate(wednesdayDate.getDate() + 2);
+    const fridayDate = new Date(mondayDate);
+    fridayDate.setDate(fridayDate.getDate() + 4);
+    const wednesday = wednesdayDate.toISOString().split('T')[0];
+    const friday = fridayDate.toISOString().split('T')[0];
     const periodId = await blockPeriod(monday, friday, 'Férias');
     cleanupBlockedPeriods.push(periodId);
 
