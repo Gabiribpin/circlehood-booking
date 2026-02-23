@@ -313,13 +313,16 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
 
     const statuses = await Promise.all(responses.map((r) => r.status()));
     const successCount = statuses.filter((s) => s === 201).length;
+    const idempotencyCount = statuses.filter((s) => s === 200).length; // janela de 5min
     const conflictCount = statuses.filter((s) => s === 409).length;
 
     // Pelo menos 1 deve ter sucedido
     expect(successCount).toBeGreaterThanOrEqual(1);
 
-    // Total de 201 + 409 deve ser 5 (sem outros erros)
-    expect(successCount + conflictCount).toBe(5);
+    // Total de 201 + 200 + 409 deve ser 5 (sem outros erros)
+    // 200 = idempotência (agendamento já existia dentro da janela de 5 min)
+    // 409 = conflito de horário (double-booking)
+    expect(successCount + idempotencyCount + conflictCount).toBe(5);
 
     // Crítico: apenas 1 agendamento no banco — mesmo com race condition
     const dbCount = await countActiveIdempotencyBookings();
