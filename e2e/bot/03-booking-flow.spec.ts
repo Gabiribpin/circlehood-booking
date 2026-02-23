@@ -67,7 +67,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     await sendBotMessage(request, 'oi');
     const greeting03 = await getLastBotMessage();
     expect(greeting03).not.toBeNull();
-    await new Promise<void>((r) => setTimeout(r, 500));
+    await new Promise<void>((r) => setTimeout(r, 2000));
 
     // Pede domingo (inválido)
     await sendBotMessage(request, 'quero marcar para domingo às 9h');

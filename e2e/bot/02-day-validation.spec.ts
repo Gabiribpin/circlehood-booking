@@ -18,7 +18,7 @@ test.describe('Bot — Validação de Dia', () => {
     // não é suficiente — o isFirstMessage no turno 2 seria true sem essa garantia.
     const greeting = await getLastBotMessage();
     expect(greeting).not.toBeNull();
-    await new Promise<void>((r) => setTimeout(r, 500)); // buffer para Redis propagar
+    await new Promise<void>((r) => setTimeout(r, 2000)); // buffer para Redis propagar
 
     await sendBotMessage(request, `quero cortar cabelo no domingo dia ${sDay}/${sMonth} às 10h`);
 
@@ -38,7 +38,7 @@ test.describe('Bot — Validação de Dia', () => {
     await sendBotMessage(request, 'oi');
     const greeting = await getLastBotMessage();
     expect(greeting).not.toBeNull();
-    await new Promise<void>((r) => setTimeout(r, 500));
+    await new Promise<void>((r) => setTimeout(r, 2000));
 
     await sendBotMessage(request, 'quero marcar para domingo às 9h');
 
@@ -57,7 +57,7 @@ test.describe('Bot — Validação de Dia', () => {
     await sendBotMessage(request, 'oi');
     const greeting = await getLastBotMessage();
     expect(greeting).not.toBeNull();
-    await new Promise<void>((r) => setTimeout(r, 500));
+    await new Promise<void>((r) => setTimeout(r, 2000));
 
     // Não especifica horário — bot deve aceitar o dia e pedir mais informações
     await sendBotMessage(request, `quero cortar cabelo na segunda dia ${day}/${month}`);
