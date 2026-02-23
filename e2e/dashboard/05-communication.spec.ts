@@ -36,20 +36,15 @@ test.describe('Dashboard — WhatsApp Config', () => {
 });
 
 test.describe('Dashboard — Campanhas', () => {
-  test('carrega heading e botão Nova Campanha', async ({ page }) => {
+  // Campanhas de envio em massa foram desativadas para proteger números contra ban.
+  // A rota /campaigns exibe uma tela informativa explicando o motivo.
+  test('exibe mensagem de funcionalidade desativada', async ({ page }) => {
     await page.goto(`${BASE}/campaigns`);
-    await expect(page.getByRole('heading', { name: /campanhas/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: /nova campanha/i })).toBeVisible();
-  });
-
-  test('modal Criar Nova Campanha abre e fecha', async ({ page }) => {
-    await page.goto(`${BASE}/campaigns`);
-    await page.getByRole('button', { name: /nova campanha/i }).click();
-    await expect(page.getByText(/criar nova campanha/i)).toBeVisible({ timeout: 8_000 });
-    await expect(page.locator('#c-name')).toBeVisible();
-    await expect(page.locator('#c-msg')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByText(/criar nova campanha/i)).not.toBeVisible({ timeout: 5_000 });
+    await expect(
+      page.getByRole('heading', { name: /campanhas desativadas/i })
+    ).toBeVisible({ timeout: 15_000 });
+    // Não deve ter botão de "Nova Campanha" (foi removido)
+    await expect(page.getByRole('button', { name: /nova campanha/i })).not.toBeVisible();
   });
 });
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmationEmail } from '@/lib/resend';
-import { WhatsAppClient } from '@/lib/whatsapp/client';
 import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { safeSendEmail } from '@/lib/email/safe-send';
 import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
@@ -304,7 +303,6 @@ export async function POST(request: NextRequest) {
         await safeSendWhatsApp(
           async () => {
             if (
-              config.provider === 'evolution' &&
               config.evolution_api_url &&
               config.evolution_api_key &&
               config.evolution_instance
@@ -314,13 +312,8 @@ export async function POST(request: NextRequest) {
                 apiKey: config.evolution_api_key,
                 instance: config.evolution_instance,
               });
-            } else if (config.phone_number_id && config.access_token) {
-              const whatsapp = new WhatsAppClient({
-                phoneNumberId: config.phone_number_id,
-                accessToken: config.access_token,
-              });
-              await whatsapp.sendMessage(client_phone, message);
             }
+            // Sistema usa apenas Evolution API (conversacional)
           },
           {
             onFailure: (error) => {

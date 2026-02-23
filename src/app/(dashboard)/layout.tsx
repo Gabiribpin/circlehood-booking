@@ -12,7 +12,6 @@ import {
   Settings,
   LogOut,
   Users,
-  Megaphone,
   QrCode,
   BarChart3,
   FileEdit,
@@ -29,7 +28,6 @@ const BASE_NAV_ITEMS = [
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
   { href: '/schedule', label: 'Horários', icon: Clock },
   { href: '/clients', label: 'Clientes', icon: Users },
-  { href: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Análises', icon: BarChart3 },
   { href: '/automations', label: 'Automações', icon: Zap },
@@ -56,18 +54,13 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  const [{ data: professional }, { data: whatsappConfig }] = await Promise.all([
-    supabase.from('professionals').select('business_name, slug').eq('user_id', user.id).single(),
-    supabase.from('whatsapp_config').select('provider, is_active').eq('user_id', user.id).single(),
-  ]);
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('business_name, slug')
+    .eq('user_id', user.id)
+    .single();
 
-  const hasActiveWhatsApp = whatsappConfig?.is_active === true;
-
-  const NAV_ITEMS = BASE_NAV_ITEMS.map((item) =>
-    item.href === '/campaigns'
-      ? { ...item, badge: !hasActiveWhatsApp ? '🔒' : null }
-      : item
-  );
+  const NAV_ITEMS = BASE_NAV_ITEMS;
 
   return (
     <div className="min-h-screen flex">
@@ -94,9 +87,6 @@ export default async function DashboardLayout({
             >
               <item.icon className="h-4 w-4" />
               {item.label}
-              {'badge' in item && item.badge && (
-                <span className="ml-auto text-xs" title="Requer WhatsApp Business">{item.badge}</span>
-              )}
             </Link>
           ))}
         </nav>
