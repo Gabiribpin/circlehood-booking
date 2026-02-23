@@ -25,6 +25,9 @@ setup('autenticar Salão da Rita', async ({ page }) => {
   // Verificar que o dashboard carregou (não ficou em loop de login)
   await expect(page.locator('body')).not.toContainText('Entrar', { timeout: 5_000 });
 
+  // Marcar modal de boas-vindas como já visto — evita que bloqueie os testes
+  await page.evaluate(() => localStorage.setItem('whatsapp-warning-seen', 'true'));
+
   // Salvar estado de autenticação (cookies + localStorage)
   await page.context().storageState({ path: authFile });
 
