@@ -56,12 +56,10 @@ test.beforeAll(async () => {
 
 // ─── A. Configuração de pagamento ────────────────────────────────────────────
 
-test('A. GET /api/settings/payment retorna 401 sem auth', async ({ playwright }) => {
-  // Contexto sem cookies para simular acesso não autenticado
-  const unauthRequest = await playwright.request.newContext();
-  const res = await unauthRequest.get(`${BASE_URL}/api/settings/payment`);
-  expect(res.status()).toBe(401);
-  await unauthRequest.dispose();
+test('A. GET /api/settings/payment retorna 401 sem auth', async () => {
+  // fetch nativo (sem cookies de nenhum contexto Playwright) para testar proteção
+  const res = await fetch(`${BASE_URL}/api/settings/payment`);
+  expect(res.status).toBe(401);
 });
 
 test('A. GET /api/settings/payment retorna configuração com auth', async ({ request }) => {
