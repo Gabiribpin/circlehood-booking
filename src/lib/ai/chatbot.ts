@@ -229,7 +229,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       },
       {
         name: 'check_availability',
-        description: 'Verifica se o profissional atende numa data/horário específico SEM criar agendamento. Checa expediente E conflitos com agendamentos existentes. SEMPRE chame assim que o cliente mencionar uma data/horário, ANTES de pedir nome. Se available=false: informe imediatamente. Se available=true: peça o nome sem prometer "está disponível" (a confirmação real vem só após create_appointment).',
+        description: 'Verifica se o profissional atende numa data/horário específico SEM criar agendamento. Checa expediente E conflitos com agendamentos existentes. SEMPRE chame assim que o cliente mencionar uma data/horário, ANTES de pedir nome. Se available=false: REPASSE o campo "message" VERBATIM na sua resposta (ex: "Não atendo domingos.") e só depois pergunte alternativa. Se available=true: peça o nome sem prometer "está disponível" (a confirmação real vem só após create_appointment).',
         input_schema: {
           type: 'object' as const,
           properties: {
@@ -870,6 +870,17 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
 ❌ PROIBIDO saudar o cliente em qualquer mensagem que não seja a PRIMEIRA da conversa
 ✅ Se a mensagem do cliente menciona data/dia/horário → chame check_availability IMEDIATAMENTE como PRIMEIRA ação
 ✅ Se o cliente pede algo → responda DIRETAMENTE ao pedido sem preâmbulos
+
+## REGRA #0b: check_availability com available=false → REPASSE o campo 'message' VERBATIM
+Quando check_availability retornar {available: false, message: "X"}:
+✅ SEMPRE diga "X" (ou equivalente) ANTES de perguntar alternativa
+✅ O cliente PRECISA saber o motivo (dia fechado, feriado, fora do expediente)
+❌ PROIBIDO apenas perguntar "que dia funciona?" sem mencionar o motivo
+
+CORRETO → check_availability({domingo}) → {available:false, message:"Não atendo domingos."}
+→ "Não atendo domingos. Que dia da semana prefere? 😊"
+
+ERRADO → "Que dia funciona melhor para você?" ← omite completamente o motivo
 
 ## REGRA #1: NUNCA CONFIRME SEM CHAMAR A TOOL
 ❌ PROIBIDO dizer "Agendado!" sem chamar create_appointment
