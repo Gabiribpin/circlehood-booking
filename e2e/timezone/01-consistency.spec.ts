@@ -151,6 +151,9 @@ test.describe('Timezone — Configuração e Preservação', () => {
       return;
     }
 
+    // Garantir cleanup deste booking (API retorna { booking: { id } }, não { id })
+    cleanupBookingIds.push(bookingId);
+
     const { data: savedBooking } = await supabase
       .from('bookings')
       .select('start_time')

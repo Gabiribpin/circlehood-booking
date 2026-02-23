@@ -28,9 +28,10 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     expect(greeting!.toLowerCase()).toMatch(/salao|salão|gabriela|bem[- ]?vindo|olá|oi/i);
 
     // Turno 2: Pedido completo (serviço + dia + horário)
+    // 10h para evitar conflito com timezone-dst que usa 15h (serviço dura 2h → 15-17h)
     await sendBotMessage(
       request,
-      `quero cortar cabelo na segunda dia ${day}/${month} às 14h`
+      `quero cortar cabelo na segunda dia ${day}/${month} às 10h`
     );
     const askName = await getLastBotMessage(greeting!);
     expect(askName).not.toBeNull();
@@ -42,8 +43,8 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     await sendBotMessage(request, 'Ana Teste E2E');
     const confirmation = await getLastBotMessage(askName!);
     expect(confirmation).not.toBeNull();
-    // Bot deve confirmar o agendamento
-    expect(confirmation!.toLowerCase()).toMatch(/confirmado|agendado|marcado|ana/i);
+    // Bot deve confirmar o agendamento (sem "ana" — muito amplo, gera falso positivo em rejeições)
+    expect(confirmation!.toLowerCase()).toMatch(/confirmado|agendado|marcado/i);
 
     // Verificar criação no banco
     const bookings = await getTestBookings();
@@ -52,7 +53,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     const booking = bookings[0];
     expect(booking.booking_date).toBe(monday);
     expect(booking.client_name.toLowerCase()).toContain('ana');
-    expect(booking.start_time).toMatch(/^14:/);
+    expect(booking.start_time).toMatch(/^10:/);
   });
 
   test('bot rejeita domingo mas aceita segunda na mesma conversa', async ({
@@ -80,7 +81,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     // Corrige para segunda — bot deve engajar sem rejeitar o dia
     await sendBotMessage(
       request,
-      `tudo bem, então quero marcar na segunda dia ${day}/${month} às 14h`
+      `tudo bem, então quero marcar na segunda dia ${day}/${month} às 10h`
     );
     const response = await getLastBotMessage(rejection!);
     expect(response).not.toBeNull();
