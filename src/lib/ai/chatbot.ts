@@ -212,9 +212,11 @@ export class AIBot {
         description: `Reagenda um agendamento existente para uma nova data/hora de forma atômica: cancela o antigo e cria o novo em sequência com rollback automático em caso de falha.
 Use quando o cliente pedir "mudar horário", "remarcar", "reagendar", "trocar data".
 FLUXO OBRIGATÓRIO:
-1. Chame get_my_appointments para obter o booking_id
-2. Se tiver múltiplos agendamentos: pergunte qual quer reagendar
-3. Quando tiver booking_id + nova data/hora → chame esta tool
+1. Chame get_my_appointments para obter a lista de agendamentos e os booking_ids reais
+2. Se tiver múltiplos E cliente NÃO especificou qual → mostre a lista e pergunte qual quer reagendar
+3. Se tiver múltiplos E cliente JÁ especificou qual (ex: "de segunda", "às 10h") → identifique o booking_id correto pelo date_formatted e chame esta tool IMEDIATAMENTE
+4. Quando tiver booking_id + nova data/hora → chame esta tool
+IMPORTANTE: NUNCA chame esta tool antes de receber o resultado de get_my_appointments (você precisa do booking_id real).
 NUNCA peça para o cliente cancelar e criar novo manualmente.
 NUNCA chame cancel_appointment + create_appointment separadamente para reagendar.`,
         input_schema: {
@@ -256,6 +258,9 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
 
     const cachedSystem = [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }];
 
+    // Tentar até 2 vezes: uma vez pelo fluxo normal, uma retry para erros transientes
+    // (400 por desalinhamento de tool_use/tool_result, erros de rede, etc.)
+    for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const response = await this.anthropic.messages.create({
         model: 'claude-sonnet-4-6',
@@ -359,13 +364,14 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
     } catch (error: any) {
       const errMsg = error?.message ?? '';
       const errBody = error?.error ? JSON.stringify(error.error) : undefined;
-      console.error('❌ Erro na API Anthropic:', {
+      console.error(`❌ Erro na API Anthropic (attempt ${attempt + 1}/2):`, {
         status: error?.status,
         message: errMsg,
         type: error?.constructor?.name,
         error_body: errBody,
       });
 
+      // Erros definitivos — não tentar novamente
       if (error?.status === 529 || errMsg.includes('overloaded')) {
         console.error('⚠️ API Anthropic sobrecarregada (529)');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns instantes. 😊';
@@ -373,9 +379,6 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       if (error?.status === 429) {
         console.error('⚠️ Rate limit atingido');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns minutos. 😊';
-      }
-      if (error?.status === 400) {
-        console.error('❌ API Anthropic retornou 400 (bad request) — possível desalinhamento de tool_use/tool_result', errBody ?? errMsg);
       }
       if (error?.code === 'ETIMEDOUT' || errMsg.includes('timeout')) {
         console.error('⏱️ Timeout na API Anthropic');
@@ -390,8 +393,22 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         return 'Estou temporariamente fora do ar para manutenção. Por favor, entre em contato diretamente pelo telefone. 😊';
       }
 
+      // Erros potencialmente transientes (400 = desalinhamento tool_use, erros de rede, etc.)
+      // → tentar uma vez mais com o loop de mensagens resetado
+      if (attempt === 0) {
+        if (error?.status === 400) {
+          console.warn('🔄 400 (provável desalinhamento tool_use/tool_result) — retentando do zero...');
+        } else {
+          console.warn(`🔄 Erro transiente (${error?.status ?? 'desconhecido'}) — retentando em 500ms...`);
+        }
+        await new Promise(r => setTimeout(r, 500));
+        continue; // reinicia o loop: messages volta ao estado inicial (sem tool_use blocks acumulados)
+      }
+
       return 'Desculpe, tive um problema técnico. Por favor, tente novamente ou entre em contato pelo telefone. 😊';
     }
+    } // end for attempt
+    return 'Desculpe, tive um problema técnico. Por favor, tente novamente ou entre em contato pelo telefone. 😊';
   }
 
   private async checkAvailability(date: string, time: string | undefined, professionalId: string) {
