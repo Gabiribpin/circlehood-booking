@@ -44,7 +44,7 @@ test.describe('Dashboard — Agendamentos', () => {
 test.describe('Dashboard — Analytics', () => {
   test('carrega heading e painel de insights', async ({ page }) => {
     await page.goto(`${BASE}/analytics`);
-    await expect(page.getByRole('heading', { name: /analytics/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /análises/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/erro interno|500/i);
   });
 });

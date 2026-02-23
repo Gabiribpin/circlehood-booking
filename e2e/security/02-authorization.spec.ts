@@ -16,9 +16,10 @@ import { nextWeekday } from '../helpers/setup';
 const BASE = TEST.BASE_URL;
 
 // UUID de profissional que não existe — não deve vazar dados de outro
-const NONEXISTENT_PROF_ID = '00000000-dead-beef-0000-000000000000';
+// Nota: UUIDs devem ser formato v4 válido (3º grupo começa com 4, 4º com 8/9/a/b)
+const NONEXISTENT_PROF_ID = '00000000-0000-4000-a000-000000000000';
 // UUID de serviço que não existe
-const NONEXISTENT_SERVICE_ID = '00000000-dead-beef-0000-000000000001';
+const NONEXISTENT_SERVICE_ID = '00000000-0000-4000-a000-000000000001';
 
 test.describe('Autorização — Cross-Professional (IDOR)', () => {
   test('POST /api/bookings com service_id inexistente → 404', async ({ request }) => {

@@ -108,25 +108,10 @@ export async function POST(request: NextRequest) {
   const endM = (totalMinutes % 60).toString().padStart(2, '0');
   const end_time = `${endH}:${endM}`;
 
-  // ─── 8. Check double-booking ──────────────────────────────────────────
-  const { data: conflicts } = await supabase
-    .from('bookings')
-    .select('id')
-    .eq('professional_id', professional_id)
-    .eq('booking_date', booking_date)
-    .eq('status', 'confirmed')
-    .lt('start_time', `${end_time}:00`)
-    .gt('end_time', `${start_time}:00`);
-
-  if (conflicts && conflicts.length > 0) {
-    return NextResponse.json(
-      { error: 'Horario indisponível. Escolha outro horario.' },
-      { status: 409 }
-    );
-  }
-
-  // ─── 9. Idempotência — janela de 5 minutos ────────────────────────────
+  // ─── 8. Idempotência — janela de 5 minutos ────────────────────────────
   // Previne duplicatas por back-button / duplo-tab / retry de rede
+  // IMPORTANTE: deve vir ANTES do double-booking check para que
+  // retransmissões do mesmo agendamento retornem 200 (não 409).
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const { data: recentBooking } = await supabase
     .from('bookings')
@@ -144,6 +129,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { booking: recentBooking, message: 'Agendamento já registrado.' },
       { status: 200 }
+    );
+  }
+
+  // ─── 9. Check double-booking ──────────────────────────────────────────
+  const { data: conflicts } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('professional_id', professional_id)
+    .eq('booking_date', booking_date)
+    .eq('status', 'confirmed')
+    .lt('start_time', `${end_time}:00`)
+    .gt('end_time', `${start_time}:00`);
+
+  if (conflicts && conflicts.length > 0) {
+    return NextResponse.json(
+      { error: 'Horario indisponível. Escolha outro horario.' },
+      { status: 409 }
     );
   }
 

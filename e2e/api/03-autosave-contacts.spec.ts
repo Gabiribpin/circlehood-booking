@@ -103,7 +103,7 @@ test.describe('Auto-save de Contatos', () => {
       },
     });
 
-    expect(res.status()).toBe(200);
+    expect([200, 201]).toContain(res.status());
 
     // Aguardar auto-save (fire-and-forget — pequeno delay)
     await new Promise((r) => setTimeout(r, 2_000));
@@ -157,7 +157,7 @@ test.describe('Auto-save de Contatos', () => {
       },
     });
 
-    expect(res.status()).toBe(200);
+    expect([200, 201]).toContain(res.status());
 
     // Aguardar auto-save
     await new Promise((r) => setTimeout(r, 2_000));

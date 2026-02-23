@@ -165,7 +165,7 @@ test.describe('API Pública — POST /api/bookings', () => {
   test('segurança: service_id de outro profissional → 404', async ({ request }) => {
     // Tentativa de booking usando um service_id que não pertence ao profissional
     // UUID aleatório que não existe na tabela do profissional
-    const fakeServiceId = '00000000-0000-0000-0000-000000000001';
+    const fakeServiceId = '00000000-0000-4000-a000-000000000001';
     const monday = nextWeekday(1);
 
     const res = await request.post(`${BASE}/api/bookings`, {

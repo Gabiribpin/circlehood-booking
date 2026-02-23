@@ -16,7 +16,7 @@ import { TEST } from '../helpers/config';
 import { nextWeekday } from '../helpers/setup';
 
 const BASE = TEST.BASE_URL;
-const NONEXISTENT_SERVICE_ID = '00000000-dead-beef-0000-000000000001';
+const NONEXISTENT_SERVICE_ID = '00000000-0000-4000-a000-000000000001';
 
 // ─── Utilitário ─────────────────────────────────────────────────────────────
 

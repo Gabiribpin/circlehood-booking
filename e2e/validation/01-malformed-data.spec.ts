@@ -71,7 +71,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: service?.id ?? '00000000-0000-0000-0000-000000000000',
+        service_id: service?.id ?? '00000000-0000-4000-a000-000000000000',
         booking_date: date,
         start_time: '10:00',
         // client_name ausente
@@ -94,7 +94,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: service?.id ?? '00000000-0000-0000-0000-000000000000',
+        service_id: service?.id ?? '00000000-0000-4000-a000-000000000000',
         booking_date: pastDate,
         start_time: '10:00',
         client_name: 'Teste Passado',
@@ -114,7 +114,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: service?.id ?? '00000000-0000-0000-0000-000000000000',
+        service_id: service?.id ?? '00000000-0000-4000-a000-000000000000',
         booking_date: date,
         start_time: '25:00',
         client_name: 'Teste Hora Inválida',
@@ -129,7 +129,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: 'nao-e-um-uuid',
-        service_id: '00000000-0000-0000-0000-000000000001',
+        service_id: '00000000-0000-4000-a000-000000000001',
         booking_date: nextWeekday(3),
         start_time: '10:00',
         client_name: 'Teste UUID Inválido',
@@ -146,7 +146,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: '00000000-0000-0000-0000-000000000001', // UUID válido mas não existe
+        service_id: '00000000-0000-4000-a000-000000000001', // UUID formato v4 válido mas não existe
         booking_date: nextWeekday(3),
         start_time: '10:00',
         client_name: 'Teste Serviço Inexistente',
@@ -196,7 +196,7 @@ test.describe('Validação — Dados Malformados', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: service?.id ?? '00000000-0000-0000-0000-000000000000',
+        service_id: service?.id ?? '00000000-0000-4000-a000-000000000000',
         booking_date: date,
         start_time: '10:00',
         client_name: 'Teste Email Inválido',

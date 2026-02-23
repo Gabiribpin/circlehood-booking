@@ -204,7 +204,7 @@ test.describe('Isolamento Multi-tenant', () => {
     const res = await request.post(`${BASE}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,
-        service_id: '00000000-dead-beef-0000-000000000001',
+        service_id: '00000000-0000-4000-a000-000000000001',
         booking_date: nextWeekday(1),
         start_time: '09:00',
         client_name: 'Service Fantasma',
