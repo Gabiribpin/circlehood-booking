@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Instagram, Facebook } from 'lucide-react';
+import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
 import { canvasToPNG } from '@/lib/marketing/export-utils';
 import { drawGradientBackground, wrapText, drawMultilineText } from '@/lib/marketing/canvas-utils';
@@ -170,6 +171,12 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
     }
   }
 
+  async function getPostBlob(): Promise<Blob | null> {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Preview */}
@@ -224,16 +231,21 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
               )}
             </div>
 
-            {/* Download Button */}
-            <Button
-              onClick={handleDownload}
-              disabled={loading || !previewUrl}
-              className="w-full"
-              size="lg"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Baixar {POST_FORMATS[format].label}
-            </Button>
+            {/* Download + Share */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleDownload}
+                disabled={loading || !previewUrl}
+                className="flex-1"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar {POST_FORMATS[format].label}
+              </Button>
+              <ImageShareButtons
+                getBlob={getPostBlob}
+                filename={`${format}-${professional.slug}`}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

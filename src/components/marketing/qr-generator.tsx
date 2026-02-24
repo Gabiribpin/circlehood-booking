@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Download, Copy, Check, Save } from 'lucide-react';
+import { Download, Save } from 'lucide-react';
+import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
 import { canvasToPNG, canvasToSVG } from '@/lib/marketing/export-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +39,6 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
   const [qrSize, setQrSize] = useState(300);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [saveName, setSaveName] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -156,33 +156,10 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
     }
   }
 
-  async function handleCopyToClipboard() {
-    if (!qrCodeUrl) return;
-
-    try {
-      // Convert data URL to blob
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob })
-      ]);
-
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-
-      toast({
-        title: 'Copiado!',
-        description: 'QR Code copiado para área de transferência',
-      });
-    } catch (error) {
-      console.error('Error copying QR:', error);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao copiar QR code',
-        variant: 'destructive',
-      });
-    }
+  async function getQRBlob(): Promise<Blob | null> {
+    if (!qrCodeUrl) return null;
+    const res = await fetch(qrCodeUrl);
+    return res.blob();
   }
 
   async function handleSaveDesign() {
@@ -280,18 +257,10 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
                 <Download className="mr-2 h-4 w-4" />
                 Baixar SVG
               </Button>
-              <Button
-                onClick={handleCopyToClipboard}
-                disabled={loading || !qrCodeUrl}
-                variant="outline"
-                size="icon"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
+              <ImageShareButtons
+                getBlob={getQRBlob}
+                filename={`qrcode-${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+              />
             </div>
           </div>
         </CardContent>

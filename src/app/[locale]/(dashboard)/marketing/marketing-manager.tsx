@@ -8,7 +8,6 @@ import { QRGenerator } from '@/components/marketing/qr-generator';
 import { BusinessCardGenerator } from '@/components/marketing/business-card-generator';
 import { SocialPostGenerator } from '@/components/marketing/social-post-generator';
 import { FlyerGenerator } from '@/components/marketing/flyer-generator';
-import { ShareButtons } from '@/components/marketing/share-buttons';
 
 interface MarketingManagerProps {
   professional: any;
@@ -101,26 +100,6 @@ export function MarketingManager({ professional, savedQRCodes, totalScans }: Mar
           </CardContent>
         </Card>
       </div>
-
-      {/* Share booking link */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            🔗 Compartilhe seu link de agendamento
-          </CardTitle>
-          <CardDescription>Envie diretamente para seus clientes</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2 px-3 py-2 bg-background rounded-lg border text-sm">
-            <code className="flex-1 truncate text-muted-foreground">{bookingUrl}</code>
-          </div>
-          <ShareButtons
-            url={bookingUrl}
-            title={`Agende com ${professional.business_name}`}
-            text="Clique para agendar:"
-          />
-        </CardContent>
-      </Card>
 
       {/* Tool selector grid */}
       <Card>

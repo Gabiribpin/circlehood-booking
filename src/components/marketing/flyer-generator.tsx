@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Printer, FileText } from 'lucide-react';
+import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
 import { canvasToPNG, printCanvas } from '@/lib/marketing/export-utils';
 import { drawGradientBackground, wrapText, drawMultilineText } from '@/lib/marketing/canvas-utils';
@@ -212,6 +213,12 @@ export function FlyerGenerator({ professional, bookingUrl }: FlyerGeneratorProps
     }
   }
 
+  async function getFlyerBlob(): Promise<Blob | null> {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
   async function handlePrint() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -283,11 +290,10 @@ export function FlyerGenerator({ professional, bookingUrl }: FlyerGeneratorProps
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleDownload}
                 disabled={loading || !previewUrl}
-                className="w-full"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Baixar
@@ -296,11 +302,14 @@ export function FlyerGenerator({ professional, bookingUrl }: FlyerGeneratorProps
                 onClick={handlePrint}
                 disabled={loading || !previewUrl}
                 variant="outline"
-                className="w-full"
               >
                 <Printer className="mr-2 h-4 w-4" />
                 Imprimir
               </Button>
+              <ImageShareButtons
+                getBlob={getFlyerBlob}
+                filename={`flyer-${size}-${professional.slug}`}
+              />
             </div>
 
             <p className="text-xs text-muted-foreground text-center">

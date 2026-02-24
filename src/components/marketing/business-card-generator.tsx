@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Download, RefreshCw } from 'lucide-react';
+import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
 import { canvasToPNG } from '@/lib/marketing/export-utils';
 import { drawGradientBackground, wrapText, drawMultilineText } from '@/lib/marketing/canvas-utils';
@@ -160,6 +161,12 @@ export function BusinessCardGenerator({ professional, bookingUrl }: BusinessCard
     }
   }
 
+  async function getCardBlob(): Promise<Blob | null> {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Preview */}
@@ -186,16 +193,21 @@ export function BusinessCardGenerator({ professional, bookingUrl }: BusinessCard
               )}
             </div>
 
-            {/* Download Button */}
-            <Button
-              onClick={handleDownload}
-              disabled={loading || !previewUrl}
-              className="w-full"
-              size="lg"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Baixar Cartão (PNG)
-            </Button>
+            {/* Download + Share */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleDownload}
+                disabled={loading || !previewUrl}
+                className="flex-1"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Cartão (PNG)
+              </Button>
+              <ImageShareButtons
+                getBlob={getCardBlob}
+                filename={`cartao-${professional.slug}`}
+              />
+            </div>
 
             <p className="text-xs text-muted-foreground text-center">
               Alta resolução (1050x600px) • Perfeito para compartilhar em redes sociais
