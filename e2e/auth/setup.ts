@@ -32,6 +32,16 @@ setup('autenticar Salão da Rita', async ({ page }) => {
     localStorage.setItem('circlehood-tour-completed', 'true');
   });
 
+  // Forçar locale pt-BR via cookie — evita que o CI (Accept-Language: en-US)
+  // redirecione para /en-US/* e quebre verificações de URL e texto do sidebar.
+  const baseUrl = new URL(TEST.BASE_URL);
+  await page.context().addCookies([{
+    name: 'NEXT_LOCALE',
+    value: 'pt-BR',
+    domain: baseUrl.hostname,
+    path: '/',
+  }]);
+
   // Salvar estado de autenticação (cookies + localStorage)
   await page.context().storageState({ path: authFile });
 

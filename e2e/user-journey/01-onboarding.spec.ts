@@ -348,9 +348,10 @@ test.describe('Fluxo completo de registro', () => {
       await expect(page.locator('[data-testid="onboarding-banner"]')).toBeVisible();
       await expect(page.locator('[data-testid="onboarding-banner"]')).toContainText('Configure sua conta');
 
-      // Link do banner aponta para /onboarding
-      const setupLink = page.locator('[data-testid="onboarding-banner"] a');
-      await expect(setupLink).toHaveAttribute('href', '/onboarding');
+      // Banner contém links de ação para as etapas de configuração
+      // (o link /onboarding só aparece quando allRequiredDone; novos usuários
+      // veem links individuais para /settings, /services, /schedule, etc.)
+      await expect(page.locator('[data-testid="onboarding-banner"] a').first()).toBeVisible();
     } finally {
       await ctx.close();
     }
