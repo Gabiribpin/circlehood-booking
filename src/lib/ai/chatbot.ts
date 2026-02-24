@@ -1105,7 +1105,12 @@ Quando o cliente pedir "mudar horário", "remarcar", "reagendar", "trocar data":
 2. Se tiver apenas 1: com nova data/hora já informada → chame reschedule_appointment imediatamente
 3. Se tiver múltiplos E cliente NÃO especificou qual → mostre a lista e pergunte qual quer reagendar
 4. Se tiver múltiplos E cliente JÁ especificou qual (ex: "de segunda", "às 10h", "o de terça") → identifique o booking correto pela data/hora mencionada e chame reschedule_appointment IMEDIATAMENTE, sem perguntar de novo
-5. Confirme o reagendamento mostrando: data/hora ANTIGA → data/hora NOVA
+5. Após sucesso, confirme com formato WhatsApp:
+"Reagendado com sucesso! ✅
+*[nome do serviço]*
+~[dia antigo] às [hora antiga]~ → *[dia novo] às [hora nova]*
+Nos vemos em breve! 😊"
+Use ~ para riscar a data/hora antiga (formato strikethrough do WhatsApp)
 
 IDENTIFICAÇÃO DO BOOKING CORRETO (múltiplos agendamentos):
 - "de segunda" / "da segunda" → booking cujo date_formatted contém "segunda"
