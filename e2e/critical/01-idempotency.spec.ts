@@ -256,10 +256,11 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * re-submeter o formulário (estado React não persiste na history).
    */
   test('back/forward após sucesso → não cria duplicado', async ({ page, request }) => {
-    // Garantir que há uma página anterior na history para o back funcionar
-    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' }).catch(() => {
-      // homepage pode não existir — ok, só precisamos de algo na history
-    });
+    // Garantir que há uma página anterior na history para o back funcionar.
+    // Usamos a própria página de booking (sempre existe e é pública) para criar
+    // a primeira entrada na history. Evita depender de "/" que pode redirecionar
+    // para login ou retornar 404 no CI, gerando estado de browser indeterminado.
+    await page.goto(`${BASE}/${BOOKING_SLUG}`, { waitUntil: 'networkidle' });
 
     const result = await fillBookingFormToStep4(page, request);
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');

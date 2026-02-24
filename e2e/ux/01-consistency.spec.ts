@@ -124,13 +124,22 @@ test.describe('Loading States', () => {
 
     console.log('✅ Feedback visual de loading/sucesso confirmado');
 
-    // Restaurar valor original — aguardar navegação pós-save antes de restaurar
-    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
+    // Restaurar: aguardar "Salvo!" desaparecer (router.replace resetou o componente)
+    // O router.replace dispara 1500ms após o save — esperar o botão voltar para
+    // "Salvar Alterações" indica que o ciclo completou e o componente está estável.
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
+      state: 'visible', timeout: 6_000,
+    }).catch(() => {});
     await nameInput.fill(original);
     await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
-    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+    // Aguardar save da restauração completar
+    await page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/rest/v1/professionals') &&
+        resp.request().method() === 'PATCH',
+      { timeout: 10_000 },
+    ).catch(() => {});
+    await page.waitForTimeout(200);
   });
 });
 
@@ -152,13 +161,25 @@ test.describe('Mensagens de Sucesso', () => {
     await nameInput.fill(original.trim() + ' ');
 
     const saveBtn = page.locator('button').filter({ hasText: /salvar alterações/i });
+
+    // Interceptar PATCH ao Supabase para saber exatamente quando o save completou.
+    // "Salvo!" aparece em < 100ms após o PATCH completar — com waitForResponse o
+    // timeout de 5s é suficiente (sem ele, a janela de 1500ms pode ser perdida).
+    const patchDone = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/rest/v1/professionals') &&
+        resp.request().method() === 'PATCH',
+      { timeout: 15_000 },
+    ).catch(() => null);
+
     await saveBtn.click();
 
+    const patchResp = await patchDone;
+    const saveTimeout = patchResp ? 5_000 : 10_000; // curto se PATCH confirmado, longo se não
+
     // Botão deve mudar para "Salvo!" — padrão claro e positivo.
-    // Timeout aumentado: o save inclui request rede + 1500ms janela do estado.
-    // O settings-manager chama router.replace após 1500ms, o que navega a página.
     const salvoBtn = page.locator('button').filter({ hasText: /salvo!/i });
-    await expect(salvoBtn).toBeVisible({ timeout: 15_000 });
+    await expect(salvoBtn).toBeVisible({ timeout: saveTimeout });
 
     const salvoText = await salvoBtn.textContent();
     console.log(`✅ Mensagem de sucesso: "${salvoText?.trim()}"`);
@@ -167,15 +188,21 @@ test.describe('Mensagens de Sucesso', () => {
     expect(salvoText?.toLowerCase()).not.toContain('undefined');
     expect(salvoText?.toLowerCase()).not.toContain('null');
 
-    // Restaurar — aguardar a navegação do router.replace completar antes de continuar
-    // (o router.replace dispara 1500ms após o save, então aguardamos até a página
-    // estar estável antes de tentar restaurar)
-    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
+    // Restaurar: aguardar "Salvo!" desaparecer (router.replace disparou e componente resetou)
+    // depois restaurar o valor original via UI.
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
+      state: 'visible', timeout: 5_000,
+    }).catch(() => {});
     await nameInput.fill(original);
     await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
-    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+    // Aguardar save da restauração completar
+    await page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/rest/v1/professionals') &&
+        resp.request().method() === 'PATCH',
+      { timeout: 10_000 },
+    ).catch(() => {});
+    await page.waitForTimeout(200); // micro-espera para UI estabilizar
   });
 });
 
