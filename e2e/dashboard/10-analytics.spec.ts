@@ -146,13 +146,20 @@ test.describe('Dashboard — Analytics', () => {
     await page.goto(`${BASE}/analytics`);
     await expect(page.getByText('Receita Total')).toBeVisible({ timeout: 15_000 });
 
-    // O combobox do período mostra o valor atual em PT-BR (default: "Últimos 30 dias")
-    // Escopo para <main> evita capturar o LocaleSwitcher do header (que também é combobox)
+    // O combobox do período exibe opções PT-BR.
+    // Radix UI SelectValue pode ter textContent() vazio (renderiza em span com pointer-events:none),
+    // por isso clicamos no trigger para abrir o dropdown e verificamos as opções diretamente.
     const periodTrigger = page.locator('main').getByRole('combobox').first();
     await expect(periodTrigger).toBeVisible({ timeout: 5_000 });
-    const triggerText = await periodTrigger.textContent();
-    // O texto deve corresponder a um dos períodos em PT-BR (não em inglês)
-    expect(triggerText).toMatch(/hoje|últimos|último|período/i);
-    expect(triggerText?.toLowerCase()).not.toMatch(/^last |^today$|^this /i);
+
+    // Abrir o dropdown
+    await periodTrigger.click();
+
+    // Após abrir, a opção default "Últimos 30 dias" (value="month") deve ser visível
+    // Radix UI renderiza o SelectContent em portal — usar getByText em vez de getByRole
+    await expect(page.getByText('Últimos 30 dias').first()).toBeVisible({ timeout: 5_000 });
+
+    // Fechar o dropdown
+    await page.keyboard.press('Escape');
   });
 });

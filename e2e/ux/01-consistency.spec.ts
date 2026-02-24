@@ -81,6 +81,25 @@ test.describe('Empty States', () => {
 
 test.describe('Loading States', () => {
   test('spinner aparece durante save de configurações', async ({ page }) => {
+    // Mockar Supabase ANTES de navegar — o createBrowserClient (cookies-based) pode ter
+    // sessão expirada em CI. Mock garante que auth.getUser() e o PATCH sejam bem-sucedidos,
+    // permitindo testar o feedback visual (spinner → "Salvo!") sem depender de auth real.
+    await page.route('**/auth/v1/user**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'test@circlehood.test' }),
+      }),
+    );
+    await page.route('**/rest/v1/professionals**', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET' || method === 'PATCH') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+      } else {
+        await route.continue();
+      }
+    });
+
     await page.goto(`${BASE}/settings`);
     await page.waitForLoadState('networkidle');
 
@@ -124,22 +143,18 @@ test.describe('Loading States', () => {
 
     console.log('✅ Feedback visual de loading/sucesso confirmado');
 
-    // Restaurar: aguardar "Salvo!" desaparecer (router.replace resetou o componente)
-    // O router.replace dispara 1500ms após o save — esperar o botão voltar para
-    // "Salvar Alterações" indica que o ciclo completou e o componente está estável.
+    // Restaurar: aguardar "Salvo!" desaparecer (router.replace resetou o componente).
+    // Com PATCH mockado (resposta imediata), o setTimeout de 1500ms dispara logo.
+    // Esperar o botão voltar para "Salvar Alterações" confirma que o ciclo completou.
     await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
-      state: 'visible', timeout: 6_000,
+      state: 'visible', timeout: 5_000,
     }).catch(() => {});
     await nameInput.fill(original);
     await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
-    // Aguardar save da restauração completar
-    await page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/rest/v1/professionals') &&
-        resp.request().method() === 'PATCH',
-      { timeout: 10_000 },
-    ).catch(() => {});
-    await page.waitForTimeout(200);
+    // Aguardar ciclo de "Salvo!" → router.replace para a restauração também
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
+      state: 'visible', timeout: 5_000,
+    }).catch(() => {});
   });
 });
 
@@ -147,6 +162,24 @@ test.describe('Loading States', () => {
 
 test.describe('Mensagens de Sucesso', () => {
   test('settings mostra "Salvo!" após save bem-sucedido', async ({ page }) => {
+    // Mockar Supabase ANTES de navegar — mesma razão do Loading States test:
+    // auth cookie pode estar expirado em CI; mock isola o teste da autenticação real.
+    await page.route('**/auth/v1/user**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: '00000000-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'test@circlehood.test' }),
+      }),
+    );
+    await page.route('**/rest/v1/professionals**', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET' || method === 'PATCH') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+      } else {
+        await route.continue();
+      }
+    });
+
     await page.goto(`${BASE}/settings`);
     await page.waitForLoadState('networkidle');
 
@@ -161,25 +194,12 @@ test.describe('Mensagens de Sucesso', () => {
     await nameInput.fill(original.trim() + ' ');
 
     const saveBtn = page.locator('button').filter({ hasText: /salvar alterações/i });
-
-    // Interceptar PATCH ao Supabase para saber exatamente quando o save completou.
-    // "Salvo!" aparece em < 100ms após o PATCH completar — com waitForResponse o
-    // timeout de 5s é suficiente (sem ele, a janela de 1500ms pode ser perdida).
-    const patchDone = page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/rest/v1/professionals') &&
-        resp.request().method() === 'PATCH',
-      { timeout: 15_000 },
-    ).catch(() => null);
-
     await saveBtn.click();
 
-    const patchResp = await patchDone;
-    const saveTimeout = patchResp ? 5_000 : 10_000; // curto se PATCH confirmado, longo se não
-
-    // Botão deve mudar para "Salvo!" — padrão claro e positivo.
+    // Com PATCH mockado (resposta imediata < 50ms), "Salvo!" aparece logo após o click.
+    // Timeout de 5s é mais que suficiente.
     const salvoBtn = page.locator('button').filter({ hasText: /salvo!/i });
-    await expect(salvoBtn).toBeVisible({ timeout: saveTimeout });
+    await expect(salvoBtn).toBeVisible({ timeout: 5_000 });
 
     const salvoText = await salvoBtn.textContent();
     console.log(`✅ Mensagem de sucesso: "${salvoText?.trim()}"`);
@@ -188,21 +208,15 @@ test.describe('Mensagens de Sucesso', () => {
     expect(salvoText?.toLowerCase()).not.toContain('undefined');
     expect(salvoText?.toLowerCase()).not.toContain('null');
 
-    // Restaurar: aguardar "Salvo!" desaparecer (router.replace disparou e componente resetou)
-    // depois restaurar o valor original via UI.
+    // Restaurar: aguardar router.replace ciclo completar (componente resetar)
     await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
       state: 'visible', timeout: 5_000,
     }).catch(() => {});
     await nameInput.fill(original);
     await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
-    // Aguardar save da restauração completar
-    await page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/rest/v1/professionals') &&
-        resp.request().method() === 'PATCH',
-      { timeout: 10_000 },
-    ).catch(() => {});
-    await page.waitForTimeout(200); // micro-espera para UI estabilizar
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).waitFor({
+      state: 'visible', timeout: 5_000,
+    }).catch(() => {});
   });
 });
 
