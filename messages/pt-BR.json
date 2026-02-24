@@ -28,7 +28,8 @@
     "settings": "Configurações",
     "language": "Idioma",
     "viewPublicPage": "Ver minha página pública",
-    "logout": "Sair"
+    "logout": "Sair",
+    "support": "Suporte"
   },
   "auth": {
     "login": "Entrar",

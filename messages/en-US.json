@@ -28,7 +28,8 @@
     "settings": "Settings",
     "language": "Language",
     "viewPublicPage": "View my public page",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "support": "Support"
   },
   "auth": {
     "login": "Log In",

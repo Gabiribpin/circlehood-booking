@@ -28,7 +28,8 @@
     "settings": "Configuración",
     "language": "Idioma",
     "viewPublicPage": "Ver mi página pública",
-    "logout": "Cerrar Sesión"
+    "logout": "Cerrar Sesión",
+    "support": "Soporte"
   },
   "auth": {
     "login": "Iniciar Sesión",

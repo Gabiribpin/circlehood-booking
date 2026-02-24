@@ -60,6 +60,163 @@ function formatPrice(price: number, currency: string) {
   return `${symbol}${Number(price).toFixed(2)}`;
 }
 
+interface CancellationEmailData {
+  clientName: string;
+  clientEmail: string;
+  businessName: string;
+  serviceName: string;
+  bookingDate: string;
+  startTime: string;
+  cancellationReason?: string;
+  bookingId?: string;
+  professionalId?: string;
+}
+
+export async function sendCancellationEmail(data: CancellationEmailData): Promise<void> {
+  const {
+    clientName,
+    clientEmail,
+    businessName,
+    serviceName,
+    bookingDate,
+    startTime,
+    cancellationReason,
+    bookingId,
+    professionalId,
+  } = data;
+
+  const formattedDate = bookingDate.split('-').reverse().join('/');
+  const formattedStart = startTime.slice(0, 5);
+
+  const resend = getResend();
+  const fromEmail = getFromEmail();
+
+  const emailHeader = `
+    <div style="background:#000;padding:16px 24px;border-radius:8px 8px 0 0;text-align:center;">
+      <img src="https://circlehood-booking.vercel.app/branding/circlehood-tech-logo.png"
+           alt="CircleHood Tech" width="48" height="48"
+           style="display:inline-block;vertical-align:middle;margin-right:10px;" />
+      <span style="color:#fff;font-size:16px;font-weight:700;vertical-align:middle;">CircleHood Booking</span>
+    </div>`;
+
+  const emailFooter = `
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;text-align:center;">
+      <p style="color:#999;font-size:11px;margin:0;">
+        by <strong>CircleHood Tech</strong> · Plataforma de agendamento profissional
+      </p>
+    </div>`;
+
+  const reasonSection = cancellationReason
+    ? `<p style="color:#666;font-size:14px;margin-top:8px;"><strong>Motivo:</strong> ${cancellationReason}</p>`
+    : '';
+
+  const subject = `Agendamento cancelado - ${businessName}`;
+
+  const result = await resend.emails.send({
+    from: `${businessName} via CircleHood <${fromEmail}>`,
+    to: clientEmail,
+    subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+        ${emailHeader}
+        <div style="padding:24px;">
+          <h2 style="margin:0 0 8px;">Agendamento cancelado 😔</h2>
+          <p style="color:#666;margin:0 0 16px;">Olá ${clientName}, infelizmente seu agendamento foi cancelado:</p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#666;">Serviço</td><td style="padding:8px 0;font-weight:600;">${serviceName}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Data</td><td style="padding:8px 0;font-weight:600;">${formattedDate}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Horário</td><td style="padding:8px 0;font-weight:600;">${formattedStart}</td></tr>
+          </table>
+          ${reasonSection}
+          <p style="margin-top:24px;color:#666;font-size:14px;">
+            Pedimos desculpas pelo transtorno. Entre em contato com ${businessName} para reagendar.
+          </p>
+          ${emailFooter}
+        </div>
+      </div>
+    `,
+  });
+
+  const hasError = (result as any)?.error;
+  if (bookingId && professionalId) {
+    await logEmailResult({
+      professionalId,
+      bookingId,
+      recipient: clientEmail,
+      message: subject,
+      status: hasError ? 'failed' : 'sent',
+      errorMessage: hasError ? JSON.stringify((result as any).error) : undefined,
+    });
+  }
+
+  if (hasError) {
+    throw new Error(`Resend cancellation error: ${JSON.stringify((result as any).error)}`);
+  }
+}
+
+// ─── Ticket reply email ───────────────────────────────────────────────────────
+
+interface TicketReplyEmailData {
+  professionalEmail: string;
+  professionalName: string;
+  ticketSubject: string;
+  replyMessage: string;
+}
+
+export async function sendTicketReplyEmail(data: TicketReplyEmailData): Promise<void> {
+  const { professionalEmail, professionalName, ticketSubject, replyMessage } = data;
+
+  const resend = getResend();
+  const fromEmail = getFromEmail();
+
+  const emailHeader = `
+    <div style="background:#000;padding:16px 24px;border-radius:8px 8px 0 0;text-align:center;">
+      <img src="https://circlehood-booking.vercel.app/branding/circlehood-tech-logo.png"
+           alt="CircleHood Tech" width="48" height="48"
+           style="display:inline-block;vertical-align:middle;margin-right:10px;" />
+      <span style="color:#fff;font-size:16px;font-weight:700;vertical-align:middle;">CircleHood Booking</span>
+    </div>`;
+
+  const emailFooter = `
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;text-align:center;">
+      <p style="color:#999;font-size:11px;margin:0;">
+        by <strong>CircleHood Tech</strong> · Suporte &amp; Ajuda
+      </p>
+    </div>`;
+
+  const subject = `Re: ${ticketSubject}`;
+
+  const result = await resend.emails.send({
+    from: `CircleHood Suporte <${fromEmail}>`,
+    to: professionalEmail,
+    subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
+        ${emailHeader}
+        <div style="padding:24px;">
+          <h2 style="margin:0 0 8px;">Resposta ao seu chamado</h2>
+          <p style="color:#666;margin:0 0 8px;">Olá ${professionalName}, nossa equipe respondeu ao seu chamado:</p>
+          <p style="color:#666;font-size:13px;margin:0 0 16px;"><strong>Assunto:</strong> ${ticketSubject}</p>
+          <div style="background:#f8f8f8;border-left:4px solid #000;padding:16px;border-radius:0 8px 8px 0;margin-bottom:16px;">
+            <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">${replyMessage.replace(/\n/g, '<br/>')}</p>
+          </div>
+          <p style="color:#666;font-size:13px;">
+            Acesse o <strong>painel &gt; Suporte</strong> para continuar a conversa ou marcar como resolvido.
+          </p>
+          ${emailFooter}
+        </div>
+      </div>
+    `,
+  });
+
+  const hasError = (result as any)?.error;
+  if (hasError) {
+    throw new Error(`Resend ticket reply error: ${JSON.stringify((result as any).error)}`);
+  }
+}
+
+// ─── Booking confirmation email ───────────────────────────────────────────────
+
 export async function sendBookingConfirmationEmail(data: BookingEmailData) {
   const {
     clientName,
