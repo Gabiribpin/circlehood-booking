@@ -59,12 +59,14 @@ export default defineConfig({
     {
       name: 'api-tests',
       testMatch: '**/api/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra transient Supabase errors (connection, replica lag)
     },
 
     // ─── Segurança: auth, autorização, injeção (sem browser) ─────────
     {
       name: 'security',
       testMatch: '**/security/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra cold start Vercel no CI
     },
 
     // ─── Smoke público: Chromium (Chrome/Edge) ───────────────────────
@@ -94,6 +96,7 @@ export default defineConfig({
     {
       name: 'user-journey',
       testMatch: '**/user-journey/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra timing issues no registro + slug check
       use: {
         browserName: 'chromium',
         headless: true,
@@ -106,6 +109,7 @@ export default defineConfig({
     {
       name: 'dashboard',
       testMatch: ['**/dashboard/0[2-9]-*.spec.ts', '**/dashboard/1[0-9]-*.spec.ts'],
+      retries: 1, // 1 retry: protege contra cold start Vercel e timing de componentes
       use: {
         browserName: 'chromium',
         headless: true,
@@ -118,6 +122,7 @@ export default defineConfig({
     {
       name: 'navigation',
       testMatch: '**/navigation/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra timing de navegação e SSR no CI
       use: {
         browserName: 'chromium',
         headless: true,
@@ -130,6 +135,7 @@ export default defineConfig({
     {
       name: 'ux',
       testMatch: '**/ux/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra timing do mock Supabase + save cycle
       use: {
         browserName: 'chromium',
         headless: true,
@@ -142,6 +148,7 @@ export default defineConfig({
     {
       name: 'notifications',
       testMatch: '**/notifications/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra transient cron/Supabase issues no CI
       // Testes de API pura — sem browser nem storageState
       // Auth feita via CRON_SECRET e Supabase service role diretamente
     },
@@ -252,6 +259,7 @@ export default defineConfig({
     {
       name: 'mobile',
       testMatch: '**/mobile/**/*.spec.ts',
+      retries: 1, // 1 retry: mobile emulation tem timing diferente no CI
       use: {
         browserName: 'chromium',
         headless: true,

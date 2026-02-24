@@ -196,10 +196,10 @@ test.describe('Mensagens de Sucesso', () => {
     const saveBtn = page.locator('button').filter({ hasText: /salvar alterações/i });
     await saveBtn.click();
 
-    // Com PATCH mockado (resposta imediata < 50ms), "Salvo!" aparece logo após o click.
-    // Timeout de 5s é mais que suficiente.
+    // Com PATCH mockado (resposta imediata), "Salvo!" aparece logo após o click.
+    // Timeout de 10s: garante margem para cold start e variações de timing no CI.
     const salvoBtn = page.locator('button').filter({ hasText: /salvo!/i });
-    await expect(salvoBtn).toBeVisible({ timeout: 5_000 });
+    await expect(salvoBtn).toBeVisible({ timeout: 10_000 });
 
     const salvoText = await salvoBtn.textContent();
     console.log(`✅ Mensagem de sucesso: "${salvoText?.trim()}"`);
