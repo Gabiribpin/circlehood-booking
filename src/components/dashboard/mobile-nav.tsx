@@ -33,6 +33,12 @@ interface MobileNavProps {
   professionalSlug?: string;
 }
 
+// data-tour-id values for guided tour — only items visible in the bottom bar
+const TOUR_IDS: Partial<Record<string, string>> = {
+  '/my-page': 'my-page',
+  '/services': 'services',
+};
+
 const MAIN_ITEMS = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
@@ -65,6 +71,7 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              data-tour-id={TOUR_IDS[item.href]}
               className={`flex flex-col items-center gap-0.5 px-2 py-1 ${
                 isActive ? 'text-primary' : 'text-muted-foreground'
               } hover:text-foreground transition-colors`}

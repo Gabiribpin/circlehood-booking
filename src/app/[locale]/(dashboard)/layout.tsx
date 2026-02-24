@@ -26,6 +26,14 @@ import {
   LifeBuoy,
 } from 'lucide-react';
 
+// data-tour-id values for guided tour — keyed by nav href
+const TOUR_IDS: Partial<Record<string, string>> = {
+  '/services': 'services',
+  '/schedule': 'schedule',
+  '/whatsapp-config': 'whatsapp',
+  '/my-page': 'my-page',
+};
+
 // Nav item definitions — labels injected at render time via t()
 const NAV_ITEM_DEFS = [
   { href: '/dashboard', tKey: 'dashboard', icon: LayoutDashboard },
@@ -89,6 +97,7 @@ export default async function DashboardLayout({
             <Link
               key={item.href}
               href={item.href}
+              data-tour-id={TOUR_IDS[item.href]}
               className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
             >
               <item.icon className="h-4 w-4" />
