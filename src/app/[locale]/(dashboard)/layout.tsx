@@ -5,7 +5,7 @@ import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { GuidedTour } from '@/components/onboarding/guided-tour';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import {
   LayoutDashboard,
   Scissors,
@@ -51,8 +51,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const t = useTranslations('nav');
+  const t = await getTranslations('nav');
 
   const supabase = await createClient();
   const {

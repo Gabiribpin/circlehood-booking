@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyWaitlist } from '@/lib/automations/waitlist-notification';
@@ -12,7 +11,9 @@ export async function POST(
   const body = await request.json();
   const { reason } = body;
 
-  const supabase = await createClient();
+  // Public token-based endpoint — use admin client to bypass RLS
+  // (no user session available; access is controlled by the token itself)
+  const supabase = createAdminClient();
 
   try {
     // Validar token
@@ -32,6 +33,10 @@ export async function POST(
 
     if (tokenData.used) {
       return NextResponse.json({ error: 'Token já utilizado' }, { status: 410 });
+    }
+
+    if (!tokenData.bookings) {
+      return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 });
     }
 
     if (tokenData.bookings.status === 'cancelled') {
@@ -83,8 +88,7 @@ export async function POST(
     if (booking.client_email) {
       ;(async () => {
         try {
-          const adminClient = createAdminClient();
-          const { data: prof } = await adminClient
+          const { data: prof } = await supabase
             .from('professionals')
             .select('business_name')
             .eq('id', booking.professional_id)
