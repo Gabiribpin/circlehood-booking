@@ -185,6 +185,13 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * Verifica que apenas 1 agendamento é criado, mesmo com cliques rápidos.
    */
   test('duplo-clique no confirmar → apenas 1 agendamento criado', async ({ page, request }) => {
+    // Reatualizar require_deposit=false imediatamente antes do page.goto() para minimizar
+    // a janela de race condition com o job de pagamentos que roda em paralelo no CI.
+    await supabase
+      .from('professionals')
+      .update({ require_deposit: false })
+      .eq('id', TEST.PROFESSIONAL_ID);
+
     const result = await fillBookingFormToStep4(page, request);
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');
 
@@ -207,8 +214,8 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await confirmBtn.click();
     await confirmBtn.click({ force: true });
 
-    // Aguardar sucesso
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
+    // Aguardar sucesso (20s: inclui cold start Vercel + latência de rede no CI)
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
 
     // Apenas 1 chamada à API deve ter sido feita
     expect(apiCallCount).toBe(1);
@@ -225,6 +232,11 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * React para step 1 — não deve criar um segundo agendamento.
    */
   test('reload após sucesso → não cria duplicado', async ({ page, request }) => {
+    await supabase
+      .from('professionals')
+      .update({ require_deposit: false })
+      .eq('id', TEST.PROFESSIONAL_ID);
+
     const result = await fillBookingFormToStep4(page, request);
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');
 
@@ -232,7 +244,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await page
       .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
       .click();
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
 
     // 1 agendamento após o sucesso
     expect(await countActiveIdempotencyBookings()).toBe(1);
@@ -262,6 +274,11 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     // para login ou retornar 404 no CI, gerando estado de browser indeterminado.
     await page.goto(`${BASE}/${BOOKING_SLUG}`, { waitUntil: 'networkidle' });
 
+    await supabase
+      .from('professionals')
+      .update({ require_deposit: false })
+      .eq('id', TEST.PROFESSIONAL_ID);
+
     const result = await fillBookingFormToStep4(page, request);
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');
 
@@ -269,7 +286,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await page
       .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
       .click();
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
 
     expect(await countActiveIdempotencyBookings()).toBe(1);
 
