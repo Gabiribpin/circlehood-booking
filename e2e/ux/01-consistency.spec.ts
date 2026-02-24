@@ -124,10 +124,13 @@ test.describe('Loading States', () => {
 
     console.log('✅ Feedback visual de loading/sucesso confirmado');
 
-    // Restaurar valor original
+    // Restaurar valor original — aguardar navegação pós-save antes de restaurar
+    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
     await nameInput.fill(original);
-    await saveBtn.click();
-    await page.waitForTimeout(2000);
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
+    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
   });
 });
 
@@ -151,9 +154,11 @@ test.describe('Mensagens de Sucesso', () => {
     const saveBtn = page.locator('button').filter({ hasText: /salvar alterações/i });
     await saveBtn.click();
 
-    // Botão deve mudar para "Salvo!" — padrão claro e positivo
+    // Botão deve mudar para "Salvo!" — padrão claro e positivo.
+    // Timeout aumentado: o save inclui request rede + 1500ms janela do estado.
+    // O settings-manager chama router.replace após 1500ms, o que navega a página.
     const salvoBtn = page.locator('button').filter({ hasText: /salvo!/i });
-    await expect(salvoBtn).toBeVisible({ timeout: 8_000 });
+    await expect(salvoBtn).toBeVisible({ timeout: 15_000 });
 
     const salvoText = await salvoBtn.textContent();
     console.log(`✅ Mensagem de sucesso: "${salvoText?.trim()}"`);
@@ -162,10 +167,15 @@ test.describe('Mensagens de Sucesso', () => {
     expect(salvoText?.toLowerCase()).not.toContain('undefined');
     expect(salvoText?.toLowerCase()).not.toContain('null');
 
-    // Restaurar
+    // Restaurar — aguardar a navegação do router.replace completar antes de continuar
+    // (o router.replace dispara 1500ms após o save, então aguardamos até a página
+    // estar estável antes de tentar restaurar)
+    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
     await nameInput.fill(original);
-    await saveBtn.click();
-    await page.waitForTimeout(2000);
+    await page.locator('button').filter({ hasText: /salvar alterações/i }).click();
+    await page.waitForURL(/\/settings/, { timeout: 8_000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
   });
 });
 
