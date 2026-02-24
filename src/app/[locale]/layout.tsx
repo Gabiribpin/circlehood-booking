@@ -3,9 +3,9 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { locales, type Locale } from '@/i18n';
 
-export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
-}
+// Dynamic rendering — locale determined at request time via middleware
+// (avoids OOM during build from pre-generating all locale × page combinations)
+export const dynamic = 'force-dynamic';
 
 export default async function LocaleLayout({
   children,
