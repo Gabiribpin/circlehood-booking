@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, Edit, X, ImagePlus } from 'lucide-react';
+import { Upload, Trash2, Edit, ImagePlus, Share2, Copy, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface GalleryImage {
@@ -28,12 +28,27 @@ interface GalleryManagerProps {
   initialImages: GalleryImage[];
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  hair: 'Cabelo',
+  nails: 'Unhas',
+  makeup: 'Maquiagem',
+  skincare: 'Skincare',
+  other: 'Outro',
+};
+
+function getCategoryLabel(category?: string): string {
+  if (!category) return '';
+  return CATEGORY_LABELS[category] ?? category;
+}
+
 export function GalleryManager({ professionalId, initialImages }: GalleryManagerProps) {
   const [images, setImages] = useState<GalleryImage[]>(initialImages);
   const [uploading, setUploading] = useState(false);
   const [editingImage, setEditingImage] = useState<GalleryImage | null>(null);
+  const [editCategory, setEditCategory] = useState('other');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [isBeforeAfter, setIsBeforeAfter] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -41,6 +56,13 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
     description: '',
     category: 'other',
   });
+
+  // Sync edit category state when opening edit dialog
+  useEffect(() => {
+    if (editingImage) {
+      setEditCategory(editingImage.category || 'other');
+    }
+  }, [editingImage]);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -110,7 +132,7 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
     if (!editingImage) return;
 
     const form = e.currentTarget;
-    const formData = new FormData(form);
+    const fd = new FormData(form);
 
     try {
       const response = await fetch('/api/gallery', {
@@ -118,9 +140,9 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingImage.id,
-          title: formData.get('title'),
-          description: formData.get('description'),
-          category: formData.get('category'),
+          title: fd.get('title'),
+          description: fd.get('description'),
+          category: editCategory,
         }),
       });
 
@@ -143,6 +165,21 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       });
     }
   };
+
+  function handleShareImage(image: GalleryImage) {
+    const url = image.image_url;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        url,
+        title: image.title ?? 'Meu trabalho',
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedId(image.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -175,7 +212,7 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                 />
                 {image.category && (
                   <span className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                    {image.category}
+                    {getCategoryLabel(image.category)}
                   </span>
                 )}
               </div>
@@ -194,6 +231,18 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleShareImage(image)}
+                      title="Compartilhar foto"
+                    >
+                      {copiedId === image.id ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Share2 className="w-4 h-4" />
+                      )}
                     </Button>
                     <Button
                       size="sm"
@@ -359,7 +408,10 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
 
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Categoria</Label>
-                <Select name="category" defaultValue={editingImage.category || 'other'}>
+                <Select
+                  value={editCategory}
+                  onValueChange={setEditCategory}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
