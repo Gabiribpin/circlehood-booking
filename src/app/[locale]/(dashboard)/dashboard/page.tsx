@@ -8,7 +8,9 @@ import {
   Users,
   ExternalLink,
   CalendarRange,
-  Info,
+  CheckCircle2,
+  Circle,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -62,6 +64,8 @@ export default async function DashboardPage() {
     { data: weekRevenue },
     { data: monthRevenue },
     { data: whatsappConfig },
+    { count: galleryCount },
+    { count: testimonialsCount },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -125,6 +129,14 @@ export default async function DashboardPage() {
       .select('is_active')
       .eq('user_id', user.id)
       .single(),
+    supabase
+      .from('gallery_images')
+      .select('*', { count: 'exact', head: true })
+      .eq('professional_id', professional.id),
+    supabase
+      .from('testimonials')
+      .select('*', { count: 'exact', head: true })
+      .eq('professional_id', professional.id),
   ]);
 
   // Calculate revenue
@@ -153,6 +165,58 @@ export default async function DashboardPage() {
 
   const showOnboardingBanner = !professional.onboarding_completed;
 
+  // Setup checklist — itens obrigatórios e opcionais
+  const setupRequired = [
+    {
+      id: 'phone',
+      label: 'Adicionar telefone de contato',
+      done: !!(professional.phone),
+      href: '/settings',
+    },
+    {
+      id: 'services',
+      label: 'Adicionar pelo menos 1 serviço',
+      done: (totalServices ?? 0) > 0,
+      href: '/services',
+    },
+    {
+      id: 'schedule',
+      label: 'Definir horários de atendimento',
+      done: (workingHoursCount ?? 0) > 0,
+      href: '/schedule',
+    },
+    {
+      id: 'whatsapp',
+      label: 'Configurar WhatsApp Bot',
+      done: whatsappConfig?.is_active === true,
+      href: '/whatsapp-config',
+    },
+  ];
+
+  const setupOptional = [
+    {
+      id: 'page',
+      label: 'Personalizar página pública',
+      done: !!(professional.bio && (professional.bio as string).length > 10),
+      href: '/my-page-editor',
+    },
+    {
+      id: 'gallery',
+      label: 'Adicionar fotos à galeria',
+      done: (galleryCount ?? 0) > 0,
+      href: '/gallery',
+    },
+    {
+      id: 'testimonials',
+      label: 'Adicionar depoimentos',
+      done: (testimonialsCount ?? 0) > 0,
+      href: '/testimonials',
+    },
+  ];
+
+  const requiredDone = setupRequired.filter((s) => s.done).length;
+  const allRequiredDone = requiredDone === setupRequired.length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -180,33 +244,83 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Banner de setup — aparece enquanto não concluiu onboarding */}
+      {/* Checklist de setup — visível enquanto não concluiu onboarding */}
       {showOnboardingBanner && (
-        <Card data-testid="onboarding-banner" className="border-primary/30 bg-primary/5">
-          <CardContent className="p-4 flex items-center gap-4">
-            <Info className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">Configure sua conta para receber clientes</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Adicione serviços, horários e conecte o WhatsApp Bot.
-              </p>
+        <Card data-testid="onboarding-banner" className="border-primary/30">
+          <CardContent className="p-5">
+            {/* Header + progresso */}
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="font-semibold text-sm">
+                  {allRequiredDone ? '🎉 Conta pronta para receber clientes!' : 'Configure sua conta'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {requiredDone} de {setupRequired.length} etapas obrigatórias concluídas
+                </p>
+              </div>
+              {allRequiredDone && (
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/onboarding">Concluir setup</Link>
+                </Button>
+              )}
             </div>
-            <Button asChild size="sm">
-              <Link href="/onboarding">Completar setup →</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Link de retorno ao guia (sempre visível, mas discreto) */}
-      {!showOnboardingBanner && (
-        <Card className="border-dashed">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-            <p className="text-sm text-muted-foreground flex-1">Precisa rever o guia de configuração?</p>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/onboarding">Ver guia</Link>
-            </Button>
+            {/* Barra de progresso */}
+            <div className="w-full bg-muted rounded-full h-1.5 mb-4">
+              <div
+                className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${Math.round((requiredDone / setupRequired.length) * 100)}%` }}
+              />
+            </div>
+
+            {/* Itens obrigatórios */}
+            <div className="space-y-1.5 mb-4">
+              {setupRequired.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className="flex items-center gap-2.5 group rounded-md px-1 py-1 hover:bg-accent transition-colors"
+                >
+                  {item.done ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={`text-xs flex-1 ${item.done ? 'text-muted-foreground line-through' : 'font-medium'}`}>
+                    {item.label}
+                  </span>
+                  {!item.done && (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  )}
+                </Link>
+              ))}
+            </div>
+
+            {/* Itens opcionais — colapsados visualmente */}
+            <details className="group">
+              <summary className="text-xs text-muted-foreground cursor-pointer select-none list-none flex items-center gap-1 mb-2">
+                <ChevronRight className="h-3 w-3 group-open:rotate-90 transition-transform" />
+                Opcional ({setupOptional.filter((s) => s.done).length}/{setupOptional.length} concluídos)
+              </summary>
+              <div className="space-y-1 pl-1">
+                {setupOptional.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="flex items-center gap-2.5 group/item rounded-md px-1 py-0.5 hover:bg-accent transition-colors"
+                  >
+                    {item.done ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                    )}
+                    <span className={`text-xs flex-1 ${item.done ? 'text-muted-foreground/60 line-through' : 'text-muted-foreground'}`}>
+                      {item.label}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </details>
           </CardContent>
         </Card>
       )}

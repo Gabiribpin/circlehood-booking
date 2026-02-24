@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
-import { WelcomeModal } from '@/components/onboarding/welcome-modal';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { GuidedTour } from '@/components/onboarding/guided-tour';
 import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
@@ -23,6 +23,7 @@ import {
   Zap,
   Phone,
   Bell,
+  LifeBuoy,
 } from 'lucide-react';
 
 // Nav item definitions — labels injected at render time via t()
@@ -42,6 +43,7 @@ const NAV_ITEM_DEFS = [
   { href: '/testimonials', tKey: 'testimonials', icon: MessageSquare },
   { href: '/my-page', tKey: 'myPage', icon: Palette },
   { href: '/settings', tKey: 'settings', icon: Settings },
+  { href: '/support', tKey: 'support', icon: LifeBuoy },
 ] as const;
 
 export default async function DashboardLayout({
@@ -138,7 +140,7 @@ export default async function DashboardLayout({
         {/* Mobile bottom nav */}
         <MobileNav professionalSlug={professional?.slug} />
 
-        <WelcomeModal />
+        <GuidedTour />
         <main className="flex-1 p-4 sm:p-6 md:p-8 pb-20 md:pb-8">
           {children}
         </main>

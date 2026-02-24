@@ -236,22 +236,6 @@ export default function WhatsAppConfigPage() {
               </div>
             )}
 
-            {/* Aviso de segurança — sempre visível */}
-            <div className="p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
-              <p className="font-semibold text-amber-800 text-sm mb-2">
-                ⚠️ Importante: Uso seguro do WhatsApp
-              </p>
-              <ul className="text-sm text-amber-700 space-y-1">
-                <li>✅ Use o bot para <strong>atender clientes que te procuram</strong></li>
-                <li>✅ Agendamentos, confirmações e atendimento conversacional</li>
-                <li>❌ <strong>NÃO envie mensagens em massa</strong> ou campanhas de marketing</li>
-                <li>❌ Envios massivos podem bloquear o número <strong>permanentemente</strong></li>
-              </ul>
-              <p className="text-xs text-amber-600 mt-2">
-                Limite automático: 50 mensagens/dia · Sistema controla automaticamente
-              </p>
-            </div>
-
             {/* QR Code */}
             {connectionStatus === 'qrcode' && qrCode && (
               <div className="p-5 bg-gray-50 border rounded-xl text-center space-y-4">
