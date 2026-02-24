@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
-import { LocaleSwitcher } from '@/components/locale-switcher';
 import { GuidedTour } from '@/components/onboarding/guided-tour';
 import { getTranslations } from 'next-intl/server';
 import {
@@ -126,23 +125,21 @@ export default async function DashboardLayout({
               {t('logout')}
             </button>
           </form>
-          <div className="flex items-center justify-between px-3 pt-2">
+          <div className="px-3 pt-2">
             <p className="text-[10px] text-muted-foreground/50">
               by CircleHood Tech
             </p>
-            <LocaleSwitcher />
           </div>
         </div>
       </aside>
 
       {/* Mobile header */}
       <div className="flex-1 flex flex-col">
-        <header className="md:hidden border-b px-4 py-3 flex items-center justify-between">
+        <header className="md:hidden border-b px-4 py-3 flex items-center">
           <Link href="/dashboard" className="flex items-center gap-2">
             <CircleHoodLogoCompact size="xs" />
             <span className="text-sm font-bold">CircleHood Booking</span>
           </Link>
-          <LocaleSwitcher />
         </header>
 
         {/* Mobile bottom nav */}
