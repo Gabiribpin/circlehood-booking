@@ -10,6 +10,15 @@ const intlMiddleware = createIntlMiddleware({
 });
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Skip middleware entirely for API routes — they handle their own auth
+  // and don't need locale detection. Running intlMiddleware on /api/* paths
+  // can cause Next.js routing to 404 on valid API routes.
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   // 1. Run Supabase session refresh (handles auth redirects for protected routes)
   const supabaseResponse = await updateSession(request);
 
@@ -36,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and Next internals
-    '/((?!_next/static|_next/image|favicon.ico|branding|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Match all paths except API routes, static files and Next internals
+    '/((?!api|_next/static|_next/image|favicon.ico|branding|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
