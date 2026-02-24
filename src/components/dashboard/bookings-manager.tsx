@@ -251,8 +251,8 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
 
       if (error) throw error;
 
-      // 2. Enviar notificação (se marcado e tem telefone)
-      if (sendNotification && cancellingBooking.client_phone) {
+      // 2. Enviar notificação (se marcado e tem telefone ou email)
+      if (sendNotification && (cancellingBooking.client_phone || cancellingBooking.client_email)) {
         try {
           const res = await fetch('/api/bookings/cancel-notification', {
             method: 'POST',
@@ -261,18 +261,18 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
           });
 
           if (res.ok) {
-            toast({ title: 'Cancelado!', description: 'Cliente notificado via WhatsApp.' });
+            toast({ title: 'Cancelado!', description: 'Cliente notificado.' });
           } else {
             toast({
               title: 'Cancelado',
-              description: 'Agendamento cancelado, mas não foi possível enviar o WhatsApp.',
+              description: 'Agendamento cancelado, mas não foi possível notificar o cliente.',
               variant: 'destructive',
             });
           }
         } catch {
           toast({
             title: 'Cancelado',
-            description: 'Agendamento cancelado, mas não foi possível enviar o WhatsApp.',
+            description: 'Agendamento cancelado, mas não foi possível notificar o cliente.',
             variant: 'destructive',
           });
         }

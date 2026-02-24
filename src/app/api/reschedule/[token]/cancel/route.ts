@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyWaitlist } from '@/lib/automations/waitlist-notification';
+import { sendCancellationEmail } from '@/lib/resend';
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +18,7 @@ export async function POST(
     // Validar token
     const { data: tokenData, error: tokenError } = await supabase
       .from('reschedule_tokens')
-      .select('*, bookings(id, professional_id, status)')
+      .select('*, bookings(id, professional_id, status, client_name, client_email, client_phone, booking_date, start_time, services(name))')
       .eq('token', token)
       .single();
 
@@ -62,19 +64,48 @@ export async function POST(
       (err) => console.error('notifyWaitlist error:', err)
     );
 
-    // Notificar profissional
+    // Notificar profissional (log na fila)
     await supabase.from('notification_queue').insert({
       professional_id: tokenData.bookings.professional_id,
       type: 'booking_confirmation',
       recipient_name: 'Profissional',
       recipient_phone: '',
-      message_template: 'booking_cancelled',
+      message_template: 'booking_cancelled_by_client',
       message_data: {
         booking_id: tokenData.bookings.id,
         reason: reason || 'Cancelado pelo cliente',
       },
       language: 'pt',
     });
+
+    // Notificar cliente via email (fire-and-forget)
+    const booking = tokenData.bookings as any;
+    if (booking.client_email) {
+      ;(async () => {
+        try {
+          const adminClient = createAdminClient();
+          const { data: prof } = await adminClient
+            .from('professionals')
+            .select('business_name')
+            .eq('id', booking.professional_id)
+            .single();
+
+          await sendCancellationEmail({
+            clientName: booking.client_name,
+            clientEmail: booking.client_email,
+            businessName: prof?.business_name ?? 'Profissional',
+            serviceName: booking.services?.name ?? 'serviço',
+            bookingDate: booking.booking_date,
+            startTime: booking.start_time,
+            cancellationReason: reason || undefined,
+            bookingId: booking.id,
+            professionalId: booking.professional_id,
+          });
+        } catch (err) {
+          console.error('[token-cancel] Email cliente error:', err);
+        }
+      })();
+    }
 
     return NextResponse.json({
       success: true,

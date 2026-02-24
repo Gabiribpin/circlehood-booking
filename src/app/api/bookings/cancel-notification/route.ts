@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendCancellationEmail } from '@/lib/resend';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!booking.client_phone) {
-      return NextResponse.json({ error: 'No client phone' }, { status: 400 });
+    if (!booking.client_phone && !booking.client_email) {
+      return NextResponse.json({ error: 'No client contact method' }, { status: 400 });
     }
 
     // 4. Buscar config WhatsApp ativa
@@ -50,9 +51,7 @@ export async function POST(request: NextRequest) {
       .eq('is_active', true)
       .single();
 
-    if (!wc) {
-      return NextResponse.json({ error: 'WhatsApp not configured' }, { status: 400 });
-    }
+    // wc pode ser null (WhatsApp não configurado) — email continua funcionando
 
     // 5. Montar mensagem
     const dateLabel = new Date(booking.booking_date + 'T12:00:00Z').toLocaleDateString('pt-BR', {
@@ -71,40 +70,63 @@ export async function POST(request: NextRequest) {
     message += `Pedimos desculpas pelo transtorno! 🙏\n\n`;
     message += `Gostaria de remarcar para outro dia? Estou à disposição para encontrar um novo horário que funcione para você! 😊`;
 
-    // 6. Enviar via WhatsApp (Evolution ou Meta)
-    let sent = false;
+    // 6. Enviar via WhatsApp (Evolution ou Meta) — opcional, apenas se há phone
+    let whatsappSent = false;
 
-    if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
-      const normalized = booking.client_phone.replace(/[^0-9]/g, '');
-      const res = await fetch(`${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`, {
-        method: 'POST',
-        headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: normalized, text: message }),
-      });
-      sent = res.ok;
-      if (!sent) console.error('[cancel-notification] Evolution error:', res.status, await res.text());
+    if (booking.client_phone && wc) {
+      if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
+        const normalized = booking.client_phone.replace(/[^0-9]/g, '');
+        const res = await fetch(`${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`, {
+          method: 'POST',
+          headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: normalized, text: message }),
+        });
+        whatsappSent = res.ok;
+        if (!whatsappSent) console.error('[cancel-notification] Evolution error:', res.status, await res.text());
+      }
+
+      if (!whatsappSent && wc.provider === 'meta' && wc.phone_number_id) {
+        const res = await fetch(`https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${wc.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: booking.client_phone,
+            type: 'text',
+            text: { body: message },
+          }),
+        });
+        whatsappSent = res.ok;
+        if (!whatsappSent) console.error('[cancel-notification] Meta error:', res.status, await res.text());
+      }
     }
 
-    if (!sent && wc.provider === 'meta' && wc.phone_number_id) {
-      const res = await fetch(`https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${wc.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: booking.client_phone,
-          type: 'text',
-          text: { body: message },
-        }),
-      });
-      sent = res.ok;
-      if (!sent) console.error('[cancel-notification] Meta error:', res.status, await res.text());
+    // 7. Enviar email de cancelamento — se cliente tem email
+    let emailSent = false;
+    if (booking.client_email) {
+      try {
+        await sendCancellationEmail({
+          clientName: booking.client_name,
+          clientEmail: booking.client_email,
+          businessName: professional.business_name,
+          serviceName: (booking.services as any)?.name ?? 'serviço',
+          bookingDate: booking.booking_date,
+          startTime: booking.start_time,
+          cancellationReason: cancellationReason || undefined,
+          bookingId: booking.id,
+          professionalId: booking.professional_id,
+        });
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('[cancel-notification] Email error:', emailErr);
+      }
     }
 
-    if (!sent) {
-      return NextResponse.json({ error: 'Failed to send WhatsApp message' }, { status: 502 });
+    if (!whatsappSent && !emailSent) {
+      return NextResponse.json({ error: 'Failed to send any notification' }, { status: 502 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, whatsappSent, emailSent });
   } catch (error: any) {
     console.error('[cancel-notification] Erro:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

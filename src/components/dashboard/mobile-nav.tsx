@@ -9,7 +9,6 @@ import {
   Scissors,
   Menu,
   Clock,
-  Users,
   UserCheck,
   QrCode,
   BarChart3,
@@ -43,7 +42,6 @@ const MAIN_ITEMS = [
 
 const MENU_ITEMS = [
   { href: '/schedule', label: 'Horários', icon: Clock },
-  { href: '/contacts', label: 'Contatos', icon: Users },
   { href: '/clients', label: 'Clientes', icon: UserCheck },
   { href: '/marketing', label: 'Marketing', icon: QrCode },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
