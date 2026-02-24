@@ -150,10 +150,11 @@ async function fillBookingFormToStep4(
   await page.locator('#clientName').fill('Cliente Idempotência');
   await page.locator('#clientPhone').fill(TEST_PHONE_IDEM);
 
-  // Aguardar botão confirmar ficar habilitado
+  // Aguardar botão confirmar/continuar — texto varia com require_deposit do profissional.
+  // O beforeEach garante require_deposit=false, mas usamos regex para robustez.
   await page
-    .locator('button:has-text("Confirmar agendamento")')
-    .waitFor({ state: 'visible', timeout: 5_000 });
+    .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
+    .waitFor({ state: 'visible', timeout: 10_000 });
 
   return { slot: firstSlot, date: targetDate };
 }
@@ -162,6 +163,12 @@ async function fillBookingFormToStep4(
 
 test.beforeEach(async () => {
   await cleanIdempotencyBookings();
+  // Garantir que require_deposit está false — o job de pagamentos (paralelo no CI)
+  // pode ter alterado este campo, mudando o texto do botão para "Continuar para pagamento".
+  await supabase
+    .from('professionals')
+    .update({ require_deposit: false })
+    .eq('id', TEST.PROFESSIONAL_ID);
 });
 
 test.afterEach(async () => {
@@ -190,7 +197,9 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
       await route.continue();
     });
 
-    const confirmBtn = page.locator('button:has-text("Confirmar agendamento")');
+    const confirmBtn = page.locator('button', {
+      hasText: /Confirmar agendamento|Continuar para pagamento/,
+    });
 
     // Dois cliques rápidos — o segundo deve ser no-op porque disabled=true após o primeiro
     // force:true ignora actionability checks (elemento pode estar disabled)
@@ -220,7 +229,9 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');
 
     // Confirmar agendamento
-    await page.locator('button:has-text("Confirmar agendamento")').click();
+    await page
+      .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
+      .click();
     await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
 
     // 1 agendamento após o sucesso
@@ -254,7 +265,9 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     if (!result) test.skip(true, 'Sem slots disponíveis na terça');
 
     // Confirmar agendamento
-    await page.locator('button:has-text("Confirmar agendamento")').click();
+    await page
+      .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
+      .click();
     await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 15_000 });
 
     expect(await countActiveIdempotencyBookings()).toBe(1);

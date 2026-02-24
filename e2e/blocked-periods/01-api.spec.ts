@@ -169,8 +169,15 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     if (!service) test.skip(true, 'Sem serviços ativos');
 
     const monday = farFutureWeekday(1);
-    const wednesday = farFutureWeekday(3);
-    const friday = farFutureWeekday(5);
+    // Calcular quarta e sexta como offsets de segunda (evita inversão quando
+    // farFutureWeekday(1) retorna data maior que farFutureWeekday(3/5))
+    const mondayDate = new Date(monday + 'T12:00:00');
+    const wednesdayDate = new Date(mondayDate);
+    wednesdayDate.setDate(mondayDate.getDate() + 2);
+    const fridayDate = new Date(mondayDate);
+    fridayDate.setDate(mondayDate.getDate() + 4);
+    const wednesday = wednesdayDate.toISOString().split('T')[0];
+    const friday = fridayDate.toISOString().split('T')[0];
 
     // Verificar que quarta normalmente tem slots
     const slotsBeforeBlock = await getAvailableSlots(request, service!.id, wednesday);
@@ -235,7 +242,12 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     if (!service) test.skip(true, 'Sem serviços ativos');
 
     const monday = farFutureWeekday(1);
-    const wednesday = farFutureWeekday(3);
+    // Calcular quarta como offset de segunda (evita inversão quando
+    // farFutureWeekday(1) retorna data maior que farFutureWeekday(3))
+    const mondayDate2 = new Date(monday + 'T12:00:00');
+    const wednesdayDate2 = new Date(mondayDate2);
+    wednesdayDate2.setDate(mondayDate2.getDate() + 2);
+    const wednesday = wednesdayDate2.toISOString().split('T')[0];
     const slotsBefore = await getAvailableSlots(request, service!.id, monday);
     if (slotsBefore.length === 0) test.skip(true, 'Segunda não tem slots');
 

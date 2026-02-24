@@ -28,6 +28,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Service not found' }, { status: 404 });
   }
 
+  // 2. Reject past dates — use Dublin timezone (consistent with slot filtering below)
+  const dublinNowEarly = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
+  const todayStr = `${dublinNowEarly.getFullYear()}-${String(dublinNowEarly.getMonth() + 1).padStart(2, '0')}-${String(dublinNowEarly.getDate()).padStart(2, '0')}`;
+  if (date < todayStr) {
+    return NextResponse.json({ slots: [] });
+  }
+
   // 2a. Check if date is a blocked single day
   const { data: blockedDay } = await supabase
     .from('blocked_dates')
@@ -97,16 +104,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 7. If today, remove past slots — use Europe/Dublin timezone (Vercel runs in UTC)
-  // Bug sem fix: now.toISOString() devolve data UTC, mas às 23:30 UTC = 00:30 BST
-  // o servidor calcularia "hoje" errado, mostrando slots passados para a data do dia seguinte.
-  const dublinNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Dublin' }));
-  const todayStr = `${dublinNow.getFullYear()}-${String(dublinNow.getMonth() + 1).padStart(2, '0')}-${String(dublinNow.getDate()).padStart(2, '0')}`;
+  // 7. If today, remove past slots — todayStr and Dublin timezone already computed above
   const filteredSlots =
     date === todayStr
       ? slots.filter((s) => {
           const slotMinutes = timeToMinutes(s);
-          const currentMinutes = dublinNow.getHours() * 60 + dublinNow.getMinutes();
+          const currentMinutes = dublinNowEarly.getHours() * 60 + dublinNowEarly.getMinutes();
           return slotMinutes > currentMinutes;
         })
       : slots;

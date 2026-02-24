@@ -64,6 +64,10 @@ test.describe('Notificação de cancelamento — cliente cancela via token', () 
 
     bookingId = booking.id;
 
+    // Deletar token auto-criado pelo trigger do DB (se existir) — a tabela tem
+    // unique constraint em booking_id, então precisamos limpar antes de inserir.
+    await supabase.from('reschedule_tokens').delete().eq('booking_id', bookingId);
+
     // Inserir reschedule_token para o booking
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const token = `e2e-cancel-test-${Date.now()}`;
@@ -184,6 +188,10 @@ test.describe('Notificação de cancelamento — cliente cancela via token', () 
       test.skip(true, 'Setup falhou');
       return;
     }
+
+    // Deletar tokens existentes para este booking antes de inserir expirado
+    // (o trigger do DB e o beforeEach podem ter criado tokens; unique constraint em booking_id)
+    await supabase.from('reschedule_tokens').delete().eq('booking_id', bookingId);
 
     // Inserir token expirado
     const expiredToken = `e2e-expired-${Date.now()}`;

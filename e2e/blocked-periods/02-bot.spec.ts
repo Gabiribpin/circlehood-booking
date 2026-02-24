@@ -151,9 +151,16 @@ test.describe('Bot — Rejeição de Agendamento em Período Bloqueado', () => {
   test('bot aceita agendamento antes do período bloqueado', async ({ request }) => {
     test.setTimeout(90_000);
 
-    const tuesday = nextWeekday(2);
-    const thursday = nextWeekday(4);
     const monday = nextWeekday(1);
+    // Calcular terça e quinta como offsets de segunda (evita inversão de datas
+    // quando nextWeekday(2) retorna data posterior a nextWeekday(4))
+    const mondayDate = new Date(monday + 'T12:00:00');
+    const tuesdayDate = new Date(mondayDate);
+    tuesdayDate.setDate(mondayDate.getDate() + 1);
+    const thursdayDate = new Date(mondayDate);
+    thursdayDate.setDate(mondayDate.getDate() + 3);
+    const tuesday = tuesdayDate.toISOString().split('T')[0];
+    const thursday = thursdayDate.toISOString().split('T')[0];
     const periodId = await blockPeriod(tuesday, thursday, 'Recesso');
     cleanupBlockedPeriods.push(periodId);
 

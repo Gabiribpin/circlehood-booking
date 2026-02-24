@@ -25,8 +25,12 @@ setup('autenticar Salão da Rita', async ({ page }) => {
   // Verificar que o dashboard carregou (não ficou em loop de login)
   await expect(page.locator('body')).not.toContainText('Entrar', { timeout: 5_000 });
 
-  // Marcar modal de boas-vindas como já visto — evita que bloqueie os testes
-  await page.evaluate(() => localStorage.setItem('whatsapp-warning-seen', 'true'));
+  // Marcar modal de boas-vindas e tour guiado como já vistos — evita que
+  // bloqueiem os testes (GuidedTour usa backdrop fixed inset-0 z-[100]).
+  await page.evaluate(() => {
+    localStorage.setItem('whatsapp-warning-seen', 'true');
+    localStorage.setItem('circlehood-tour-completed', 'true');
+  });
 
   // Salvar estado de autenticação (cookies + localStorage)
   await page.context().storageState({ path: authFile });
