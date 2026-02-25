@@ -15,12 +15,6 @@ export default async function AdminLayout({
 
   const adminEmail = process.env.ADMIN_EMAIL;
 
-  console.log('[ADMIN DEBUG]', {
-    userEmail: user?.email,
-    adminEmail: process.env.ADMIN_EMAIL,
-    match: user?.email?.trim().toLowerCase() === adminEmail?.trim().toLowerCase(),
-  });
-
   if (!user || !adminEmail || user.email?.trim().toLowerCase() !== adminEmail.trim().toLowerCase()) {
     redirect('/login');
   }
