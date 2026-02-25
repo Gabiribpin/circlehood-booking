@@ -14,7 +14,7 @@ import {
 
 export const metadata: Metadata = {
   title: 'CircleHood Booking | by CircleHood Tech',
-  description: 'Crie sua página profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.',
+  description: 'Crie sua página profissional com agendamento online. Perfeito para qualquer profissional autônomo: beleza, saúde, fitness, educação, pets e muito mais.',
 };
 
 const FEATURES = [
@@ -125,7 +125,7 @@ export default function LandingPage() {
             Perfeito para profissionais autonomos
           </h2>
           <p className="text-muted-foreground mb-8">
-            Cabeleireiras, nail techs, barbeiros, esteticistas, personal trainers, cleaners — se você atende com horario marcado, o CircleHood e pra você.
+            Cabeleireiros, personal trainers, terapeutas, tutores, fotógrafos, coaches — se você atende com hora marcada, o CircleHood é pra você.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-md mx-auto">
             {BENEFITS.map((benefit) => (

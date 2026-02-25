@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CircleHood Booking — Sua página profissional de agendamentos",
   description:
-    "Crie sua página profissional com agendamento online. Perfeito para cabeleireiras, nail techs, barbeiros, personal trainers e mais.",
+    "Crie sua página profissional com agendamento online. Perfeito para qualquer profissional autônomo: beleza, saúde, fitness, educação, pets e muito mais.",
   icons: {
     icon: '/branding/favicon-32.png',
     apple: '/branding/apple-touch-icon.png',
