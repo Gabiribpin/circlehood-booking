@@ -574,7 +574,11 @@
     "importContactsCSV": "Archivo CSV",
     "previewFirst5": "Vista previa (primeros 5):",
     "importedCount": "{count} contactos importados",
-    "importContactsError": "Error al importar contactos"
+    "importContactsError": "Error al importar contactos",
+    "importWhatsAppBtn": "Importar de WhatsApp",
+    "importing": "Importando...",
+    "importWhatsAppSuccess": "¡Importación de WhatsApp completada!",
+    "importWhatsAppDesc": "{imported} contactos importados, {skipped} ya existían."
   },
   "onboarding": {
     "title": "Configura tu cuenta",

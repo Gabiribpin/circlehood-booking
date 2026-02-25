@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Download, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, CheckCircle, AlertTriangle, Download, FileText, MessageCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatPhoneInternational } from '@/lib/utils/phone-detection';
 
@@ -97,6 +97,8 @@ export default function ImportCSVPage() {
   const [importing, setImporting] = useState(false);
   const [fileName, setFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [hasEvolution, setHasEvolution] = useState(false);
+  const [importingWhatsApp, setImportingWhatsApp] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -109,6 +111,14 @@ export default function ImportCSVPage() {
       if (!professional) return;
 
       setProfessionalId(professional.id);
+
+      // Check if Evolution API is configured
+      const { data: wConfig } = await supabase
+        .from('whatsapp_config')
+        .select('provider')
+        .eq('professional_id', professional.id)
+        .single();
+      setHasEvolution(wConfig?.provider === 'evolution');
 
       const { data: contacts } = await supabase
         .from('contacts').select('phone').eq('professional_id', professional.id);
@@ -165,6 +175,27 @@ export default function ImportCSVPage() {
     if (file) processFile(file);
   }, [existingPhones]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function handleImportWhatsApp() {
+    setImportingWhatsApp(true);
+    try {
+      const res = await fetch('/api/contacts/import-whatsapp', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: t('importError'), description: data.error ?? 'Error', variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: t('importWhatsAppSuccess'),
+        description: t('importWhatsAppDesc', { imported: data.imported, skipped: data.skipped }),
+      });
+      router.push('/clients?tab=manage');
+    } catch {
+      toast({ title: t('importError'), variant: 'destructive' });
+    } finally {
+      setImportingWhatsApp(false);
+    }
+  }
+
   async function handleImport() {
     if (!professionalId || rows.length === 0) return;
 
@@ -207,11 +238,28 @@ export default function ImportCSVPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/clients?tab=manage')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> {tc('back')}
-        </Button>
-        <h1 className="text-2xl font-bold">{t('importTitle')}</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/clients?tab=manage')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> {tc('back')}
+          </Button>
+          <h1 className="text-2xl font-bold">{t('importTitle')}</h1>
+        </div>
+        {hasEvolution && (
+          <Button
+            variant="outline"
+            onClick={handleImportWhatsApp}
+            disabled={importingWhatsApp}
+            className="gap-2 border-green-400 text-green-700 hover:bg-green-50"
+          >
+            {importingWhatsApp ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MessageCircle className="h-4 w-4" />
+            )}
+            {importingWhatsApp ? t('importing') : t('importWhatsAppBtn')}
+          </Button>
+        )}
       </div>
 
       {/* Instruções */}
