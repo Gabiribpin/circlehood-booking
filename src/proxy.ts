@@ -38,38 +38,12 @@ export async function proxy(request: NextRequest) {
     return intlResponse;
   }
 
-  // 3. Build combined response that:
-  //    a) forwards the original request headers (incl. Cookie) to server components
-  //    b) honours any URL rewrite next-intl needs (e.g. /admin/support → /pt-BR/admin/support)
-  //
-  // Why: intlResponse may be NextResponse.rewrite('/pt-BR/...') for default-locale routes.
-  // Returning NextResponse.next() instead loses that rewrite → 404.
-  // Returning intlResponse as-is loses the Cookie header → cookieCount=0 → Auth session missing.
-  //
-  // Fix: detect rewrite URL from intlResponse and create the appropriate response type
-  // while always forwarding request.headers (which includes Cookie).
-  const requestHeaders = new Headers(request.headers);
-  intlResponse.headers.forEach((value, key) => {
-    if (key.startsWith('x-next-intl-')) {
-      requestHeaders.set(key, value);
-    }
-  });
-
-  const rewriteUrl = intlResponse.headers.get('x-middleware-rewrite');
-
-  const combinedResponse = rewriteUrl
-    ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
-    : NextResponse.next({ request: { headers: requestHeaders } });
-
-  // Copy Set-Cookie from Supabase (auth token refresh) and intl (locale preference)
+  // 3. Merge: copy Supabase session cookies into the intl response so they reach the client
   supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
-    combinedResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
-  });
-  intlResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
-    combinedResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
+    intlResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
   });
 
-  return combinedResponse;
+  return intlResponse;
 }
 
 export const config = {
