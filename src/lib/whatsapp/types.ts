@@ -15,6 +15,7 @@ export interface WhatsAppMessage {
   id: string;
   from: string;
   to: string;
+  type?: string; // 'text' | 'audio' | 'voice' | 'image' | 'document' | ...
   text?: { body: string };
   timestamp: number;
 }
@@ -51,6 +52,8 @@ export interface EvolutionWebhookPayload {
     message?: {
       conversation?: string;
       extendedTextMessage?: { text: string };
+      audioMessage?: Record<string, unknown>;
+      pttMessage?: Record<string, unknown>; // push-to-talk (voice note)
     };
     messageTimestamp: string;
     pushName?: string;

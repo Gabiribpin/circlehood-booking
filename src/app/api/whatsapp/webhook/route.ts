@@ -1,7 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
-import { parseEvolutionPhone } from '@/lib/whatsapp/evolution';
+import { parseEvolutionPhone, sendEvolutionMessage } from '@/lib/whatsapp/evolution';
+import { createClient } from '@supabase/supabase-js';
+
+const AUDIO_REPLY =
+  'Desculpe, ainda não consigo ouvir áudios 🎙️ Por favor, envie sua mensagem por texto e ficarei feliz em ajudar! 😊';
+
+async function getEvolutionConfig(instance: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data } = await supabase
+    .from('whatsapp_config')
+    .select('evolution_api_url, evolution_api_key, evolution_instance')
+    .eq('evolution_instance', instance)
+    .single();
+  if (!data) return null;
+  return {
+    apiUrl: data.evolution_api_url,
+    apiKey: data.evolution_api_key,
+    instance: data.evolution_instance,
+  };
+}
 
 export const maxDuration = 60;
 
@@ -40,12 +62,29 @@ export async function POST(request: NextRequest) {
         body.data.message?.conversation ||
         body.data.message?.extendedTextMessage?.text;
 
-      if (!text) {
-        return NextResponse.json({ status: 'ok' });
-      }
+      const isAudio =
+        !!body.data.message?.audioMessage ||
+        !!body.data.message?.pttMessage;
 
       const from = parseEvolutionPhone(body.data.key.remoteJid);
       const messageId = body.data.key.id;
+
+      if (isAudio) {
+        // Respond politely — STT not yet implemented
+        try {
+          const config = await getEvolutionConfig(body.instance);
+          if (config) {
+            await sendEvolutionMessage(from, AUDIO_REPLY, config);
+          }
+        } catch (audioErr) {
+          console.error('[webhook] Failed to send audio reply:', audioErr);
+        }
+        return NextResponse.json({ status: 'ok' });
+      }
+
+      if (!text) {
+        return NextResponse.json({ status: 'ok' });
+      }
 
       await processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
       return NextResponse.json({ status: 'ok' });
@@ -58,6 +97,11 @@ export async function POST(request: NextRequest) {
         const from = message.from;
         const text = message.text?.body;
         const messageId = message.id;
+
+        // Ignore audio messages (no STT yet)
+        if (message.type === 'audio' || message.type === 'voice') {
+          return NextResponse.json({ status: 'ok' });
+        }
 
         if (!text) {
           return NextResponse.json({ status: 'ok' });
