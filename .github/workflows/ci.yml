@@ -587,6 +587,18 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install chromium --with-deps
+      - name: Aguardar Vercel deployar novo código
+        run: |
+          echo "Aguardando Vercel publicar commit $GITHUB_SHA..."
+          for i in $(seq 1 30); do
+            if curl -sfL --max-time 15 https://circlehood-booking.vercel.app/register 2>/dev/null | grep -q 'noopener'; then
+              echo "✅ Vercel deployment pronto (tentativa $i)"
+              exit 0
+            fi
+            echo "⏳ Tentativa $i/30: deployment não pronto, aguardando 10s..."
+            sleep 10
+          done
+          echo "⚠️ Timeout (5min) — continuando mesmo assim"
       - name: Run GDPR and legal pages tests
         run: npx playwright test --project=auth-setup --project=legal --project=gdpr
         env:

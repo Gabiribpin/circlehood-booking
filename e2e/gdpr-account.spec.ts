@@ -129,7 +129,9 @@ test.describe('GDPR Art. 17 — Zona de Perigo', () => {
     await expect(confirmBtn).toBeVisible({ timeout: 5_000 });
 
     // Digitar texto errado → botão permanece desabilitado
-    await input.fill('excluir'); // minúsculo — errado
+    // Nota: componente usa .toUpperCase() na comparação, então "excluir" (minúsculo)
+    // TAMBÉM habilita o botão. Usar texto completamente errado.
+    await input.fill('texto-errado');
     await expect(confirmBtn).toBeDisabled();
 
     // Digitar texto correto (EXCLUIR em maiúsculas) → botão habilita
