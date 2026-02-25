@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getStripe, PRICE_ID } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
+import { getPlanPrice } from '@/lib/pricing';
 
 export async function POST() {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export async function POST() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, stripe_customer_id, business_name')
+    .select('id, stripe_customer_id, business_name, currency')
     .eq('user_id', user.id)
     .single();
 
@@ -45,10 +46,12 @@ export async function POST() {
       .eq('id', professional.id);
   }
 
+  const { priceId } = getPlanPrice(professional.currency ?? 'eur');
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
-    line_items: [{ price: PRICE_ID, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${baseUrl}/settings?success=true`,
     cancel_url: `${baseUrl}/settings?cancelled=true`,
     metadata: { professional_id: professional.id },

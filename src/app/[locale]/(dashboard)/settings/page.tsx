@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { SettingsManager } from '@/components/dashboard/settings-manager';
+import { getPlanPrice } from '@/lib/pricing';
 
 interface PageProps {
   searchParams: Promise<{ success?: string; cancelled?: string }>;
@@ -35,6 +36,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     new Date(professional.trial_ends_at) < new Date();
 
   const params = await searchParams;
+  const planPrice = getPlanPrice(professional.currency ?? 'eur');
 
   return (
     <SettingsManager
@@ -43,6 +45,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
       trialExpired={trialExpired}
       success={params.success === 'true'}
       cancelled={params.cancelled === 'true'}
+      planPrice={planPrice}
     />
   );
 }

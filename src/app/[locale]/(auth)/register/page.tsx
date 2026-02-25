@@ -25,6 +25,29 @@ import {
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 
+const COUNTRIES: { code: string; label: string }[] = [
+  { code: 'IE', label: 'Irlanda' },
+  { code: 'PT', label: 'Portugal' },
+  { code: 'BR', label: 'Brasil' },
+  { code: 'GB', label: 'Reino Unido' },
+  { code: 'US', label: 'Estados Unidos' },
+  { code: 'ES', label: 'Espanha' },
+  { code: 'FR', label: 'França' },
+  { code: 'DE', label: 'Alemanha' },
+  { code: 'IT', label: 'Itália' },
+  { code: 'AU', label: 'Austrália' },
+  { code: 'CA', label: 'Canadá' },
+  { code: 'MX', label: 'México' },
+  { code: 'AR', label: 'Argentina' },
+  { code: 'CO', label: 'Colômbia' },
+];
+
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  IE: 'eur', PT: 'eur', ES: 'eur', FR: 'eur', DE: 'eur', IT: 'eur',
+  BR: 'brl', GB: 'gbp', US: 'usd', AU: 'aud', CA: 'cad', MX: 'mxn',
+  AR: 'ars', CO: 'cop',
+};
+
 const CATEGORIES = [
   'Barbeiro',
   'Cabeleireiro(a)',
@@ -78,6 +101,8 @@ export default function RegisterPage() {
   const [slug, setSlug] = useState('');
   const [category, setCategory] = useState('');
   const [city, setCity] = useState('Dublin');
+  const [country, setCountry] = useState('IE');
+  const [currency, setCurrency] = useState('eur');
 
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
@@ -162,6 +187,8 @@ export default function RegisterPage() {
           businessName,
           category: category || null,
           city,
+          country,
+          currency,
         }),
       });
 
@@ -325,6 +352,28 @@ export default function RegisterPage() {
                     {CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="country">País *</Label>
+                <Select
+                  value={country}
+                  onValueChange={(val) => {
+                    setCountry(val);
+                    setCurrency(CURRENCY_BY_COUNTRY[val] ?? 'eur');
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione seu país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/navigation';
 import type { Professional } from '@/types/database';
+import type { PlanPrice } from '@/lib/pricing';
 
 const LOCALE_OPTIONS = [
   { value: 'pt-BR', label: '🇧🇷 Português (Brasil)' },
@@ -25,6 +26,7 @@ interface SettingsManagerProps {
   trialExpired: boolean;
   success?: boolean;
   cancelled?: boolean;
+  planPrice: PlanPrice;
 }
 
 export function SettingsManager({
@@ -33,6 +35,7 @@ export function SettingsManager({
   trialExpired,
   success,
   cancelled,
+  planPrice,
 }: SettingsManagerProps) {
   const t = useTranslations('settings');
   const tAccount = useTranslations('account');
@@ -304,7 +307,7 @@ export function SettingsManager({
             <>
               <div className="text-center mb-4">
                 <p className="text-2xl font-bold">
-                  &euro;25<span className="text-sm font-normal text-muted-foreground">/mês</span>
+                  {planPrice.symbol}{planPrice.amount}<span className="text-sm font-normal text-muted-foreground">/mês</span>
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {t('priceDesc')}

@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { email, password, slug, businessName, category, bio, phone, whatsapp, instagram, city } = body;
+  const { email, password, slug, businessName, category, bio, phone, whatsapp, instagram, city, country, currency } = body;
 
   if (!email || !password || !slug || !businessName) {
     return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 });
@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
     whatsapp: whatsapp || null,
     instagram: instagram || null,
     city: city || 'Dublin',
+    country: country || 'IE',
+    currency: currency || 'eur',
   });
 
   if (profileError) {
