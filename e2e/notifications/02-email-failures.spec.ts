@@ -209,6 +209,17 @@ test.describe('Observabilidade — notification_logs para emails', () => {
     const before = new Date().toISOString();
     const monday = nextWeekday(1);
 
+    // Pre-cleanup: cancelar qualquer booking anterior para este phone+slot.
+    // Evita idempotency hit (HTTP 200) em retries do Playwright — o retry ocorre
+    // dentro da janela de 5min antes do afterAll cleanup, causando 200 em vez de 201.
+    await supabase
+      .from('bookings')
+      .update({ status: 'cancelled', cancelled_by: 'system', cancellation_reason: 'E2E pre-test cleanup' })
+      .eq('professional_id', TEST.PROFESSIONAL_ID)
+      .eq('client_phone', '353800000098')
+      .eq('booking_date', monday)
+      .neq('status', 'cancelled');
+
     const res = await request.post(`${TEST.BASE_URL}/api/bookings`, {
       data: {
         professional_id: TEST.PROFESSIONAL_ID,

@@ -687,13 +687,45 @@ jobs:
 
           echo "🧹 Iniciando cleanup de dados [E2E]..."
 
-          # Agendamentos criados por testes (client_name contém E2E, Teste, Race ou Lifecycle)
+          # Agendamentos criados por testes (vários padrões de client_name)
           BOOKINGS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
-            "${SUPABASE_URL}/rest/v1/bookings?or=(client_name.ilike.*E2E*,client_name.ilike.*Teste*,client_name.ilike.*Race*,client_name.ilike.*Lifecycle*)" \
+            "${SUPABASE_URL}/rest/v1/bookings?or=(client_name.ilike.*E2E*,client_name.ilike.*Teste*,client_name.ilike.*Race*,client_name.ilike.*Lifecycle*,client_name.ilike.*Chegou*,client_name.ilike.*Idempot*,client_name.ilike.*Concurrent*,client_name.ilike.*Observability*)" \
             -H "apikey: ${SERVICE_KEY}" \
             -H "Authorization: Bearer ${SERVICE_KEY}" \
             -H "Prefer: return=minimal")
           echo "  bookings DELETE → HTTP ${BOOKINGS}"
+
+          # Agendamentos criados por phones de teste dedicados (353800000091-099 + 353830326180)
+          PHONE_BOOKINGS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            "${SUPABASE_URL}/rest/v1/bookings?or=(client_phone.ilike.353800000*,client_phone.eq.353830326180,client_phone.eq.%2B353830326180)" \
+            -H "apikey: ${SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_KEY}" \
+            -H "Prefer: return=minimal")
+          echo "  bookings by phone DELETE → HTTP ${PHONE_BOOKINGS}"
+
+          # Conversas e mensagens WhatsApp do bot (phone de teste: 353830326180)
+          # Mensagens apagadas antes para evitar FK violation (sem cascade automático)
+          BOT_CONV_IDS=$(curl -s \
+            "${SUPABASE_URL}/rest/v1/whatsapp_conversations?select=id&customer_phone=eq.353830326180" \
+            -H "apikey: ${SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_KEY}" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(','.join(r['id'] for r in d))" 2>/dev/null || echo "")
+          if [ -n "$BOT_CONV_IDS" ]; then
+            MSGS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+              "${SUPABASE_URL}/rest/v1/whatsapp_messages?conversation_id=in.(${BOT_CONV_IDS})" \
+              -H "apikey: ${SERVICE_KEY}" \
+              -H "Authorization: Bearer ${SERVICE_KEY}" \
+              -H "Prefer: return=minimal")
+            echo "  whatsapp_messages DELETE → HTTP ${MSGS}"
+            WCONV=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+              "${SUPABASE_URL}/rest/v1/whatsapp_conversations?customer_phone=eq.353830326180" \
+              -H "apikey: ${SERVICE_KEY}" \
+              -H "Authorization: Bearer ${SERVICE_KEY}" \
+              -H "Prefer: return=minimal")
+            echo "  whatsapp_conversations DELETE → HTTP ${WCONV}"
+          else
+            echo "  whatsapp: nenhuma conversa de teste encontrada"
+          fi
 
           # Serviços marcados com [E2E] no nome (%5B = '[', %5D = ']')
           SERVICES=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
