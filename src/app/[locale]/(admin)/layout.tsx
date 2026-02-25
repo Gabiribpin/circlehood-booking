@@ -9,11 +9,22 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   const adminEmail = process.env.ADMIN_EMAIL;
+
+  const { cookies: nextCookies } = await import('next/headers');
+  const jar = await nextCookies();
+  const cookieNames = jar.getAll().map(c => c.name);
+
+  console.log('[ADMIN DEBUG 3]', {
+    userEmail: user?.email ?? null,
+    adminEmail: adminEmail ?? null,
+    authError: authError?.message ?? null,
+    cookieCount: cookieNames.length,
+    hasSbCookie: cookieNames.some(n => n.startsWith('sb-')),
+    cookieNames,
+  });
 
   if (!user || !adminEmail || user.email?.trim().toLowerCase() !== adminEmail.trim().toLowerCase()) {
     redirect('/login');
