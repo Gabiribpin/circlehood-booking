@@ -75,7 +75,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     professional.bio ||
     `Agende ${professional.category || 'serviços'} com ${professional.business_name} em ${professional.city}. ${services.length} serviços disponíveis.`;
 
-  const url = `https://book.circlehood-tech.com/${professional.slug}`;
+  const url = `https://booking.circlehood-tech.com/${professional.slug}`;
 
   return {
     title,
@@ -220,7 +220,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
     '@type': 'LocalBusiness',
     name: professional.business_name,
     description: professional.bio || '',
-    url: `https://book.circlehood-tech.com/${professional.slug}`,
+    url: `https://booking.circlehood-tech.com/${professional.slug}`,
     telephone: professional.phone || '',
     address: {
       '@type': 'PostalAddress',

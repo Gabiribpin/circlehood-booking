@@ -21,7 +21,7 @@ const FEATURES = [
   {
     icon: Globe,
     title: 'Sua página profissional',
-    description: 'Link personalizado tipo book.circlehood-tech.com/seu-nome. Coloque na bio do Instagram e pronto.',
+    description: 'Link personalizado tipo booking.circlehood-tech.com/seu-nome. Coloque na bio do Instagram e pronto.',
   },
   {
     icon: CalendarDays,

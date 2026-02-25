@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -48,6 +48,23 @@ const CATEGORIES = [
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: professional } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (professional) {
+        router.replace('/dashboard');
+      }
+    };
+    checkSession();
+  }, [router]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -264,7 +281,7 @@ export default function RegisterPage() {
                 <Label htmlFor="slug">Link da sua página *</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    book.circlehood-tech.com/
+                    booking.circlehood-tech.com/
                   </span>
                   <Input
                     id="slug"

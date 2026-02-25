@@ -58,7 +58,7 @@ export function ContactFooter({ professional }: ContactFooterProps) {
         <p className="text-xs text-muted-foreground">
           Powered by{' '}
           <a
-            href="https://book.circlehood-tech.com"
+            href="https://booking.circlehood-tech.com"
             className="font-medium text-primary hover:underline"
           >
             CircleHood Booking
