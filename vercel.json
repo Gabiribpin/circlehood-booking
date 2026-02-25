@@ -1,5 +1,13 @@
 {
   "buildCommand": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "circlehood-booking.vercel.app" }],
+      "destination": "https://booking.circlehood-tech.com/$1",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/send-reminders",
