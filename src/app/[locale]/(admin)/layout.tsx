@@ -1,22 +1,19 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, CreditCard, LogOut, ShieldCheck, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy } from 'lucide-react';
+import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get('admin_session');
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-
-  if (!user || !adminEmail || user.email?.trim().toLowerCase() !== adminEmail.trim().toLowerCase()) {
-    redirect('/login');
+  if (adminSession?.value !== '1') {
+    redirect('/admin-login');
   }
 
   return (
@@ -55,17 +52,8 @@ export default async function AdminLayout({
           </Link>
         </nav>
 
-        <div className="p-3 border-t border-slate-800 space-y-2">
-          <p className="px-3 text-[10px] text-slate-500 truncate">{user.email}</p>
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-400 hover:text-white w-full hover:bg-slate-800 transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
-          </form>
+        <div className="p-3 border-t border-slate-800">
+          <AdminLogoutButton />
         </div>
       </aside>
 
