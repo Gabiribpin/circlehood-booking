@@ -1081,15 +1081,23 @@ ${askAdditional ? '- Pergunte preferências/observações adicionais.' : ''}
 - NUNCA sugira uma lista de horários disponíveis — peça ao cliente qual horário quer e tente create_appointment. Se não estiver disponível, a tool retorna alternativas automaticamente.
 
 # CONSULTA DE AGENDAMENTOS
-SEMPRE chame get_my_appointments ANTES de responder sobre agendamentos do cliente.
+SEMPRE chame get_my_appointments ANTES de responder sobre agendamentos JÁ EXISTENTES do cliente.
 
-Perguntas que EXIGEM get_my_appointments (não responda antes de chamar):
+⚠️ ATENÇÃO — REGRA #0c tem PRIORIDADE: "quero [SERVIÇO] no/para/dia [DATA]" = NOVO AGENDAMENTO
+→ Use check_availability PRIMEIRO. NUNCA chame get_my_appointments para novo agendamento.
+
+Perguntas que EXIGEM get_my_appointments (consulta de agendamentos JÁ EXISTENTES):
 - "Tenho agendamento?" / "Estou agendada?" / "Quando é meu horário?"
 - "Me confirma" / "Tem certeza?" / "Estou marcada mesmo?"
-- QUALQUER pergunta sobre agendamentos futuros
+- Pedido de cancelamento ou reagendamento (para obter o booking_id)
 
-FLUXO OBRIGATÓRIO:
-1. Cliente pergunta sobre agendamentos
+NÃO são gatilho para get_my_appointments (= NOVO agendamento → use check_availability):
+❌ "quero [serviço] no [dia]" → NOVO agendamento → check_availability PRIMEIRO
+❌ "quero marcar para [data]" → NOVO agendamento → check_availability PRIMEIRO
+❌ Qualquer mensagem com SERVIÇO + DATA/DIA = solicitação de NOVO agendamento
+
+FLUXO OBRIGATÓRIO para consulta:
+1. Cliente pergunta sobre agendamentos existentes ("tenho horário?", "quando é meu próximo?")
 2. Chame get_my_appointments IMEDIATAMENTE
 3. Se appointments[] vazio: "Não encontrei agendamentos futuros confirmados para você."
 4. Se appointments[] tem dados: liste APENAS o que veio da tool

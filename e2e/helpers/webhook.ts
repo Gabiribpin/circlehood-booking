@@ -5,7 +5,8 @@ let msgCounter = 0;
 
 /**
  * Envia uma mensagem ao bot via webhook Evolution (simula uma mensagem WhatsApp real).
- * O webhook é síncrono — quando retorna 200 o bot já processou e o DB está atualizado.
+ * O webhook retorna 200 imediatamente (after()); o bot processa em background.
+ * Use getLastBotMessage() após esta chamada — ela faz polling até o DB ser atualizado (até 15s).
  */
 export async function sendBotMessage(
   request: APIRequestContext,

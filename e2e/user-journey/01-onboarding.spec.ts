@@ -336,6 +336,10 @@ test.describe('Fluxo completo de registro', () => {
       await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 5000 });
 
       await page.fill('#city', 'Dublin');
+
+      // Aceitar termos (obrigatório desde 3c4b31e)
+      await page.check('#terms');
+
       await page.click('button:has-text("Criar minha página")');
 
       // ─ Dashboard após registro ────────────────────────────────────────
