@@ -31,16 +31,41 @@ export async function proxy(request: NextRequest) {
   const intlResponse = intlMiddleware(request);
 
   // If next-intl is redirecting (locale prefix fix), honour it
+  // Attach Supabase cookies so the session survives the redirect
   if (intlResponse.status >= 300 && intlResponse.status < 400) {
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      intlResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
+    });
     return intlResponse;
   }
 
-  // 3. Merge: copy Supabase session cookies into the intl response so they reach the client
-  supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
-    intlResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
+  // 3. Build a combined response that forwards the full request context to server components.
+  //
+  // Problem: intlResponse is NextResponse.next() without { request }, so server components
+  // cannot read the request cookies via cookies() from next/headers — cookieCount = 0.
+  //
+  // Fix: create a new NextResponse.next({ request: { headers } }) that carries:
+  //   - all original request headers (including the Cookie header with auth tokens)
+  //   - any headers added by intlMiddleware (e.g. x-next-intl-locale)
+  // This makes cookies() in server components return the correct session cookies.
+  const requestHeaders = new Headers(request.headers);
+  intlResponse.headers.forEach((value, key) => {
+    requestHeaders.set(key, value);
   });
 
-  return intlResponse;
+  const combinedResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  // Copy Set-Cookie from both Supabase (auth token refresh) and intl (locale cookie)
+  supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+    combinedResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
+  });
+  intlResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+    combinedResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
+  });
+
+  return combinedResponse;
 }
 
 export const config = {
