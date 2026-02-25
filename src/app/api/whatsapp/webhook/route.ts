@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
 import { parseEvolutionPhone, sendEvolutionMessage } from '@/lib/whatsapp/evolution';
@@ -70,15 +70,17 @@ export async function POST(request: NextRequest) {
       const messageId = body.data.key.id;
 
       if (isAudio) {
-        // Respond politely — STT not yet implemented
-        try {
-          const config = await getEvolutionConfig(body.instance);
-          if (config) {
-            await sendEvolutionMessage(from, AUDIO_REPLY, config);
+        // Retornar 200 imediatamente; enviar resposta de áudio em background
+        after(async () => {
+          try {
+            const config = await getEvolutionConfig(body.instance);
+            if (config) {
+              await sendEvolutionMessage(from, AUDIO_REPLY, config);
+            }
+          } catch (audioErr) {
+            console.error('[webhook] Failed to send audio reply:', audioErr);
           }
-        } catch (audioErr) {
-          console.error('[webhook] Failed to send audio reply:', audioErr);
-        }
+        });
         return NextResponse.json({ status: 'ok' });
       }
 
@@ -86,7 +88,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: 'ok' });
       }
 
-      await processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
+      // Retornar 200 ANTES de processar — evita retries da Evolution API
+      // que causam loop de mensagens duplicadas quando o bot demora > 5s
+      after(async () => {
+        await processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
+      });
       return NextResponse.json({ status: 'ok' });
     }
 
@@ -107,7 +113,9 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ status: 'ok' });
         }
 
-        await processWhatsAppMessage(from, text, messageId, 'meta');
+        after(async () => {
+          await processWhatsAppMessage(from, text, messageId, 'meta');
+        });
       }
       return NextResponse.json({ status: 'ok' });
     }

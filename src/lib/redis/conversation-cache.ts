@@ -97,7 +97,8 @@ export class ConversationCache {
     const client = getRedis();
     if (!client) return true; // sem Redis: permite (risco baixo)
     try {
-      const result = await client.set(`greeting_lock:${cacheKey}`, '1', 'EX', 30, 'NX');
+      // TTL de 300s (5 min) para cobrir toda a janela de retry da Evolution/Meta
+      const result = await client.set(`greeting_lock:${cacheKey}`, '1', 'EX', 300, 'NX');
       return result === 'OK';
     } catch {
       return true; // em erro: permite

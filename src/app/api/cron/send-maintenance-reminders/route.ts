@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
 function detectLanguage(phone: string): 'pt' | 'en' {
-  if (phone.startsWith('+55') || phone.startsWith('+351')) return 'pt';
+  // Aceita com ou sem '+' (ex: '+5511...' e '5511...' são ambos Brasil)
+  const clean = phone.replace(/\D/g, '');
+  if (
+    phone.startsWith('+55') || phone.startsWith('+351') ||
+    clean.startsWith('55') || clean.startsWith('351')
+  ) return 'pt';
   return 'en';
 }
 
