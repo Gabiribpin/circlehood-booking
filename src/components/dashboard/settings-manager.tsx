@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight, Globe } from 'lucide-react';
+import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight, Globe, Trash2, Download } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/navigation';
@@ -35,6 +35,7 @@ export function SettingsManager({
   cancelled,
 }: SettingsManagerProps) {
   const t = useTranslations('settings');
+  const tAccount = useTranslations('account');
   const locale = useLocale();
   const router = useRouter();
   const [loadingCheckout, setLoadingCheckout] = useState(false);
@@ -47,6 +48,64 @@ export function SettingsManager({
   const [savingAccount, setSavingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
+
+  // Export data
+  const [exporting, setExporting] = useState(false);
+
+  // Account deletion
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0); // 0=hidden, 1=summary, 2=confirm
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const CONFIRM_WORD: Record<string, string> = {
+    'pt-BR': 'EXCLUIR',
+    'en-US': 'DELETE',
+    'es-ES': 'ELIMINAR',
+  };
+  const confirmWord = CONFIRM_WORD[locale] ?? 'EXCLUIR';
+
+  async function handleExportData() {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/account/export-data');
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `circlehood-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently fail — user will notice the missing download
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: deleteConfirmText, locale }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setDeleteError(data.error ?? tAccount('deleteError'));
+        return;
+      }
+      // Account deleted — redirect to home
+      window.location.href = '/';
+    } catch {
+      setDeleteError(tAccount('deleteError'));
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   async function handleSaveAccount() {
     if (!businessName.trim()) {
@@ -390,6 +449,113 @@ export function SettingsManager({
             )}
             {accountSaved ? t('saved') : t('saveChanges')}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Export Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Download className="h-4 w-4" />
+            {tAccount('exportTitle')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{tAccount('exportDesc')}</p>
+          <Button
+            variant="outline"
+            onClick={handleExportData}
+            disabled={exporting}
+            className="gap-2"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {exporting ? tAccount('exporting') : tAccount('exportBtn')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="border-red-200 bg-red-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-red-700">
+            <Trash2 className="h-4 w-4" />
+            {tAccount('dangerZone')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {deleteStep === 0 && (
+            <>
+              <p className="text-sm text-red-700">{tAccount('deleteWarning')}</p>
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteStep(1)}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                {tAccount('deleteBtn')}
+              </Button>
+            </>
+          )}
+
+          {deleteStep === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-red-700">{tAccount('confirmTitle')}</p>
+              <p className="text-sm text-muted-foreground">{tAccount('confirmText')}</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteStep(2)}
+                >
+                  {tAccount('confirmContinue')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteStep(0)}
+                >
+                  {tAccount('cancelDeletion')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {deleteStep === 2 && (
+            <div className="space-y-3">
+              <p className="text-sm text-red-700">
+                {tAccount('confirmInputLabel')} <strong>{confirmWord}</strong>:
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={confirmWord}
+                className="w-full border border-red-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              {deleteError && (
+                <p className="text-sm text-red-600">{deleteError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading || deleteConfirmText.trim().toUpperCase() !== confirmWord}
+                  className="gap-2"
+                >
+                  {deleteLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {tAccount('confirmBtn')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => { setDeleteStep(0); setDeleteConfirmText(''); setDeleteError(null); }}
+                >
+                  {tAccount('cancelDeletion')}
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

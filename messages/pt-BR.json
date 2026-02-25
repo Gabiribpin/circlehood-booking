@@ -37,7 +37,9 @@
     "language": "Idioma",
     "viewPublicPage": "Ver minha página pública",
     "logout": "Sair",
-    "support": "Suporte"
+    "support": "Suporte",
+    "deletionBanner": "⚠️ Sua conta será excluída permanentemente em {date}.",
+    "cancelDeletion": "Cancelar exclusão"
   },
   "auth": {
     "login": "Entrar",
@@ -783,6 +785,23 @@
     "cronHistory": "Histórico de Cron Jobs",
     "processed": "{count} processados",
     "notificationsHistory": "Histórico de Notificações"
+  },
+  "account": {
+    "exportTitle": "Exportar meus dados",
+    "exportDesc": "Baixe uma cópia de todos os seus dados em formato JSON (GDPR Art. 20).",
+    "exportBtn": "Baixar meus dados",
+    "exporting": "Gerando arquivo...",
+    "dangerZone": "Zona de Perigo",
+    "deleteAccount": "Excluir minha conta",
+    "deleteWarning": "Esta ação é irreversível. Todos os seus dados serão excluídos permanentemente após 30 dias. Sua página pública será desativada imediatamente.",
+    "deleteBtn": "Solicitar exclusão da conta",
+    "confirmTitle": "Tem certeza?",
+    "confirmText": "Ao confirmar, sua página pública será desativada e seus dados serão apagados permanentemente em 30 dias. Sua assinatura será cancelada.",
+    "confirmContinue": "Entendo, quero continuar",
+    "confirmInputLabel": "Para confirmar, digite",
+    "confirmBtn": "Confirmar exclusão definitiva",
+    "cancelDeletion": "Cancelar",
+    "deleteError": "Erro ao processar exclusão. Tente novamente."
   },
   "legal": {
     "backHome": "Voltar ao início",

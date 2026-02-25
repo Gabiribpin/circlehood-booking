@@ -37,7 +37,9 @@
     "language": "Idioma",
     "viewPublicPage": "Ver mi página pública",
     "logout": "Cerrar Sesión",
-    "support": "Soporte"
+    "support": "Soporte",
+    "deletionBanner": "⚠️ Tu cuenta será eliminada permanentemente el {date}.",
+    "cancelDeletion": "Cancelar eliminación"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -783,6 +785,23 @@
     "cronHistory": "Historial de Cron Jobs",
     "processed": "{count} procesados",
     "notificationsHistory": "Historial de Notificaciones"
+  },
+  "account": {
+    "exportTitle": "Exportar mis datos",
+    "exportDesc": "Descarga una copia de todos tus datos en formato JSON (RGPD Art. 20).",
+    "exportBtn": "Descargar mis datos",
+    "exporting": "Generando archivo...",
+    "dangerZone": "Zona de Peligro",
+    "deleteAccount": "Eliminar mi cuenta",
+    "deleteWarning": "Esta acción es irreversible. Todos tus datos serán eliminados permanentemente después de 30 días. Tu página pública será desactivada inmediatamente.",
+    "deleteBtn": "Solicitar eliminación de cuenta",
+    "confirmTitle": "¿Estás seguro?",
+    "confirmText": "Al confirmar, tu página pública será desactivada y tus datos se eliminarán permanentemente en 30 días. Tu suscripción será cancelada.",
+    "confirmContinue": "Entiendo, quiero continuar",
+    "confirmInputLabel": "Para confirmar, escribe",
+    "confirmBtn": "Confirmar eliminación definitiva",
+    "cancelDeletion": "Cancelar",
+    "deleteError": "Error al procesar la eliminación. Inténtalo de nuevo."
   },
   "legal": {
     "backHome": "Volver al inicio",

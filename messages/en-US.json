@@ -37,7 +37,9 @@
     "language": "Language",
     "viewPublicPage": "View my public page",
     "logout": "Log Out",
-    "support": "Support"
+    "support": "Support",
+    "deletionBanner": "⚠️ Your account will be permanently deleted on {date}.",
+    "cancelDeletion": "Cancel deletion"
   },
   "auth": {
     "login": "Log In",
@@ -783,6 +785,23 @@
     "cronHistory": "Cron Job History",
     "processed": "{count} processed",
     "notificationsHistory": "Notification History"
+  },
+  "account": {
+    "exportTitle": "Export my data",
+    "exportDesc": "Download a copy of all your data in JSON format (GDPR Art. 20).",
+    "exportBtn": "Download my data",
+    "exporting": "Generating file...",
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete my account",
+    "deleteWarning": "This action is irreversible. All your data will be permanently deleted after 30 days. Your public page will be deactivated immediately.",
+    "deleteBtn": "Request account deletion",
+    "confirmTitle": "Are you sure?",
+    "confirmText": "By confirming, your public page will be deactivated and your data will be permanently deleted in 30 days. Your subscription will be cancelled.",
+    "confirmContinue": "I understand, continue",
+    "confirmInputLabel": "To confirm, type",
+    "confirmBtn": "Confirm permanent deletion",
+    "cancelDeletion": "Cancel",
+    "deleteError": "Error processing deletion. Please try again."
   },
   "legal": {
     "backHome": "Back to home",

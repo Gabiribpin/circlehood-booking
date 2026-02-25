@@ -71,7 +71,7 @@ export default async function DashboardLayout({
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('business_name, slug')
+    .select('business_name, slug, deleted_at, deletion_scheduled_for')
     .eq('user_id', user.id)
     .single();
 
@@ -146,6 +146,26 @@ export default async function DashboardLayout({
         <MobileNav professionalSlug={professional?.slug} />
 
         <GuidedTour />
+
+        {/* Deletion pending banner */}
+        {professional?.deleted_at && professional?.deletion_scheduled_for && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm text-yellow-800">
+              ⚠️ {t('deletionBanner', {
+                date: new Date(professional.deletion_scheduled_for).toLocaleDateString('pt-BR'),
+              })}
+            </p>
+            <form action="/api/account/cancel-deletion" method="POST">
+              <button
+                type="submit"
+                className="text-xs text-yellow-900 underline hover:no-underline whitespace-nowrap"
+              >
+                {t('cancelDeletion')}
+              </button>
+            </form>
+          </div>
+        )}
+
         <main className="flex-1 p-4 sm:p-6 md:p-8 pb-20 md:pb-8">
           {children}
         </main>
