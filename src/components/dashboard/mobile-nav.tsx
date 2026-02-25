@@ -19,6 +19,7 @@ import {
   Settings,
   LogOut,
   Phone,
+  LifeBuoy,
 } from 'lucide-react';
 import {
   Sheet,
@@ -61,6 +62,7 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
     { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
     { href: '/whatsapp-config' as const, label: t('whatsapp'), icon: Phone },
     { href: '/settings' as const, label: t('settings'), icon: Settings },
+    { href: '/support' as const, label: t('support'), icon: LifeBuoy },
   ];
 
   return (
