@@ -34,36 +34,38 @@ test.describe('GDPR Art. 20 — Exportação de Dados', () => {
     await expect(downloadBtn).toBeEnabled();
   });
 
-  test('clicar "Baixar meus dados" → API /api/account/export-data responde com JSON', async ({ page }) => {
+  test('API /api/account/export-data responde com JSON válido', async ({ page }) => {
+    // Navegar para /settings para estabelecer sessão autenticada (cookies)
     await page.goto(`${BASE}/settings`);
     await expect(page.getByRole('heading', { name: 'Configurações' })).toBeVisible({ timeout: 15_000 });
 
-    // Interceptar a chamada à API de exportação
-    const [response] = await Promise.all([
-      page.waitForResponse(
-        (resp) => resp.url().includes('/api/account/export-data'),
-        { timeout: 30_000 }
-      ),
-      page.getByRole('button', { name: /baixar meus dados/i }).click(),
-    ]);
+    // Chamar a API diretamente via fetch no contexto autenticado da página.
+    // Nota: page.waitForResponse + response.json() NÃO funciona para respostas com
+    // Content-Disposition: attachment — o Playwright não expõe o body de downloads.
+    const result = await page.evaluate(async () => {
+      try {
+        const res = await fetch('/api/account/export-data');
+        const body = await res.json().catch(() => null);
+        return {
+          status: res.status,
+          contentType: res.headers.get('content-type') ?? '',
+          body,
+        };
+      } catch {
+        return { status: 0, contentType: '', body: null };
+      }
+    });
 
-    // API deve retornar 200
-    expect(response.status()).toBe(200);
-
-    // Content-Type deve ser application/json
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    // Verificar estrutura mínima do JSON
-    const body = await response.json().catch(() => null);
-    expect(body).not.toBeNull();
-    expect(body).toHaveProperty('exported_at');
-    expect(body).toHaveProperty('professional');
-    expect(body).toHaveProperty('services');
-    expect(body).toHaveProperty('bookings');
+    expect(result.status).toBe(200);
+    expect(result.contentType).toContain('application/json');
+    expect(result.body).not.toBeNull();
+    expect(result.body).toHaveProperty('exported_at');
+    expect(result.body).toHaveProperty('professional');
+    expect(result.body).toHaveProperty('services');
+    expect(result.body).toHaveProperty('bookings');
 
     // Dados sensíveis de Stripe NÃO devem estar no export
-    const bodyStr = JSON.stringify(body);
+    const bodyStr = JSON.stringify(result.body);
     expect(bodyStr).not.toContain('stripe_customer_id');
     expect(bodyStr).not.toContain('stripe_subscription_id');
   });
