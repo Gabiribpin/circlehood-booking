@@ -1,17 +1,21 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { GalleryManager } from './gallery-manager';
 
-export async function generateMetadata() {
-  const t = await getTranslations('gallery');
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'gallery' });
   return {
     title: `${t('title')} | CircleHood Booking`,
     description: t('subtitle'),
   };
 }
 
-export default async function GalleryPage() {
+export default async function GalleryPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const supabase = await createClient();
 
   // Auth check

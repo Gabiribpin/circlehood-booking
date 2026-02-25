@@ -98,6 +98,9 @@ export function SettingsManager({
       // If locale changed, redirect to new locale path after brief confirmation
       setTimeout(() => {
         setAccountSaved(false);
+        // Update NEXT_LOCALE cookie so the next-intl middleware uses the new locale
+        // on hard reload (especially important for pt-BR where URL has no prefix)
+        document.cookie = `NEXT_LOCALE=${selectedLocale}; path=/; max-age=31536000; SameSite=Lax`;
         router.replace('/settings', { locale: selectedLocale });
       }, 1500);
     } catch (err: any) {
