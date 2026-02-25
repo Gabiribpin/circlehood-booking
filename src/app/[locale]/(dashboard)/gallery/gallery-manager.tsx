@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,20 +29,10 @@ interface GalleryManagerProps {
   initialImages: GalleryImage[];
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  hair: 'Cabelo',
-  nails: 'Unhas',
-  makeup: 'Maquiagem',
-  skincare: 'Skincare',
-  other: 'Outro',
-};
-
-function getCategoryLabel(category?: string): string {
-  if (!category) return '';
-  return CATEGORY_LABELS[category] ?? category;
-}
-
 export function GalleryManager({ professionalId, initialImages }: GalleryManagerProps) {
+  const t = useTranslations('gallery');
+  const tc = useTranslations('common');
+
   const [images, setImages] = useState<GalleryImage[]>(initialImages);
   const [uploading, setUploading] = useState(false);
   const [editingImage, setEditingImage] = useState<GalleryImage | null>(null);
@@ -56,6 +47,19 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
     description: '',
     category: 'other',
   });
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    hair: t('categoryHair'),
+    nails: t('categoryNails'),
+    makeup: t('categoryMakeup'),
+    skincare: t('categorySkincare'),
+    other: t('categoryOther'),
+  };
+
+  function getCategoryLabel(category?: string): string {
+    if (!category) return '';
+    return CATEGORY_LABELS[category] ?? category;
+  }
 
   // Sync edit category state when opening edit dialog
   useEffect(() => {
@@ -83,8 +87,8 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       setImages((prev) => [...prev, image]);
 
       toast({
-        title: 'Sucesso!',
-        description: 'Imagem adicionada à galeria',
+        title: tc('success'),
+        description: t('imageAdded'),
       });
 
       setShowUploadDialog(false);
@@ -93,8 +97,8 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       form.reset();
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao fazer upload',
+        title: tc('error'),
+        description: t('uploadError'),
         variant: 'destructive',
       });
     } finally {
@@ -103,7 +107,7 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
   };
 
   const handleDelete = async (imageId: string) => {
-    if (!confirm('Tem certeza que deseja deletar esta imagem?')) return;
+    if (!confirm(t('confirmDelete'))) return;
 
     try {
       const response = await fetch(`/api/gallery?id=${imageId}`, {
@@ -115,13 +119,13 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       setImages((prev) => prev.filter((img) => img.id !== imageId));
 
       toast({
-        title: 'Sucesso!',
-        description: 'Imagem removida da galeria',
+        title: tc('success'),
+        description: t('imageRemoved'),
       });
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao deletar imagem',
+        title: tc('error'),
+        description: t('deleteError'),
         variant: 'destructive',
       });
     }
@@ -152,15 +156,15 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       setImages((prev) => prev.map((img) => (img.id === image.id ? image : img)));
 
       toast({
-        title: 'Sucesso!',
-        description: 'Imagem atualizada',
+        title: tc('success'),
+        description: t('imageUpdated'),
       });
 
       setEditingImage(null);
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao atualizar imagem',
+        title: tc('error'),
+        description: t('updateError'),
         variant: 'destructive',
       });
     }
@@ -171,7 +175,7 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({
         url,
-        title: image.title ?? 'Meu trabalho',
+        title: image.title ?? t('myWork'),
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url).then(() => {
@@ -186,15 +190,13 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       {/* Upload Button */}
       <Card>
         <CardHeader>
-          <CardTitle>Adicionar Fotos</CardTitle>
-          <CardDescription>
-            Faça upload de fotos dos seus trabalhos ou crie comparações antes/depois
-          </CardDescription>
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <CardDescription>{t('cardDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={() => setShowUploadDialog(true)}>
             <ImagePlus className="w-4 h-4 mr-2" />
-            Adicionar Nova Foto
+            {t('addNewPhoto')}
           </Button>
         </CardContent>
       </Card>
@@ -230,7 +232,7 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                       className="flex-1"
                     >
                       <Edit className="w-4 h-4 mr-1" />
-                      Editar
+                      {tc('edit')}
                     </Button>
                     <Button
                       size="sm"
@@ -260,8 +262,8 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       ) : (
         <Card className="p-12 text-center">
           <ImagePlus className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">Nenhuma foto na galeria ainda</p>
-          <Button onClick={() => setShowUploadDialog(true)}>Adicionar Primeira Foto</Button>
+          <p className="text-muted-foreground mb-4">{t('noPhotos')}</p>
+          <Button onClick={() => setShowUploadDialog(true)}>{t('addFirstPhoto')}</Button>
         </Card>
       )}
 
@@ -269,10 +271,8 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Adicionar Foto à Galeria</DialogTitle>
-            <DialogDescription>
-              Faça upload de uma foto ou crie uma comparação antes/depois
-            </DialogDescription>
+            <DialogTitle>{t('dialogTitle')}</DialogTitle>
+            <DialogDescription>{t('dialogDesc')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleUpload} className="space-y-4">
@@ -282,14 +282,14 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                 variant={!isBeforeAfter ? 'default' : 'outline'}
                 onClick={() => setIsBeforeAfter(false)}
               >
-                Foto Simples
+                {t('simplePhoto')}
               </Button>
               <Button
                 type="button"
                 variant={isBeforeAfter ? 'default' : 'outline'}
                 onClick={() => setIsBeforeAfter(true)}
               >
-                Before/After
+                {t('beforeAfter')}
               </Button>
             </div>
 
@@ -301,11 +301,11 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
             ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="beforeFile">Foto Antes</Label>
+                  <Label htmlFor="beforeFile">{t('photoBefore')}</Label>
                   <Input id="beforeFile" name="beforeFile" type="file" accept="image/*" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="afterFile">Foto Depois</Label>
+                  <Label htmlFor="afterFile">{t('photoAfter')}</Label>
                   <Input id="afterFile" name="afterFile" type="file" accept="image/*" required />
                 </div>
               </div>
@@ -314,29 +314,29 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
             <input type="hidden" name="isBeforeAfter" value={isBeforeAfter ? 'true' : 'false'} />
 
             <div className="space-y-2">
-              <Label htmlFor="title">Título (opcional)</Label>
+              <Label htmlFor="title">{t('titleOptional')}</Label>
               <Input
                 id="title"
                 name="title"
-                placeholder="Ex: Corte e coloração"
+                placeholder={t('titlePlaceholder')}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição (opcional)</Label>
+              <Label htmlFor="description">{t('descriptionOptional')}</Label>
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Descreva o trabalho..."
+                placeholder={t('descriptionPlaceholder')}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
+              <Label htmlFor="category">{t('category')}</Label>
               <Select
                 name="category"
                 value={formData.category}
@@ -346,11 +346,11 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hair">Cabelo</SelectItem>
-                  <SelectItem value="nails">Unhas</SelectItem>
-                  <SelectItem value="makeup">Maquiagem</SelectItem>
-                  <SelectItem value="skincare">Skincare</SelectItem>
-                  <SelectItem value="other">Outro</SelectItem>
+                  <SelectItem value="hair">{t('categoryHair')}</SelectItem>
+                  <SelectItem value="nails">{t('categoryNails')}</SelectItem>
+                  <SelectItem value="makeup">{t('categoryMakeup')}</SelectItem>
+                  <SelectItem value="skincare">{t('categorySkincare')}</SelectItem>
+                  <SelectItem value="other">{t('categoryOther')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -360,17 +360,17 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                 {uploading ? (
                   <>
                     <Upload className="w-4 h-4 mr-2 animate-spin" />
-                    Enviando...
+                    {t('uploading')}
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Fazer Upload
+                    {t('uploadBtn')}
                   </>
                 )}
               </Button>
               <Button type="button" variant="outline" onClick={() => setShowUploadDialog(false)}>
-                Cancelar
+                {tc('cancel')}
               </Button>
             </div>
           </form>
@@ -382,32 +382,32 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
         <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Editar Foto</DialogTitle>
+              <DialogTitle>{t('editPhoto')}</DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Título</Label>
+                <Label htmlFor="edit-title">{t('titleOptional')}</Label>
                 <Input
                   id="edit-title"
                   name="title"
                   defaultValue={editingImage.title || ''}
-                  placeholder="Ex: Corte e coloração"
+                  placeholder={t('titlePlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-description">Descrição</Label>
+                <Label htmlFor="edit-description">{t('descriptionOptional')}</Label>
                 <Textarea
                   id="edit-description"
                   name="description"
                   defaultValue={editingImage.description || ''}
-                  placeholder="Descreva o trabalho..."
+                  placeholder={t('descriptionPlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Categoria</Label>
+                <Label htmlFor="edit-category">{t('category')}</Label>
                 <Select
                   value={editCategory}
                   onValueChange={setEditCategory}
@@ -416,21 +416,21 @@ export function GalleryManager({ professionalId, initialImages }: GalleryManager
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="hair">Cabelo</SelectItem>
-                    <SelectItem value="nails">Unhas</SelectItem>
-                    <SelectItem value="makeup">Maquiagem</SelectItem>
-                    <SelectItem value="skincare">Skincare</SelectItem>
-                    <SelectItem value="other">Outro</SelectItem>
+                    <SelectItem value="hair">{t('categoryHair')}</SelectItem>
+                    <SelectItem value="nails">{t('categoryNails')}</SelectItem>
+                    <SelectItem value="makeup">{t('categoryMakeup')}</SelectItem>
+                    <SelectItem value="skincare">{t('categorySkincare')}</SelectItem>
+                    <SelectItem value="other">{t('categoryOther')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button type="submit" className="flex-1">
-                  Salvar
+                  {tc('save')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setEditingImage(null)}>
-                  Cancelar
+                  {tc('cancel')}
                 </Button>
               </div>
             </form>

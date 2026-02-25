@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,11 +16,14 @@ import { cn } from '@/lib/utils';
 import { exportOverviewToCSV } from '@/lib/analytics/export-csv';
 
 // ─── Lazy loading — recharts é ~350KB gzipped; só carrega quando a aba é vista ──
-const ChartFallback = ({ height = 400 }: { height?: number }) => (
-  <div className={`h-[${height}px] flex items-center justify-center`}>
-    <p className="text-muted-foreground text-sm">Carregando...</p>
-  </div>
-);
+const ChartFallback = ({ height = 400 }: { height?: number }) => {
+  const t = useTranslations('analytics');
+  return (
+    <div className={`h-[${height}px] flex items-center justify-center`}>
+      <p className="text-muted-foreground text-sm">{t('loading')}</p>
+    </div>
+  );
+};
 
 const RevenueChart = dynamic(
   () => import('@/components/analytics/revenue-chart').then((m) => ({ default: m.RevenueChart })),
@@ -46,6 +50,7 @@ type PeriodType = 'day' | 'week' | 'month' | 'year' | 'custom';
 const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
 
 export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashboardProps) {
+  const t = useTranslations('analytics');
   const [period, setPeriod] = useState<PeriodType>('month');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
@@ -80,14 +85,14 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
         <div className="flex gap-2 items-center">
           <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecionar período" />
+              <SelectValue placeholder={t('selectPeriod')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="day">Hoje</SelectItem>
-              <SelectItem value="week">Últimos 7 dias</SelectItem>
-              <SelectItem value="month">Últimos 30 dias</SelectItem>
-              <SelectItem value="year">Último ano</SelectItem>
-              <SelectItem value="custom">Período customizado</SelectItem>
+              <SelectItem value="day">{t('today')}</SelectItem>
+              <SelectItem value="week">{t('last7days')}</SelectItem>
+              <SelectItem value="month">{t('last30days')}</SelectItem>
+              <SelectItem value="year">{t('lastYear')}</SelectItem>
+              <SelectItem value="custom">{t('custom')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -103,7 +108,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, 'PPP') : 'Data inicial'}
+                    {startDate ? format(startDate, 'PPP') : t('startDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -121,7 +126,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, 'PPP') : 'Data final'}
+                    {endDate ? format(endDate, 'PPP') : t('endDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -134,7 +139,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
 
         <Button onClick={handleExportCSV} variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />
-          Exportar CSV
+          {t('exportCSV')}
         </Button>
       </div>
 
@@ -142,7 +147,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -157,7 +162,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agendamentos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('bookingsCard')}</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -165,27 +170,27 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
               {overviewLoading ? '...' : overview?.totalBookings || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {overview?.confirmedBookings || 0} confirmados
+              {t('confirmedBookings', { count: overview?.confirmedBookings || 0 })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('avgTicket')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {overviewLoading ? '...' : `${currencySymbol} ${overview?.averageTicket?.toFixed(2) || '0.00'}`}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Por agendamento confirmado</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('perBooking')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Únicos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('uniqueClients')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -193,7 +198,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
               {overviewLoading ? '...' : overview?.uniqueClients || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {overview?.cancelledRate?.toFixed(1) || 0}% taxa de cancelamento
+              {t('cancellationRate', { rate: overview?.cancelledRate?.toFixed(1) || '0' })}
             </p>
           </CardContent>
         </Card>
@@ -202,16 +207,16 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
       {/* Tabs for different views */}
       <Tabs defaultValue="revenue" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="revenue">Receita</TabsTrigger>
-          <TabsTrigger value="services">Serviços</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
+          <TabsTrigger value="revenue">{t('revenueTab')}</TabsTrigger>
+          <TabsTrigger value="services">{t('servicesTab')}</TabsTrigger>
+          <TabsTrigger value="clients">{t('clientsTab')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Receita ao longo do tempo</CardTitle>
-              <CardDescription>Receita diária e tendências</CardDescription>
+              <CardTitle>{t('revenueTitle')}</CardTitle>
+              <CardDescription>{t('revenueDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <RevenueChart period={period} startDate={startDate} endDate={endDate} currency={currency} />
@@ -222,8 +227,8 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
         <TabsContent value="services" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Performance dos Serviços</CardTitle>
-              <CardDescription>Serviços mais rentáveis</CardDescription>
+              <CardTitle>{t('servicesTitle')}</CardTitle>
+              <CardDescription>{t('servicesDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ServicesRanking period={period} startDate={startDate} endDate={endDate} currency={currency} />
@@ -234,8 +239,8 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
         <TabsContent value="clients" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Análise de Clientes</CardTitle>
-              <CardDescription>Segmentação e engajamento</CardDescription>
+              <CardTitle>{t('clientsTitle')}</CardTitle>
+              <CardDescription>{t('clientsDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ClientsOverview currency={currency} />

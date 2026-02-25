@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ const DEFAULT_CONFIG: BotConfig = {
 };
 
 export function BotConfigPanel() {
+  const t = useTranslations('bot');
   const [config, setConfig] = useState<BotConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,7 @@ export function BotConfigPanel() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setMessage({ type: 'error', text: 'Utilizador não autenticado.' });
+      setMessage({ type: 'error', text: t('notAuthenticated') });
       setSaving(false);
       return;
     }
@@ -67,54 +69,54 @@ export function BotConfigPanel() {
       }, { onConflict: 'user_id' });
 
     if (error) {
-      setMessage({ type: 'error', text: `Erro: ${error.message}` });
+      setMessage({ type: 'error', text: t('saveError', { message: error.message }) });
     } else {
-      setMessage({ type: 'success', text: '✅ Configuração do bot salva!' });
+      setMessage({ type: 'success', text: t('saveSuccess') });
       setTimeout(() => setMessage(null), 5000);
     }
     setSaving(false);
   }
 
   if (loading) {
-    return <p className="text-sm text-gray-400 py-4">A carregar configuração do bot...</p>;
+    return <p className="text-sm text-gray-400 py-4">{t('loading')}</p>;
   }
 
   return (
     <div className="space-y-6 pt-4 border-t mt-6">
-      <h3 className="text-lg font-semibold">🤖 Personalidade do Bot</h3>
+      <h3 className="text-lg font-semibold">{t('personalityTitle')}</h3>
 
       <div className="space-y-4">
         <div>
           <Label htmlFor="bot_name">
-            Nome do bot
-            <span className="ml-2 text-xs text-gray-500 font-normal">(opcional)</span>
+            {t('nameLabel')}
+            <span className="ml-2 text-xs text-gray-500 font-normal">({t('nameOptional')})</span>
           </Label>
           <Input
             id="bot_name"
-            placeholder="Ex: Sofia, Maria, Assistente..."
+            placeholder={t('namePlaceholder')}
             value={config.bot_name}
             onChange={(e) => setConfig({ ...config, bot_name: e.target.value })}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Como o bot se apresenta.{' '}
+            {t('nameHint')}{' '}
             {!config.bot_name && (
               <span className="text-blue-600">
-                (Atualmente usando nome do negócio como padrão)
+                ({t('nameDefault')})
               </span>
             )}
           </p>
         </div>
 
         <div>
-          <Label htmlFor="bot_personality">Personalidade</Label>
+          <Label htmlFor="bot_personality">{t('personalityLabel')}</Label>
           <select
             id="bot_personality"
             value={config.bot_personality}
             onChange={(e) => setConfig({ ...config, bot_personality: e.target.value as BotConfig['bot_personality'] })}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="friendly">😊 Amigável — tom caloroso, emojis moderados</option>
-            <option value="professional">💼 Profissional — tom formal, sem emojis</option>
+            <option value="friendly">{t('personalityFriendly')}</option>
+            <option value="professional">{t('personalityProfessional')}</option>
           </select>
         </div>
       </div>
@@ -130,7 +132,7 @@ export function BotConfigPanel() {
       )}
 
       <Button onClick={handleSave} disabled={saving} className="w-full">
-        {saving ? 'A salvar...' : 'Salvar Configuração'}
+        {saving ? t('saving') : t('saveBtn')}
       </Button>
     </div>
   );

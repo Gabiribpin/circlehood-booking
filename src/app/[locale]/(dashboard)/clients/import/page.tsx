@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useId, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,12 +62,10 @@ function parseCSV(text: string): Omit<ParsedRow, 'isDuplicate'>[] {
     // Normalizar data de aniversário: aceita YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
     let birthday = birthdayCol >= 0 ? cols[birthdayCol] || '' : '';
     if (birthday) {
-      // DD/MM/YYYY → YYYY-MM-DD
       const dmyMatch = birthday.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
       if (dmyMatch) {
         birthday = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
       }
-      // Validar formato final
       if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) birthday = '';
     }
 
@@ -86,6 +85,8 @@ function parseCSV(text: string): Omit<ParsedRow, 'isDuplicate'>[] {
 export default function ImportCSVPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('clients');
+  const tc = useTranslations('common');
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +98,6 @@ export default function ImportCSVPage() {
   const [fileName, setFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
-  // Auth + carregar phones existentes
   useEffect(() => {
     async function init() {
       const supabase = createClient();
@@ -124,7 +124,7 @@ export default function ImportCSVPage() {
 
   function processFile(file: File) {
     if (!file.name.endsWith('.csv')) {
-      toast({ title: 'Arquivo inválido', description: 'Selecione um arquivo .csv', variant: 'destructive' });
+      toast({ title: t('invalidFile'), description: t('invalidFileDesc'), variant: 'destructive' });
       return;
     }
     setFileName(file.name);
@@ -170,7 +170,7 @@ export default function ImportCSVPage() {
 
     const newRows = rows.filter((r) => !r.isDuplicate);
     if (newRows.length === 0) {
-      toast({ title: 'Nenhum contato novo', description: 'Todos os contatos já existem.' });
+      toast({ title: t('noNewContacts'), description: t('allExist') });
       return;
     }
 
@@ -191,13 +191,13 @@ export default function ImportCSVPage() {
     setImporting(false);
 
     if (error) {
-      toast({ title: 'Erro ao importar', description: error.message, variant: 'destructive' });
+      toast({ title: t('importError'), description: error.message, variant: 'destructive' });
       return;
     }
 
     toast({
-      title: 'Importação concluída!',
-      description: `${newRows.length} contato${newRows.length !== 1 ? 's' : ''} importado${newRows.length !== 1 ? 's' : ''}.`,
+      title: t('importDone'),
+      description: t('importedDesc', { count: newRows.length }),
     });
     router.push('/clients?tab=manage');
   }
@@ -209,30 +209,28 @@ export default function ImportCSVPage() {
     <div className="container mx-auto p-4 md:p-6 max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => router.push('/clients?tab=manage')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+          <ArrowLeft className="h-4 w-4 mr-1" /> {tc('back')}
         </Button>
-        <h1 className="text-2xl font-bold">Importar Contatos via CSV</h1>
+        <h1 className="text-2xl font-bold">{t('importTitle')}</h1>
       </div>
 
       {/* Instruções */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" /> Como preparar seu arquivo
+            <FileText className="h-5 w-5" /> {t('importHowTo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            O arquivo CSV deve ter uma linha de cabeçalho com os nomes das colunas. Colunas suportadas:
-          </p>
+          <p className="text-sm text-muted-foreground">{t('importCSVDesc')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
             <div className="bg-muted rounded-md p-3 space-y-1">
-              <p className="font-medium">Obrigatórias</p>
+              <p className="font-medium">{t('requiredCols')}</p>
               <p className="text-muted-foreground"><code>nome</code> — nome do contato</p>
               <p className="text-muted-foreground"><code>telefone</code> — com código do país (+55, +353...)</p>
             </div>
             <div className="bg-muted rounded-md p-3 space-y-1">
-              <p className="font-medium">Opcionais</p>
+              <p className="font-medium">{t('optionalCols')}</p>
               <p className="text-muted-foreground"><code>email</code></p>
               <p className="text-muted-foreground"><code>aniversario</code> — formato DD/MM/AAAA ou AAAA-MM-DD</p>
               <p className="text-muted-foreground"><code>notas</code></p>
@@ -240,7 +238,7 @@ export default function ImportCSVPage() {
           </div>
           <Button variant="outline" size="sm" asChild>
             <a href="/templates/contatos-template.csv" download>
-              <Download className="mr-2 h-4 w-4" /> Baixar template CSV
+              <Download className="mr-2 h-4 w-4" /> {t('downloadTemplate')}
             </a>
           </Button>
         </CardContent>
@@ -249,7 +247,7 @@ export default function ImportCSVPage() {
       {/* Upload — drag & drop */}
       <Card>
         <CardHeader>
-          <CardTitle>1. Selecionar arquivo</CardTitle>
+          <CardTitle>1. {t('step1')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <input
@@ -261,7 +259,6 @@ export default function ImportCSVPage() {
             onChange={handleFileChange}
           />
 
-          {/* Zona de drag & drop */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -277,20 +274,20 @@ export default function ImportCSVPage() {
           >
             <Upload className={`mx-auto h-8 w-8 mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
             {isDragging ? (
-              <p className="text-sm font-medium text-primary">Solte o arquivo aqui</p>
+              <p className="text-sm font-medium text-primary">{t('dropHere')}</p>
             ) : (
               <>
                 <p className="text-sm font-medium">
-                  {fileName ? `Arquivo: ${fileName}` : 'Arraste um arquivo CSV ou clique para selecionar'}
+                  {fileName ? t('fileSelected', { name: fileName }) : t('dropOrClick')}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Apenas arquivos .csv</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('onlyCsv')}</p>
               </>
             )}
           </div>
 
           {rows.length > 0 && (
             <Button variant="ghost" size="sm" onClick={() => { setRows([]); setFileName(''); }}>
-              Limpar e escolher outro arquivo
+              {t('clearFile')}
             </Button>
           )}
         </CardContent>
@@ -301,14 +298,14 @@ export default function ImportCSVPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>2. Preview — {rows.length} linha{rows.length !== 1 ? 's' : ''} encontrada{rows.length !== 1 ? 's' : ''}</CardTitle>
+              <CardTitle>2. Preview — {t('previewTitle', { count: rows.length })}</CardTitle>
               <CardDescription className="flex gap-4">
                 <span className="text-green-600 flex items-center gap-1">
-                  <CheckCircle className="h-3.5 w-3.5" /> {newCount} novo{newCount !== 1 ? 's' : ''}
+                  <CheckCircle className="h-3.5 w-3.5" /> {t('newCount', { count: newCount })}
                 </span>
                 {dupCount > 0 && (
                   <span className="text-yellow-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5" /> {dupCount} duplicata{dupCount !== 1 ? 's' : ''} (serão ignoradas)
+                    <AlertTriangle className="h-3.5 w-3.5" /> {t('dupCount', { count: dupCount })}
                   </span>
                 )}
               </CardDescription>
@@ -318,11 +315,11 @@ export default function ImportCSVPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Aniversário</TableHead>
+                      <TableHead>{t('colStatus')}</TableHead>
+                      <TableHead>{t('colName')}</TableHead>
+                      <TableHead>{t('colPhone')}</TableHead>
+                      <TableHead>{t('colEmail')}</TableHead>
+                      <TableHead>{t('colBirthday')}</TableHead>
                       <TableHead>Notas</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -332,11 +329,11 @@ export default function ImportCSVPage() {
                         <TableCell>
                           {row.isDuplicate ? (
                             <span className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
-                              <AlertTriangle className="h-3.5 w-3.5" /> Duplicata
+                              <AlertTriangle className="h-3.5 w-3.5" /> {t('statusDuplicate')}
                             </span>
                           ) : (
                             <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
-                              <CheckCircle className="h-3.5 w-3.5" /> Novo
+                              <CheckCircle className="h-3.5 w-3.5" /> {t('statusNew')}
                             </span>
                           )}
                         </TableCell>
@@ -358,7 +355,7 @@ export default function ImportCSVPage() {
           {/* Config + Importar */}
           <Card>
             <CardHeader>
-              <CardTitle>3. Configurar e importar</CardTitle>
+              <CardTitle>3. {t('step3')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-3">
@@ -368,11 +365,9 @@ export default function ImportCSVPage() {
                   onCheckedChange={setUseBotForAll}
                 />
                 <Label htmlFor="use-bot-all" className="cursor-pointer">
-                  <span className="font-medium">Ativar bot para todos os contatos importados</span>
+                  <span className="font-medium">{t('botSwitchLabel')}</span>
                   <p className="text-sm text-muted-foreground">
-                    {useBotForAll
-                      ? 'A Rita vai responder automaticamente a esses contatos'
-                      : 'Bot desativado — esses contatos não receberão respostas automáticas'}
+                    {useBotForAll ? t('botSwitchOn') : t('botSwitchOff')}
                   </p>
                 </Label>
               </div>
@@ -382,17 +377,15 @@ export default function ImportCSVPage() {
                   onClick={handleImport}
                   disabled={importing || newCount === 0}
                 >
-                  {importing ? 'Importando...' : `Importar ${newCount} contato${newCount !== 1 ? 's' : ''}`}
+                  {importing ? t('importing') : t('importBtn', { count: newCount })}
                 </Button>
                 <Button variant="outline" onClick={() => router.push('/clients?tab=manage')}>
-                  Cancelar
+                  {tc('cancel')}
                 </Button>
               </div>
 
               {newCount === 0 && (
-                <p className="text-sm text-yellow-600">
-                  Todos os contatos do arquivo já existem na sua base.
-                </p>
+                <p className="text-sm text-yellow-600">{t('allDuplicates')}</p>
               )}
             </CardContent>
           </Card>
@@ -405,7 +398,6 @@ export default function ImportCSVPage() {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatBirthday(dateStr: string): string {
-  // YYYY-MM-DD → DD/MM/AAAA
   const [, month, day] = dateStr.split('-');
   return `${day}/${month}`;
 }

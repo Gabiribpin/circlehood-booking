@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,25 +30,29 @@ interface Reply {
   created_at: string;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Aberto',
-  in_progress: 'Em andamento',
-  resolved: 'Resolvido',
-};
-
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   open: 'destructive',
   in_progress: 'secondary',
   resolved: 'outline',
 };
 
-const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Baixa',
-  medium: 'Média',
-  high: 'Alta',
-};
-
 export default function SupportPage() {
+  const t = useTranslations('support');
+  const tc = useTranslations('common');
+  const locale = useLocale();
+
+  // Build lookup objects using translation function (evaluated once per render)
+  const statusLabels: Record<string, string> = {
+    open: t('statusOpen'),
+    in_progress: t('statusInProgress'),
+    resolved: t('statusResolved'),
+  };
+  const priorityLabels: Record<string, string> = {
+    low: t('priorityLow'),
+    medium: t('priorityMedium'),
+    high: t('priorityHigh'),
+  };
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewTicket, setShowNewTicket] = useState(false);
@@ -73,7 +78,7 @@ export default function SupportPage() {
       const data = await res.json();
       setTickets(data.tickets ?? []);
     } catch {
-      toast({ title: 'Erro ao carregar chamados', variant: 'destructive' });
+      toast({ title: t('errorLoad'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -114,7 +119,7 @@ export default function SupportPage() {
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      toast({ title: '✅ Chamado aberto!', description: 'Respondemos em breve.' });
+      toast({ title: t('ticketOpened'), description: t('replyShortly') });
       setShowNewTicket(false);
       setNewSubject('');
       setNewMessage('');
@@ -128,7 +133,7 @@ export default function SupportPage() {
         }, 1500);
       }
     } catch {
-      toast({ title: 'Erro ao abrir chamado', variant: 'destructive' });
+      toast({ title: t('errorOpen'), variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -149,7 +154,7 @@ export default function SupportPage() {
       await fetchReplies(ticketId);
       await fetchTickets();
     } catch {
-      toast({ title: 'Erro ao enviar resposta', variant: 'destructive' });
+      toast({ title: t('errorReply'), variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -160,24 +165,22 @@ export default function SupportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Central de Suporte</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Abra chamados e acompanhe respostas da nossa equipe
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('subtitle')}</p>
         </div>
         <Button onClick={() => setShowNewTicket(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Novo chamado
+          {t('newTicket')}
         </Button>
       </div>
 
       {/* Ticket list */}
       {loading ? (
-        <p className="text-sm text-muted-foreground">Carregando chamados...</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
       ) : tickets.length === 0 ? (
         <Card className="p-12 text-center">
-          <p className="text-muted-foreground mb-4">Nenhum chamado aberto ainda.</p>
-          <Button onClick={() => setShowNewTicket(true)}>Abrir primeiro chamado</Button>
+          <p className="text-muted-foreground mb-4">{t('noTickets')}</p>
+          <Button onClick={() => setShowNewTicket(true)}>{t('firstTicket')}</Button>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -191,19 +194,19 @@ export default function SupportPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <Badge variant={STATUS_VARIANT[ticket.status]}>
-                        {STATUS_LABELS[ticket.status]}
+                        {statusLabels[ticket.status] ?? ticket.status}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        Prioridade: {PRIORITY_LABELS[ticket.priority]}
+                        {t('priorityLabel')} {priorityLabels[ticket.priority] ?? ticket.priority}
                       </span>
                       {ticket.ai_escalated && (
-                        <span className="text-xs text-blue-600">🔁 Equipe notificada</span>
+                        <span className="text-xs text-blue-600">{t('teamNotified')}</span>
                       )}
                     </div>
                     <p className="font-medium text-sm truncate">{ticket.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Atualizado em{' '}
-                      {new Date(ticket.updated_at).toLocaleDateString('pt-BR', {
+                      {t('updatedAt')}{' '}
+                      {new Date(ticket.updated_at).toLocaleDateString(locale, {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
@@ -228,7 +231,7 @@ export default function SupportPage() {
                   {/* Replies */}
                   <div className="space-y-3">
                     {(replies[ticket.id] ?? []).length === 0 ? (
-                      <p className="text-xs text-muted-foreground">Aguardando resposta...</p>
+                      <p className="text-xs text-muted-foreground">{t('waitingReply')}</p>
                     ) : (
                       (replies[ticket.id] ?? []).map((reply) => (
                         <div
@@ -264,10 +267,10 @@ export default function SupportPage() {
                             <div className="flex items-center gap-1.5 mb-1 opacity-70">
                               <span className="text-[10px] font-medium">
                                 {reply.author === 'bot'
-                                  ? '🤖 Bot de suporte'
+                                  ? t('authorBot')
                                   : reply.author === 'admin'
-                                    ? '🛡️ Equipe CircleHood'
-                                    : 'Você'}
+                                    ? t('authorAdmin')
+                                    : t('authorYou')}
                               </span>
                             </div>
                             <p className="whitespace-pre-wrap leading-relaxed">{reply.message}</p>
@@ -281,7 +284,7 @@ export default function SupportPage() {
                   {ticket.status !== 'resolved' && (
                     <div className="flex gap-2 pt-2">
                       <Textarea
-                        placeholder="Digite sua resposta..."
+                        placeholder={t('replyPlaceholder')}
                         className="resize-none text-sm"
                         rows={2}
                         value={replyText[ticket.id] ?? ''}
@@ -307,7 +310,7 @@ export default function SupportPage() {
                   )}
                   {ticket.status === 'resolved' && (
                     <p className="text-xs text-green-600 text-center">
-                      ✅ Chamado resolvido
+                      {t('ticketResolved')}
                     </p>
                   )}
                 </div>
@@ -321,40 +324,38 @@ export default function SupportPage() {
       <Dialog open={showNewTicket} onOpenChange={setShowNewTicket}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Abrir novo chamado</DialogTitle>
-            <DialogDescription>
-              Nossa equipe responderá em breve. O bot de suporte pode responder dúvidas comuns automaticamente.
-            </DialogDescription>
+            <DialogTitle>{t('openNewTicketTitle')}</DialogTitle>
+            <DialogDescription>{t('openNewTicketDesc')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateTicket} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="subject">Assunto *</Label>
+              <Label htmlFor="subject">{t('subjectLabel')} *</Label>
               <Input
                 id="subject"
-                placeholder="Ex: Como conectar o WhatsApp?"
+                placeholder={t('subjectPlaceholder')}
                 value={newSubject}
                 onChange={(e) => setNewSubject(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="priority">Prioridade</Label>
+              <Label htmlFor="priority">{t('prioritySelectLabel')}</Label>
               <Select value={newPriority} onValueChange={setNewPriority}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Baixa</SelectItem>
-                  <SelectItem value="medium">Média</SelectItem>
-                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="low">{t('priorityLow')}</SelectItem>
+                  <SelectItem value="medium">{t('priorityMedium')}</SelectItem>
+                  <SelectItem value="high">{t('priorityHigh')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="message">Descrição *</Label>
+              <Label htmlFor="message">{t('descriptionLabel')} *</Label>
               <Textarea
                 id="message"
-                placeholder="Descreva sua dúvida ou problema em detalhes..."
+                placeholder={t('descriptionPlaceholder')}
                 rows={4}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
@@ -363,10 +364,10 @@ export default function SupportPage() {
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={submitting} className="flex-1">
-                {submitting ? 'Abrindo...' : 'Abrir chamado'}
+                {submitting ? t('opening') : t('openTicket')}
               </Button>
               <Button type="button" variant="outline" onClick={() => setShowNewTicket(false)}>
-                Cancelar
+                {tc('cancel')}
               </Button>
             </div>
           </form>

@@ -245,11 +245,40 @@ export default defineConfig({
       // Testes de API pura — sem browser nem storageState
     },
 
-    // ─── Pagamentos: sinal/depósito Stripe ───────────────────────────
+    // ─── Pagamentos: sinal/depósito Stripe (API + UI) ────────────────
     {
       name: 'payment',
-      testMatch: '**/payment/**/*.spec.ts',
+      testMatch: ['**/payment/**/*.spec.ts', '**/payments/**/*.spec.ts'],
+      retries: 1, // 1 retry: protege contra cold start Vercel
       use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
+
+    // ─── Clientes: CRUD + filtros + toggle Bot ────────────────────────
+    {
+      name: 'clients',
+      testMatch: '**/clients/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra timing de Supabase real-time
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
+
+    // ─── i18n: troca de idioma — EN-US e ES-ES devem exibir texto traduzido ──
+    {
+      name: 'i18n',
+      testMatch: '**/i18n/**/*.spec.ts',
+      retries: 1, // 1 retry: cold start Vercel pode atrasar SSR
+      use: {
+        browserName: 'chromium',
+        headless: true,
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['auth-setup'],

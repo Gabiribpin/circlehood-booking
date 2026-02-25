@@ -2,64 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, ChevronRight, Rocket } from 'lucide-react';
-import Link from 'next/link';
-
-// ─── Passos do onboarding (verificados no DB) ─────────────────────────────────
-
-const STEPS = [
-  {
-    id: 'account',
-    title: 'Criar conta',
-    description: 'Você já está aqui! Conta criada com sucesso.',
-    icon: '✅',
-    href: null,
-    actionLabel: null,
-    alwaysDone: true,
-  },
-  {
-    id: 'services',
-    title: 'Adicionar seus serviços',
-    description: 'Cadastre os serviços que você oferece com preços e durações.',
-    icon: '✂️',
-    href: '/services',
-    actionLabel: 'Adicionar serviços',
-  },
-  {
-    id: 'schedule',
-    title: 'Configurar horários de atendimento',
-    description: 'Defina os dias e horários em que você atende.',
-    icon: '🕐',
-    href: '/schedule',
-    actionLabel: 'Configurar horários',
-  },
-  {
-    id: 'whatsapp',
-    title: 'Conectar WhatsApp Bot',
-    description: 'Clientes podem agendar direto pelo WhatsApp sem você precisar responder.',
-    icon: '💬',
-    href: '/whatsapp-config',
-    actionLabel: 'Conectar WhatsApp',
-    badge: 'Importante',
-  },
-  {
-    id: 'profile',
-    title: 'Personalizar sua página pública',
-    description: 'Adicione foto, bio e personalize a página de agendamento online.',
-    icon: '🎨',
-    href: '/my-page-editor',
-    actionLabel: 'Personalizar página',
-  },
-];
+import { Link } from '@/navigation';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const t = useTranslations('onboarding');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [professionalId, setProfessionalId] = useState('');
@@ -69,6 +24,54 @@ export default function OnboardingPage() {
     whatsapp: false,
     profile: false,
   });
+
+  // ─── Passos do onboarding (verificados no DB) ──────────────────────────────
+  const STEPS = [
+    {
+      id: 'account',
+      title: t('stepAccountTitle'),
+      description: t('stepAccountDesc'),
+      icon: '✅',
+      href: null as string | null,
+      actionLabel: null as string | null,
+    },
+    {
+      id: 'services',
+      title: t('stepServicesTitle'),
+      description: t('stepServicesDesc'),
+      icon: '✂️',
+      href: '/services' as string | null,
+      actionLabel: t('stepServicesAction'),
+      badge: undefined as string | undefined,
+    },
+    {
+      id: 'schedule',
+      title: t('stepScheduleTitle'),
+      description: t('stepScheduleDesc'),
+      icon: '🕐',
+      href: '/schedule' as string | null,
+      actionLabel: t('stepScheduleAction'),
+      badge: undefined as string | undefined,
+    },
+    {
+      id: 'whatsapp',
+      title: t('stepWhatsappTitle'),
+      description: t('stepWhatsappDesc'),
+      icon: '💬',
+      href: '/whatsapp-config' as string | null,
+      actionLabel: t('stepWhatsappAction'),
+      badge: t('stepWhatsappBadge'),
+    },
+    {
+      id: 'profile',
+      title: t('stepProfileTitle'),
+      description: t('stepProfileDesc'),
+      icon: '🎨',
+      href: '/my-page-editor' as string | null,
+      actionLabel: t('stepProfileAction'),
+      badge: undefined as string | undefined,
+    },
+  ];
 
   useEffect(() => { loadStatus(); }, []);
 
@@ -144,17 +147,17 @@ export default function OnboardingPage() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
           <Rocket className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold">Configure sua conta</h1>
-        <p className="text-muted-foreground text-sm">
-          Complete os passos abaixo para começar a receber clientes.
-        </p>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
       </div>
 
       {/* Progress */}
       <Card>
         <CardContent className="pt-5 pb-4">
           <div className="flex items-center justify-between mb-2 text-sm">
-            <span data-testid="onboarding-progress-text" className="font-medium">{doneCount} de {STEPS.length} concluídos</span>
+            <span data-testid="onboarding-progress-text" className="font-medium">
+              {t('progress', { done: doneCount, total: STEPS.length })}
+            </span>
             <span className="text-muted-foreground">{progressPct}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
@@ -165,7 +168,7 @@ export default function OnboardingPage() {
           </div>
           {allDone && (
             <p className="text-sm text-green-600 font-medium mt-2 text-center">
-              🎉 Tudo pronto! Clique em "Concluir setup" abaixo.
+              {t('allDone')}
             </p>
           )}
         </CardContent>
@@ -191,7 +194,7 @@ export default function OnboardingPage() {
                         </Badge>
                       )}
                       {done && (
-                        <Badge variant="secondary" className="text-xs">Concluído</Badge>
+                        <Badge variant="secondary" className="text-xs">{t('stepDone')}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
@@ -202,7 +205,7 @@ export default function OnboardingPage() {
                     ) : (
                       <>
                         <Circle className="h-5 w-5 text-muted-foreground" />
-                        {step.href && (
+                        {step.href && step.actionLabel && (
                           <Button size="sm" variant="outline" asChild>
                             <Link href={step.href}>
                               {step.actionLabel}
@@ -223,21 +226,21 @@ export default function OnboardingPage() {
       {/* Dicas */}
       <Card className="bg-muted/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Onde divulgar depois?</CardTitle>
+          <CardTitle className="text-sm">{t('tipsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-1">
-          <p>• Instagram Bio e Stories</p>
-          <p>• Facebook e WhatsApp Status</p>
-          <p>• Google Meu Negócio</p>
-          <p>• Grupos de WhatsApp da sua região</p>
-          <p>• Imprima o QR Code e cole no estabelecimento</p>
+          <p>• {t('tip1')}</p>
+          <p>• {t('tip2')}</p>
+          <p>• {t('tip3')}</p>
+          <p>• {t('tip4')}</p>
+          <p>• {t('tip5')}</p>
         </CardContent>
       </Card>
 
       {/* Ações */}
       <div className="flex items-center justify-between pb-4">
         <Button data-testid="onboarding-skip" variant="ghost" onClick={() => router.push('/dashboard')}>
-          Pular por enquanto
+          {t('skip')}
         </Button>
         <Button
           data-testid="onboarding-finish"
@@ -245,7 +248,7 @@ export default function OnboardingPage() {
           disabled={saving}
           className={allDone ? 'bg-green-600 hover:bg-green-700' : ''}
         >
-          {saving ? 'Salvando...' : allDone ? '🎉 Concluir setup' : 'Marcar como concluído'}
+          {saving ? t('saving') : allDone ? t('finish') : t('markDone')}
         </Button>
       </div>
     </div>

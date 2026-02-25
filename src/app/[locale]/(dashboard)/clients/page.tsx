@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,7 +59,7 @@ interface ContactWithStats extends Contact {
 type FilterType = 'all' | 'vip' | 'new' | 'inactive' | 'birthday';
 type BotFilter = 'all' | 'bot_on' | 'bot_off';
 
-// ─── CRM helpers ──────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string) {
   return name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
@@ -84,44 +85,21 @@ function formatBirthdayDisplay(birthday: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function computeSmartTags(contact: Contact, totalBookings: number, lastBookingDate?: string) {
-  const tags: string[] = [];
-  const now = new Date();
-  const daysSinceCreated = (now.getTime() - new Date(contact.created_at).getTime()) / 86400000;
-  if (daysSinceCreated <= 30 && totalBookings <= 1) tags.push('🆕 Novo');
-  if (totalBookings >= 5) tags.push('⭐ VIP');
-  if (lastBookingDate) {
-    const days = (now.getTime() - new Date(lastBookingDate).getTime()) / 86400000;
-    if (days > 60) tags.push('⚠️ Inativo');
-  }
-  return tags;
-}
-
-function formatLastVisit(dateStr?: string) {
-  if (!dateStr) return 'Nunca visitou';
-  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (days === 0) return 'Hoje';
-  if (days === 1) return 'Ontem';
-  if (days < 7) return `há ${days} dias`;
-  if (days < 30) return `há ${Math.floor(days / 7)} sem.`;
-  if (days < 365) return `há ${Math.floor(days / 30)} meses`;
-  return `há ${Math.floor(days / 365)} ano(s)`;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientsPage() {
+  const t = useTranslations('clients');
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') === 'manage' ? 'manage' : 'crm';
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
-      <h1 className="text-2xl md:text-3xl font-bold">👥 Clientes</h1>
+      <h1 className="text-2xl md:text-3xl font-bold">👥 {t('title')}</h1>
 
       <Tabs defaultValue={defaultTab}>
         <TabsList>
-          <TabsTrigger value="crm">📊 CRM</TabsTrigger>
-          <TabsTrigger value="manage">⚙️ Gerenciar</TabsTrigger>
+          <TabsTrigger value="crm">📊 {t('crmTab')}</TabsTrigger>
+          <TabsTrigger value="manage">⚙️ {t('manageTab')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="crm" className="mt-4">
@@ -139,10 +117,35 @@ export default function ClientsPage() {
 // ─── Aba CRM ──────────────────────────────────────────────────────────────────
 
 function CRMView() {
+  const t = useTranslations('clients');
   const [contacts, setContacts] = useState<ContactWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  function computeSmartTags(contact: Contact, totalBookings: number, lastBookingDate?: string) {
+    const tags: string[] = [];
+    const now = new Date();
+    const daysSinceCreated = (now.getTime() - new Date(contact.created_at).getTime()) / 86400000;
+    if (daysSinceCreated <= 30 && totalBookings <= 1) tags.push(t('tagNew'));
+    if (totalBookings >= 5) tags.push(t('tagVip'));
+    if (lastBookingDate) {
+      const days = (now.getTime() - new Date(lastBookingDate).getTime()) / 86400000;
+      if (days > 60) tags.push(t('tagInactive'));
+    }
+    return tags;
+  }
+
+  function formatLastVisit(dateStr?: string) {
+    if (!dateStr) return t('neverVisited');
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (days === 0) return t('visitedToday');
+    if (days === 1) return t('visitedYesterday');
+    if (days < 7) return `há ${days} dias`;
+    if (days < 30) return `há ${Math.floor(days / 7)} sem.`;
+    if (days < 365) return `há ${Math.floor(days / 30)} meses`;
+    return `há ${Math.floor(days / 365)} ano(s)`;
+  }
 
   useEffect(() => { loadClients(); }, []);
 
@@ -179,25 +182,29 @@ function CRMView() {
     setLoading(false);
   }
 
+  const tagNew = t('tagNew');
+  const tagVip = t('tagVip');
+  const tagInactive = t('tagInactive');
+
   const filtered = contacts
     .filter((c) => {
-      const t = searchTerm.toLowerCase();
-      return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
+      const term = searchTerm.toLowerCase();
+      return c.name.toLowerCase().includes(term) || c.phone.includes(term) || c.email?.toLowerCase().includes(term);
     })
     .filter((c) => {
       if (activeFilter === 'all') return true;
-      if (activeFilter === 'vip') return c.smartTags.includes('⭐ VIP');
-      if (activeFilter === 'new') return c.smartTags.includes('🆕 Novo');
-      if (activeFilter === 'inactive') return c.smartTags.includes('⚠️ Inativo');
+      if (activeFilter === 'vip') return c.smartTags.includes(tagVip);
+      if (activeFilter === 'new') return c.smartTags.includes(tagNew);
+      if (activeFilter === 'inactive') return c.smartTags.includes(tagInactive);
       if (activeFilter === 'birthday') return isBirthdayThisMonth(c.birthday);
       return true;
     });
 
   const counts = {
     all: contacts.length,
-    vip: contacts.filter((c) => c.smartTags.includes('⭐ VIP')).length,
-    new: contacts.filter((c) => c.smartTags.includes('🆕 Novo')).length,
-    inactive: contacts.filter((c) => c.smartTags.includes('⚠️ Inativo')).length,
+    vip: contacts.filter((c) => c.smartTags.includes(tagVip)).length,
+    new: contacts.filter((c) => c.smartTags.includes(tagNew)).length,
+    inactive: contacts.filter((c) => c.smartTags.includes(tagInactive)).length,
     birthday: contacts.filter((c) => isBirthdayThisMonth(c.birthday)).length,
   };
 
@@ -206,7 +213,7 @@ function CRMView() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Carregando clientes...</p>
+          <p className="text-muted-foreground text-sm">{t('loading')}</p>
         </div>
       </div>
     );
@@ -214,21 +221,23 @@ function CRMView() {
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">{contacts.length} {contacts.length === 1 ? 'cliente' : 'clientes'} no total</p>
+      <p className="text-muted-foreground text-sm">
+        {contacts.length} {contacts.length === 1 ? 'cliente' : 'clientes'} no total
+      </p>
 
       <div className="relative">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome, telefone ou email..." value={searchTerm}
+        <Input placeholder={t('searchPlaceholder')} value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {([
-          { key: 'all', label: 'Todos', count: counts.all },
-          { key: 'birthday', label: '🎂 Aniversariantes', count: counts.birthday },
-          { key: 'vip', label: '⭐ VIP', count: counts.vip },
-          { key: 'new', label: '🆕 Novos', count: counts.new },
-          { key: 'inactive', label: '⚠️ Inativos', count: counts.inactive },
+          { key: 'all', label: t('filterAll'), count: counts.all },
+          { key: 'birthday', label: t('filterBirthday'), count: counts.birthday },
+          { key: 'vip', label: t('filterVip'), count: counts.vip },
+          { key: 'new', label: t('filterNew'), count: counts.new },
+          { key: 'inactive', label: t('filterInactive'), count: counts.inactive },
         ] as { key: FilterType; label: string; count: number }[]).map((f) => (
           <Button key={f.key} variant={activeFilter === f.key ? 'default' : 'outline'} size="sm"
             className="whitespace-nowrap flex-shrink-0" onClick={() => setActiveFilter(f.key)}>
@@ -241,9 +250,9 @@ function CRMView() {
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Nenhum cliente encontrado</h3>
+          <h3 className="text-lg font-semibold">{t('noClientsFound')}</h3>
           <p className="text-muted-foreground text-sm mt-1">
-            {searchTerm ? 'Tente outro termo de busca' : 'Ainda não há clientes nesta categoria'}
+            {searchTerm ? t('tryAnotherSearch') : t('noClientsInCategory')}
           </p>
         </div>
       ) : (
@@ -267,16 +276,16 @@ function CRMView() {
                       <Cake className="h-3 w-3" />
                       {formatBirthdayDisplay(c.birthday)}
                       {isBirthdayThisMonth(c.birthday) && (
-                        <span className="text-pink-500 font-medium">· Este mês!</span>
+                        <span className="text-pink-500 font-medium">· {t('thisMonth')}</span>
                       )}
                     </p>
                   )}
                   <div className="mt-2 pt-2 border-t">
-                    <p className="text-xs text-muted-foreground">Última visita</p>
+                    <p className="text-xs text-muted-foreground">{t('lastVisit')}</p>
                     <p className="text-xs font-medium mt-0.5">
                       {c.lastBookingDate
-                        ? `${formatLastVisit(c.lastBookingDate)} · ${c.totalBookings} visita${c.totalBookings !== 1 ? 's' : ''}`
-                        : 'Sem agendamentos'}
+                        ? `${formatLastVisit(c.lastBookingDate)} · ${c.totalBookings} ${c.totalBookings !== 1 ? 'visitas' : 'visita'}`
+                        : t('noBookings')}
                     </p>
                   </div>
                   {c.tags && c.tags.length > 0 && (
@@ -299,6 +308,8 @@ function CRMView() {
 // ─── Aba Gerenciar ────────────────────────────────────────────────────────────
 
 function ManageView() {
+  const t = useTranslations('clients');
+  const tc = useTranslations('common');
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,7 +345,7 @@ function ManageView() {
       .from('contacts').select('*').eq('professional_id', professional.id)
       .order('created_at', { ascending: false });
 
-    if (error) { toast({ title: 'Erro ao carregar contatos', description: error.message, variant: 'destructive' }); return; }
+    if (error) { toast({ title: t('errorLoad'), description: error.message, variant: 'destructive' }); return; }
     setContacts(data || []);
     setSelectedIds(new Set());
     setLoading(false);
@@ -342,7 +353,7 @@ function ManageView() {
 
   async function handleSave() {
     if (!name || !phone) {
-      toast({ title: 'Campos obrigatórios', description: 'Nome e telefone são obrigatórios', variant: 'destructive' });
+      toast({ title: t('requiredFields'), description: t('requiredFieldsDesc'), variant: 'destructive' });
       return;
     }
     const supabase = createClient();
@@ -351,13 +362,13 @@ function ManageView() {
       const { error } = await supabase.from('contacts')
         .update({ name, phone, email: email || null, category: category || null, notes: notes || null, birthday: birthday || null, regions, updated_at: new Date().toISOString() })
         .eq('id', editingContact.id);
-      if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
-      toast({ title: 'Contato atualizado!' });
+      if (error) { toast({ title: t('errorUpdate'), description: error.message, variant: 'destructive' }); return; }
+      toast({ title: t('contactUpdated') });
     } else {
       const { error } = await supabase.from('contacts')
         .insert({ professional_id: professionalId, name, phone, email: email || null, category: category || null, notes: notes || null, birthday: birthday || null, regions });
-      if (error) { toast({ title: 'Erro ao adicionar', description: error.message, variant: 'destructive' }); return; }
-      toast({ title: 'Contato adicionado!' });
+      if (error) { toast({ title: t('errorUpdate'), description: error.message, variant: 'destructive' }); return; }
+      toast({ title: t('contactAdded') });
     }
     resetForm();
     setIsDialogOpen(false);
@@ -365,11 +376,11 @@ function ManageView() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Tem certeza que deseja excluir este contato?')) return;
+    if (!confirm(t('confirmDelete'))) return;
     const supabase = createClient();
     const { error } = await supabase.from('contacts').delete().eq('id', id);
-    if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Contato excluído!' });
+    if (error) { toast({ title: t('errorDelete'), description: error.message, variant: 'destructive' }); return; }
+    toast({ title: t('contactDeleted') });
     loadContacts();
   }
 
@@ -388,7 +399,7 @@ function ManageView() {
   async function updateUseBot(id: string, val: boolean) {
     const supabase = createClient();
     const { error } = await supabase.from('contacts').update({ use_bot: val }).eq('id', id);
-    if (error) { toast({ title: 'Erro ao atualizar bot', description: error.message, variant: 'destructive' }); return; }
+    if (error) { toast({ title: t('errorBotUpdate'), description: error.message, variant: 'destructive' }); return; }
     setContacts((prev) => prev.map((c) => c.id === id ? { ...c, use_bot: val } : c));
   }
 
@@ -396,8 +407,11 @@ function ManageView() {
     if (selectedIds.size === 0) return;
     const supabase = createClient();
     const { error } = await supabase.from('contacts').update({ use_bot: val }).in('id', [...selectedIds]);
-    if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: val ? '🤖 Bot ativado' : '🚫 Bot desativado', description: `${selectedIds.size} contato${selectedIds.size !== 1 ? 's' : ''} atualizado${selectedIds.size !== 1 ? 's' : ''}` });
+    if (error) { toast({ title: t('errorBotUpdate'), description: error.message, variant: 'destructive' }); return; }
+    toast({
+      title: val ? t('botActivated') : t('botDeactivated'),
+      description: `${selectedIds.size} contato${selectedIds.size !== 1 ? 's' : ''} atualizado${selectedIds.size !== 1 ? 's' : ''}`,
+    });
     setContacts((prev) => prev.map((c) => selectedIds.has(c.id) ? { ...c, use_bot: val } : c));
     setSelectedIds(new Set());
   }
@@ -412,8 +426,8 @@ function ManageView() {
 
   const filtered = contacts
     .filter((c) => {
-      const t = searchTerm.toLowerCase();
-      return c.name.toLowerCase().includes(t) || c.phone.includes(t) || c.email?.toLowerCase().includes(t);
+      const term = searchTerm.toLowerCase();
+      return c.name.toLowerCase().includes(term) || c.phone.includes(term) || c.email?.toLowerCase().includes(term);
     })
     .filter((c) => {
       if (botFilter === 'bot_on') return (c.use_bot ?? true) === true;
@@ -431,55 +445,55 @@ function ManageView() {
     }
   }
 
-  if (loading) return <div className="p-8">Carregando...</div>;
+  if (loading) return <div className="p-8">{t('loadingSimple')}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-muted-foreground text-sm">Gerencie seus contatos para campanhas de marketing</p>
+        <p className="text-muted-foreground text-sm">{t('managingContacts')}</p>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.push('/clients/import')}>
-            <Upload className="mr-2 h-4 w-4" /> Importar CSV
+            <Upload className="mr-2 h-4 w-4" /> {t('importCSV')}
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> Adicionar Contato</Button>
+              <Button><Plus className="mr-2 h-4 w-4" /> {t('addContact')}</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingContact ? 'Editar Contato' : 'Adicionar Contato'}</DialogTitle>
-                <DialogDescription>Preencha os dados do contato abaixo</DialogDescription>
+                <DialogTitle>{editingContact ? t('editContact') : t('addContact')}</DialogTitle>
+                <DialogDescription>{t('contactFormDesc')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="c-name">Nome *</Label>
-                  <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria Silva" />
+                  <Label htmlFor="c-name">{t('nameLabel')} *</Label>
+                  <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('namePlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="c-phone">Telefone *</Label>
-                  <PhoneInput value={phone} onChange={(v) => setPhone(v || '')} placeholder="(11) 99999-9999" />
+                  <Label htmlFor="c-phone">{t('phoneLabel')} *</Label>
+                  <PhoneInput value={phone} onChange={(v) => setPhone(v || '')} placeholder={t('phonePlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="c-email">Email</Label>
-                  <Input id="c-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@exemplo.com" />
+                  <Label htmlFor="c-email">{t('emailLabel')}</Label>
+                  <Input id="c-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="c-birthday">Aniversário</Label>
+                  <Label htmlFor="c-birthday">{t('birthdayLabel')}</Label>
                   <Input id="c-birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="c-category">Categoria</Label>
-                  <Input id="c-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Unhas, Cabelo" />
+                  <Label htmlFor="c-category">{t('categoryLabel')}</Label>
+                  <Input id="c-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t('categoryPlaceholder')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="c-notes">Notas</Label>
-                  <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Observações..." />
+                  <Label htmlFor="c-notes">{t('notesLabel')}</Label>
+                  <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={t('notesPlaceholder')} />
                 </div>
                 <RegionSelector value={regions} onChange={setRegions} label="Regiões de Dublin" />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
-                <Button onClick={handleSave}>{editingContact ? 'Atualizar' : 'Adicionar'}</Button>
+                <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>{tc('cancel')}</Button>
+                <Button onClick={handleSave}>{editingContact ? tc('update') : tc('add')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -491,19 +505,21 @@ function ManageView() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              <CardTitle>{filtered.length} {filtered.length === 1 ? 'Contato' : 'Contatos'}</CardTitle>
+              <CardTitle>
+                {filtered.length} {filtered.length === 1 ? 'Contato' : 'Contatos'}
+              </CardTitle>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative w-56">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar contatos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
+                <Input placeholder={t('botFilterAll')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8" />
               </div>
-              {/* Filtros de bot */}
+              {/* Bot filters */}
               <div className="flex gap-1">
                 {([
-                  { key: 'all', label: 'Todos' },
-                  { key: 'bot_on', label: '🤖 Bot Ativo' },
-                  { key: 'bot_off', label: '🚫 Bot Desativado' },
+                  { key: 'all', label: t('botFilterAll') },
+                  { key: 'bot_on', label: t('botFilterOn') },
+                  { key: 'bot_off', label: t('botFilterOff') },
                 ] as { key: BotFilter; label: string }[]).map((f) => (
                   <Button key={f.key} variant={botFilter === f.key ? 'default' : 'outline'} size="sm"
                     className="whitespace-nowrap text-xs" onClick={() => setBotFilter(f.key)}>
@@ -517,15 +533,17 @@ function ManageView() {
           {/* Bulk actions */}
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2 pt-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">{selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}</span>
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+              </span>
               <Button size="sm" variant="outline" onClick={() => bulkUpdateBot(true)}>
-                🤖 Ativar bot ({selectedIds.size})
+                {t('botFilterOn')} ({selectedIds.size})
               </Button>
               <Button size="sm" variant="outline" onClick={() => bulkUpdateBot(false)}>
-                🚫 Desativar bot ({selectedIds.size})
+                {t('botFilterOff')} ({selectedIds.size})
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                Limpar seleção
+                {t('clearSelection')}
               </Button>
             </div>
           )}
@@ -534,8 +552,8 @@ function ManageView() {
           {filtered.length === 0 ? (
             <div className="text-center py-12">
               <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Nenhum contato ainda</h3>
-              <p className="text-muted-foreground mt-2">Adicione seus primeiros contatos para começar campanhas</p>
+              <h3 className="mt-4 text-lg font-semibold">{t('noContacts')}</h3>
+              <p className="text-muted-foreground mt-2">{t('noContactsDesc')}</p>
             </div>
           ) : (
             <Table>
@@ -547,15 +565,15 @@ function ManageView() {
                       checked={allFilteredSelected}
                       onChange={toggleSelectAll}
                       className="cursor-pointer"
-                      aria-label="Selecionar todos"
+                      aria-label={t('selectAll')}
                     />
                   </TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="text-center">Bot</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>{t('colName')}</TableHead>
+                  <TableHead>{t('colPhone')}</TableHead>
+                  <TableHead>{t('colEmail')}</TableHead>
+                  <TableHead>{t('colCategory')}</TableHead>
+                  <TableHead className="text-center">{t('colBot')}</TableHead>
+                  <TableHead className="text-right">{t('colActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -597,8 +615,8 @@ function ManageView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Como importar contatos via CSV</CardTitle>
-          <CardDescription>Formato do arquivo (primeira linha é o cabeçalho):</CardDescription>
+          <CardTitle>{t('csvTitle')}</CardTitle>
+          <CardDescription>{t('csvDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,aniversario,notas

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Upload, FileText, ArrowLeft } from 'lucide-react';
@@ -8,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ImportContactsPage() {
+  const t = useTranslations('clients');
+  const tc = useTranslations('common');
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<any[]>([]);
@@ -48,17 +51,17 @@ export default function ImportContactsPage() {
       if (res.ok) {
         const data = await res.json();
         toast({
-          title: 'Sucesso!',
-          description: `${data.imported} contatos importados`,
+          title: tc('success'),
+          description: t('importedCount', { count: data.imported }),
         });
         router.push('/contacts');
       } else {
-        throw new Error('Erro ao importar');
+        throw new Error('error');
       }
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Erro',
-        description: 'Erro ao importar contatos',
+        title: tc('error'),
+        description: t('importContactsError'),
         variant: 'destructive',
       });
     } finally {
@@ -74,19 +77,17 @@ export default function ImportContactsPage() {
         className="mb-4"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Voltar
+        {tc('back')}
       </Button>
 
-      <h1 className="text-3xl font-bold mb-6">Importar Contatos</h1>
+      <h1 className="text-3xl font-bold mb-6">{t('importContacts')}</h1>
 
       <Card className="p-6 mb-6">
         <div className="flex items-center gap-4 mb-4">
           <FileText className="w-12 h-12 text-blue-500" />
           <div>
-            <h3 className="text-xl font-semibold">Arquivo CSV</h3>
-            <p className="text-gray-600">
-              Formato: nome, telefone, email, categoria
-            </p>
+            <h3 className="text-xl font-semibold">{t('importContactsCSV')}</h3>
+            <p className="text-gray-600">{t('importContactsDesc')}</p>
           </div>
         </div>
 
@@ -100,14 +101,14 @@ export default function ImportContactsPage() {
 
           {preview.length > 0 && (
             <div className="mt-4">
-              <h4 className="font-semibold mb-2">Preview (primeiros 5):</h4>
+              <h4 className="font-semibold mb-2">{t('previewFirst5')}</h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-left p-2 border">Nome</th>
-                      <th className="text-left p-2 border">Telefone</th>
-                      <th className="text-left p-2 border">Email</th>
+                      <th className="text-left p-2 border">{t('colName')}</th>
+                      <th className="text-left p-2 border">{t('colPhone')}</th>
+                      <th className="text-left p-2 border">{t('colEmail')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -130,7 +131,7 @@ export default function ImportContactsPage() {
             className="w-full"
           >
             <Upload className="w-4 h-4 mr-2" />
-            {importing ? 'Importando...' : 'Importar Contatos'}
+            {importing ? t('importing') : t('importContacts')}
           </Button>
         </div>
       </Card>

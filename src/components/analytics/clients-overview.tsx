@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,13 +23,8 @@ interface ClientsOverviewProps {
 
 const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
 
-const clientTypeLabels: Record<string, string> = {
-  new: 'novo',
-  occasional: 'ocasional',
-  recurring: 'recorrente',
-};
-
 export function ClientsOverview({ currency }: ClientsOverviewProps) {
+  const t = useTranslations('analytics');
   const sym = currencySymbols[currency] ?? currency;
 
   const { data, isLoading } = useQuery({
@@ -43,7 +39,7 @@ export function ClientsOverview({ currency }: ClientsOverviewProps) {
   if (isLoading) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando clientes...</p>
+        <p className="text-muted-foreground">{t('loadingClients')}</p>
       </div>
     );
   }
@@ -51,43 +47,49 @@ export function ClientsOverview({ currency }: ClientsOverviewProps) {
   const stats = data?.stats || {};
   const clients = data?.clients || [];
 
+  const typeLabels: Record<string, string> = {
+    new: t('typeNew'),
+    occasional: t('typeOccasional'),
+    recurring: t('typeRecurring'),
+  };
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalClients')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total || 0}</div>
             <div className="flex gap-2 mt-2 text-xs">
-              <Badge variant="secondary">{stats.byType?.new || 0} novo</Badge>
-              <Badge variant="secondary">{stats.byType?.recurring || 0} recorrente</Badge>
+              <Badge variant="secondary">{stats.byType?.new || 0} {t('typeNew')}</Badge>
+              <Badge variant="secondary">{stats.byType?.recurring || 0} {t('typeRecurring')}</Badge>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('activeClients')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.byEngagement?.active || 0}</div>
-            <p className="text-xs text-muted-foreground mt-2">Agendaram nos últimos 30 dias</p>
+            <p className="text-xs text-muted-foreground mt-2">{t('activeClientsDesc')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Risco</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('atRisk')}</CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.byEngagement?.at_risk || 0}</div>
-            <p className="text-xs text-muted-foreground mt-2">31-90 dias sem agendamento</p>
+            <p className="text-xs text-muted-foreground mt-2">{t('atRiskDesc')}</p>
           </CardContent>
         </Card>
       </div>
@@ -101,42 +103,52 @@ export function ClientsOverview({ currency }: ClientsOverviewProps) {
           disabled={!data || clients.length === 0}
         >
           <Download className="mr-2 h-4 w-4" />
-          Exportar CSV
+          {t('exportCSV')}
         </Button>
       </div>
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">Todos</TabsTrigger>
-          <TabsTrigger value="active">Ativos</TabsTrigger>
-          <TabsTrigger value="at_risk">Em Risco</TabsTrigger>
-          <TabsTrigger value="churned">Inativos</TabsTrigger>
+          <TabsTrigger value="all">{t('filterAll')}</TabsTrigger>
+          <TabsTrigger value="active">{t('filterActive')}</TabsTrigger>
+          <TabsTrigger value="at_risk">{t('filterAtRisk')}</TabsTrigger>
+          <TabsTrigger value="churned">{t('filterInactive')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          <ClientTable clients={clients} sym={sym} />
+          <ClientTable clients={clients} sym={sym} t={t} typeLabels={typeLabels} />
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
-          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'active')} sym={sym} />
+          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'active')} sym={sym} t={t} typeLabels={typeLabels} />
         </TabsContent>
 
         <TabsContent value="at_risk" className="space-y-4">
-          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'at_risk')} sym={sym} />
+          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'at_risk')} sym={sym} t={t} typeLabels={typeLabels} />
         </TabsContent>
 
         <TabsContent value="churned" className="space-y-4">
-          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'churned')} sym={sym} />
+          <ClientTable clients={clients.filter((c: any) => c.engagement_status === 'churned')} sym={sym} t={t} typeLabels={typeLabels} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function ClientTable({ clients, sym }: { clients: any[]; sym: string }) {
+function ClientTable({
+  clients,
+  sym,
+  t,
+  typeLabels,
+}: {
+  clients: any[];
+  sym: string;
+  t: ReturnType<typeof useTranslations<'analytics'>>;
+  typeLabels: Record<string, string>;
+}) {
   if (clients.length === 0) {
     return (
       <div className="h-[200px] flex items-center justify-center">
-        <p className="text-muted-foreground">Nenhum cliente nesta categoria</p>
+        <p className="text-muted-foreground">{t('noClientsCategory')}</p>
       </div>
     );
   }
@@ -145,12 +157,12 @@ function ClientTable({ clients, sym }: { clients: any[]; sym: string }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Tipo</TableHead>
-          <TableHead className="text-right">Agendamentos</TableHead>
-          <TableHead className="text-right">LTV</TableHead>
-          <TableHead className="text-right">Ticket Médio</TableHead>
-          <TableHead className="text-right">Último Agendamento</TableHead>
+          <TableHead>{t('colClient')}</TableHead>
+          <TableHead>{t('colType')}</TableHead>
+          <TableHead className="text-right">{t('colBookingsHeader')}</TableHead>
+          <TableHead className="text-right">{t('colLTV')}</TableHead>
+          <TableHead className="text-right">{t('avgTicket')}</TableHead>
+          <TableHead className="text-right">{t('colLastBooking')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -172,7 +184,7 @@ function ClientTable({ clients, sym }: { clients: any[]; sym: string }) {
                       : 'outline'
                 }
               >
-                {clientTypeLabels[client.client_type] ?? client.client_type}
+                {typeLabels[client.client_type] ?? client.client_type}
               </Badge>
             </TableCell>
             <TableCell className="text-right">{client.total_bookings}</TableCell>
@@ -183,7 +195,7 @@ function ClientTable({ clients, sym }: { clients: any[]; sym: string }) {
               {sym} {Number(client.avg_ticket || 0).toFixed(2)}
             </TableCell>
             <TableCell className="text-right text-muted-foreground">
-              há {client.days_since_last_booking}d
+              {t('daysAgo', { n: client.days_since_last_booking })}
             </TableCell>
           </TableRow>
         ))}

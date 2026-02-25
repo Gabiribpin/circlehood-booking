@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { AnalyticsDashboard } from './analytics-dashboard';
 
 export const metadata = {
@@ -30,12 +31,14 @@ export default async function AnalyticsPage() {
     redirect('/onboarding');
   }
 
+  const t = await getTranslations('analytics');
+
   return (
     <div className="container mx-auto py-6 px-4 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Análises</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground mt-2">
-          Métricas e insights de {professional.business_name}
+          {t('subtitle', { name: professional.business_name })}
         </p>
       </div>
 

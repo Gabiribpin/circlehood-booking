@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QrCode, CreditCard, Instagram, FileText, BarChart3 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import { QRGenerator } from '@/components/marketing/qr-generator';
 import { BusinessCardGenerator } from '@/components/marketing/business-card-generator';
@@ -15,44 +17,45 @@ interface MarketingManagerProps {
   totalScans: number;
 }
 
-const TOOLS = [
-  {
-    id: 'qr-code',
-    icon: QrCode,
-    title: 'QR Code',
-    description: 'QR codes personalizados com suas cores para clientes escanearem e agendarem',
-    color: 'bg-primary/10 text-primary',
-  },
-  {
-    id: 'business-card',
-    icon: CreditCard,
-    title: 'Cartão de Visita',
-    description: 'Cartões digitais profissionais para compartilhar nas redes sociais',
-    color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-  },
-  {
-    id: 'social-post',
-    icon: Instagram,
-    title: 'Posts Sociais',
-    description: 'Posts otimizados para Instagram Stories e Facebook',
-    color: 'bg-pink-100 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400',
-  },
-  {
-    id: 'flyer',
-    icon: FileText,
-    title: 'Flyers',
-    description: 'Flyers em alta resolução (A4/A5) para impressão e distribuição',
-    color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
-  },
-] as const;
-
-type ToolId = (typeof TOOLS)[number]['id'];
+type ToolId = 'qr-code' | 'business-card' | 'social-post' | 'flyer';
 
 export function MarketingManager({ professional, savedQRCodes, totalScans }: MarketingManagerProps) {
+  const t = useTranslations('marketing');
   const [activeTool, setActiveTool] = useState<ToolId>('qr-code');
 
+  const TOOLS: { id: ToolId; icon: LucideIcon; title: string; description: string; color: string }[] = [
+    {
+      id: 'qr-code',
+      icon: QrCode,
+      title: t('qrTitle'),
+      description: t('qrDesc'),
+      color: 'bg-primary/10 text-primary',
+    },
+    {
+      id: 'business-card',
+      icon: CreditCard,
+      title: t('cardTitle'),
+      description: t('cardDesc'),
+      color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+    },
+    {
+      id: 'social-post',
+      icon: Instagram,
+      title: t('socialTitle'),
+      description: t('socialDesc'),
+      color: 'bg-pink-100 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400',
+    },
+    {
+      id: 'flyer',
+      icon: FileText,
+      title: t('flyerTitle'),
+      description: t('flyerDesc'),
+      color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
+    },
+  ];
+
   const bookingUrl = `https://circlehood-booking.vercel.app/${professional.slug}`;
-  const currentTool = TOOLS.find((t) => t.id === activeTool)!;
+  const currentTool = TOOLS.find((tool) => tool.id === activeTool)!;
 
   return (
     <div className="space-y-6">
@@ -65,7 +68,7 @@ export function MarketingManager({ professional, savedQRCodes, totalScans }: Mar
                 <QrCode className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">QR Codes</p>
+                <p className="text-xs text-muted-foreground">{t('statsQRCodes')}</p>
                 <p className="text-2xl font-bold">{savedQRCodes.length}</p>
               </div>
             </div>
@@ -79,7 +82,7 @@ export function MarketingManager({ professional, savedQRCodes, totalScans }: Mar
                 <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Escaneamentos</p>
+                <p className="text-xs text-muted-foreground">{t('statsTotalScans')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">{totalScans}</p>
               </div>
             </div>
@@ -93,7 +96,7 @@ export function MarketingManager({ professional, savedQRCodes, totalScans }: Mar
                 <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Materiais</p>
+                <p className="text-xs text-muted-foreground">{t('statsMaterials')}</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">4</p>
               </div>
             </div>
@@ -158,16 +161,16 @@ export function MarketingManager({ professional, savedQRCodes, totalScans }: Mar
       <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            💡 Dicas de Marketing
+            {t('tipsTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li>Use QR codes em cartões de visita físicos e materiais impressos</li>
-            <li>Poste regularmente nos Stories do Instagram para engajar seus seguidores</li>
-            <li>Imprima flyers e distribua em estabelecimentos parceiros</li>
-            <li>Adicione seu link de agendamento na bio do Instagram e Facebook</li>
-            <li>Compartilhe posts com seus horários disponíveis semanalmente</li>
+            <li>{t('tip1')}</li>
+            <li>{t('tip2')}</li>
+            <li>{t('tip3')}</li>
+            <li>{t('tip4')}</li>
+            <li>{t('tip5')}</li>
           </ul>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ import { BotConfigPanel } from '@/components/dashboard/bot-config-panel';
 type ConnectionStatus = 'idle' | 'loading' | 'qrcode' | 'connected' | 'error';
 
 export default function WhatsAppConfigPage() {
+  const t = useTranslations('whatsapp');
+
   // Evolution state
   const [evolutionPhone, setEvolutionPhone] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
@@ -58,7 +61,6 @@ export default function WhatsAppConfigPage() {
         if (data.is_active) setConnectionStatus('connected');
       }
 
-      // Carregar ai_instructions
       const { data: aiData } = await supabase
         .from('ai_instructions')
         .select('instructions')
@@ -71,7 +73,6 @@ export default function WhatsAppConfigPage() {
         setAiSettings(prev => ({ ...prev, instructions: aiData.instructions ?? '' }));
       }
 
-      // Carregar greeting_message do bot_config
       const { data: bcData } = await supabase
         .from('bot_config')
         .select('greeting_message')
@@ -90,7 +91,7 @@ export default function WhatsAppConfigPage() {
   // ── Conectar WhatsApp via Evolution API ──
   async function handleConnect() {
     if (!evolutionPhone) {
-      setEvoMessage('Insere o número do WhatsApp.');
+      setEvoMessage(t('errorPhone'));
       setConnectionStatus('error');
       return;
     }
@@ -110,7 +111,7 @@ export default function WhatsAppConfigPage() {
 
       if (!res.ok) {
         setConnectionStatus('error');
-        setEvoMessage(data.error ?? 'Erro ao criar instância.');
+        setEvoMessage(data.error ?? t('errorCreate'));
         return;
       }
 
@@ -125,7 +126,7 @@ export default function WhatsAppConfigPage() {
       }
     } catch {
       setConnectionStatus('error');
-      setEvoMessage('Erro de ligação ao servidor.');
+      setEvoMessage(t('errorServer'));
     }
   }
 
@@ -168,7 +169,7 @@ export default function WhatsAppConfigPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      setAiMessage({ type: 'error', text: 'Utilizador não autenticado.' });
+      setAiMessage({ type: 'error', text: t('notAuthenticated') });
       setSavingAi(false);
       return;
     }
@@ -192,9 +193,9 @@ export default function WhatsAppConfigPage() {
       .upsert(upserts, { onConflict: 'user_id,language' });
 
     if (error) {
-      setAiMessage({ type: 'error', text: `Erro: ${error.message}` });
+      setAiMessage({ type: 'error', text: t('saveAiError', { message: error.message }) });
     } else {
-      setAiMessage({ type: 'success', text: '✅ Configurações de IA salvas!' });
+      setAiMessage({ type: 'success', text: t('saveAiSuccess') });
       setTimeout(() => setAiMessage(null), 5000);
     }
     setSavingAi(false);
@@ -203,20 +204,20 @@ export default function WhatsAppConfigPage() {
   if (loading) {
     return (
       <div className="container max-w-4xl mx-auto p-6">
-        <p className="text-gray-500">A carregar configuração...</p>
+        <p className="text-gray-500">{t('loading')}</p>
       </div>
     );
   }
 
   return (
     <div className="container max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-2">⚙️ Configuração WhatsApp</h1>
-      <p className="text-gray-500 mb-6">Conecta o teu número ao bot de agendamento automático</p>
+      <h1 className="text-3xl font-bold mb-2">{t('configTitle')}</h1>
+      <p className="text-gray-500 mb-6">{t('configSubtitle')}</p>
 
       <Tabs defaultValue="setup" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="setup">Conexão</TabsTrigger>
-          <TabsTrigger value="ai">IA & Automações</TabsTrigger>
+          <TabsTrigger value="setup">{t('tabConnection')}</TabsTrigger>
+          <TabsTrigger value="ai">{t('tabAI')}</TabsTrigger>
         </TabsList>
 
         {/* ─── Tab 1: Conexão ─── */}
@@ -229,8 +230,10 @@ export default function WhatsAppConfigPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">📱</span>
                   <div>
-                    <p className="font-semibold text-green-900">WhatsApp Conectado</p>
-                    {evolutionPhone && <p className="text-sm text-green-700">Número: {evolutionPhone}</p>}
+                    <p className="font-semibold text-green-900">{t('connectedBadge')}</p>
+                    {evolutionPhone && (
+                      <p className="text-sm text-green-700">{t('connectedNumber', { phone: evolutionPhone })}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -239,7 +242,7 @@ export default function WhatsAppConfigPage() {
             {/* QR Code */}
             {connectionStatus === 'qrcode' && qrCode && (
               <div className="p-5 bg-gray-50 border rounded-xl text-center space-y-4">
-                <p className="font-semibold text-gray-800">📱 Escaneia o QR Code com o WhatsApp</p>
+                <p className="font-semibold text-gray-800">{t('scanQR')}</p>
                 <div className="flex justify-center">
                   <Image
                     src={qrCode}
@@ -251,11 +254,9 @@ export default function WhatsAppConfigPage() {
                 </div>
                 <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
                   <span className="animate-spin inline-block">🔄</span>
-                  Aguardando leitura...
+                  {t('waitingQR')}
                 </p>
-                <p className="text-xs text-gray-400">
-                  WhatsApp → Dispositivos vinculados → Vincular dispositivo
-                </p>
+                <p className="text-xs text-gray-400">{t('qrInstructions')}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -265,7 +266,7 @@ export default function WhatsAppConfigPage() {
                     setQrCode(null);
                   }}
                 >
-                  Cancelar
+                  {t('cancel')}
                 </Button>
               </div>
             )}
@@ -273,7 +274,7 @@ export default function WhatsAppConfigPage() {
             {/* Loading */}
             {connectionStatus === 'loading' && (
               <div className="p-5 bg-gray-50 border rounded-xl text-center">
-                <p className="text-gray-600">⏳ A criar instância e gerar QR Code...</p>
+                <p className="text-gray-600">{t('creating')}</p>
               </div>
             )}
 
@@ -289,7 +290,7 @@ export default function WhatsAppConfigPage() {
                     setQrCode(null);
                   }}
                 >
-                  Reconectar / Trocar número
+                  {t('reconnect')}
                 </Button>
               </div>
             )}
@@ -305,22 +306,20 @@ export default function WhatsAppConfigPage() {
             {(connectionStatus === 'idle' || connectionStatus === 'error') && (
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="evolutionPhone">Número do WhatsApp *</Label>
+                  <Label htmlFor="evolutionPhone">{t('phoneLabel')}</Label>
                   <Input
                     id="evolutionPhone"
                     placeholder="+55 11 99999-9999"
                     value={evolutionPhone}
                     onChange={(e) => setEvolutionPhone(e.target.value)}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Número que irás escanear — sem necessitar de configuração adicional
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">{t('phoneHint')}</p>
                 </div>
                 <Button
                   onClick={handleConnect}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
-                  🟢 Conectar WhatsApp
+                  {t('connectBtn')}
                 </Button>
               </div>
             )}
@@ -330,27 +329,25 @@ export default function WhatsAppConfigPage() {
         {/* ─── Tab 2: IA & Automações ─── */}
         <TabsContent value="ai">
           <Card className="p-6 space-y-6">
-            <h2 className="text-xl font-semibold">🤖 Configuração da IA</h2>
+            <h2 className="text-xl font-semibold">{t('aiTitle')}</h2>
 
             <div>
-              <Label htmlFor="greeting_message">Saudação inicial</Label>
+              <Label htmlFor="greeting_message">{t('greetingLabel')}</Label>
               <Textarea
                 id="greeting_message"
                 rows={2}
-                placeholder="Olá! 👋 Bem-vinda ao salão da Maria! Como posso ajudar?"
+                placeholder={t('greetingPlaceholder')}
                 value={greetingMessage}
                 onChange={(e) => setGreetingMessage(e.target.value)}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Mensagem enviada quando o cliente entra em contato pela primeira vez.
-              </p>
+              <p className="text-xs text-gray-500 mt-1">{t('greetingHint')}</p>
             </div>
 
             <div>
               <Label htmlFor="instructions">
-                Instruções personalizadas para a IA
+                {t('instructionsLabel')}
                 <span className="ml-2 text-xs text-yellow-600">
-                  ⚠️ Complementares (não substituem regras padrão)
+                  {t('instructionsWarning')}
                 </span>
               </Label>
               <Textarea
@@ -360,9 +357,7 @@ export default function WhatsAppConfigPage() {
                 value={aiSettings.instructions}
                 onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Instruções específicas do seu negócio que o bot deve seguir.
-              </p>
+              <p className="text-xs text-gray-500 mt-1">{t('instructionsHint')}</p>
             </div>
 
             {aiMessage && (
@@ -376,7 +371,7 @@ export default function WhatsAppConfigPage() {
             )}
 
             <Button className="w-full" variant="outline" onClick={handleSaveAI} disabled={savingAi}>
-              {savingAi ? 'A salvar...' : 'Salvar Configurações de IA'}
+              {savingAi ? t('saving') : t('saveAiBtn')}
             </Button>
 
             {/* Configuração avançada do bot */}

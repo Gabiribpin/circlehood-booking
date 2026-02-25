@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { TestimonialsManager } from './testimonials-manager';
 
-export const metadata = {
-  title: 'Depoimentos | CircleHood Booking',
-  description: 'Gerencie depoimentos de clientes',
-};
+export async function generateMetadata() {
+  const t = await getTranslations('testimonials');
+  return {
+    title: `${t('title')} | CircleHood Booking`,
+    description: t('subtitle'),
+  };
+}
 
 export default async function TestimonialsPage() {
   const supabase = await createClient();
@@ -37,13 +41,13 @@ export default async function TestimonialsPage() {
     .eq('professional_id', professional.id)
     .order('order_index', { ascending: true });
 
+  const t = await getTranslations('testimonials');
+
   return (
     <div className="container mx-auto py-6 px-4 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Depoimentos</h1>
-        <p className="text-muted-foreground mt-2">
-          Adicione avaliações de clientes para mostrar na sua página
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
       </div>
 
       <TestimonialsManager

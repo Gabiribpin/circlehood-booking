@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ interface PageEditorProps {
 }
 
 export function PageEditor({ professionalId, professionalSlug, initialSections }: PageEditorProps) {
+  const t = useTranslations('pageEditor');
+  const tc = useTranslations('common');
   const [sections, setSections] = useState<PageSection[]>(initialSections);
   const [selectedSection, setSelectedSection] = useState<PageSection | null>(null);
   const [saving, setSaving] = useState(false);
@@ -35,8 +38,18 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
   const sectionsEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const sectionLabels: Record<string, string> = {
+    hero: t('sectionHero'),
+    about: t('sectionAbout'),
+    services: t('sectionServices'),
+    gallery: t('sectionGallery'),
+    testimonials: t('sectionTestimonials'),
+    faq: t('sectionFaq'),
+    contact: t('sectionContact'),
+  };
+
   const handleAddFromTemplate = (templateKey: string) => {
-    const template = TEMPLATES_LIST.find((t) => t.key === templateKey);
+    const template = TEMPLATES_LIST.find((tmpl) => tmpl.key === templateKey);
     if (!template) return;
 
     const newSection: PageSection = {
@@ -51,14 +64,13 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
     setSections((prev) => [...prev, newSection]);
     setTemplatesOpen(false);
 
-    // Scroll até a nova seção após o render
     setTimeout(() => {
       sectionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
 
     toast({
-      title: `${template.icon} ${template.name} adicionado!`,
-      description: 'Clique em "Salvar Ordem" para persistir a nova seção.',
+      title: `${template.icon} ${template.name} ${t('sectionAdded')}`,
+      description: t('sectionAddedHint'),
     });
   };
 
@@ -72,7 +84,6 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
 
         const newItems = arrayMove(items, oldIndex, newIndex);
 
-        // Atualizar order_index
         return newItems.map((item, index) => ({
           ...item,
           order_index: index + 1,
@@ -102,13 +113,13 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
       setSections(data.sections);
 
       toast({
-        title: 'Sucesso!',
-        description: 'Alterações salvas com sucesso',
+        title: tc('success'),
+        description: t('successSave'),
       });
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Erro',
-        description: 'Falha ao salvar alterações',
+        title: tc('error'),
+        description: t('errorSave'),
         variant: 'destructive',
       });
     } finally {
@@ -132,26 +143,16 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
       setSelectedSection(null);
 
       toast({
-        title: 'Sucesso!',
-        description: 'Seção atualizada com sucesso',
+        title: tc('success'),
+        description: t('successUpdate'),
       });
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Erro',
-        description: 'Falha ao atualizar seção',
+        title: tc('error'),
+        description: t('errorUpdate'),
         variant: 'destructive',
       });
     }
-  };
-
-  const sectionLabels: Record<string, string> = {
-    hero: '🎯 Hero',
-    about: '👤 Sobre Mim',
-    services: '✂️ Serviços',
-    gallery: '🖼️ Galeria',
-    testimonials: '⭐ Depoimentos',
-    faq: '❓ FAQ',
-    contact: '📞 Contato',
   };
 
   return (
@@ -160,25 +161,23 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
       <div className="lg:col-span-1">
         <Card className="p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold">Seções da Página</h3>
+            <h3 className="font-semibold">{t('pageSections')}</h3>
             <Button size="sm" variant="outline" onClick={handleSaveOrder} disabled={saving}>
               {saving ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Salvando...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Salvar Ordem
+                  {t('saveOrder')}
                 </>
               )}
             </Button>
           </div>
 
-          <p className="text-sm text-muted-foreground mb-4">
-            Arraste para reordenar. Clique para editar.
-          </p>
+          <p className="text-sm text-muted-foreground mb-4">{t('dragHint')}</p>
 
           <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -196,7 +195,6 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
             </SortableContext>
           </DndContext>
 
-          {/* Marcador para scroll até nova seção */}
           <div ref={sectionsEndRef} />
 
           <div className="mt-4 pt-4 border-t space-y-2">
@@ -206,7 +204,7 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
               onClick={() => setTemplatesOpen(true)}
             >
               <LayoutTemplate className="w-4 h-4 mr-2" />
-              Templates Prontos
+              {t('templates')}
             </Button>
             <Button
               variant="outline"
@@ -214,7 +212,7 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
               onClick={() => window.open(`/${professionalSlug}`, '_blank')}
             >
               <Eye className="w-4 h-4 mr-2" />
-              Visualizar Página
+              {t('viewPage')}
             </Button>
           </div>
         </Card>
@@ -224,7 +222,7 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
       <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Adicionar Seção por Template</DialogTitle>
+            <DialogTitle>{t('addSectionTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
             {TEMPLATES_LIST.map((template) => (
@@ -255,10 +253,8 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
         ) : (
           <Card className="p-8 text-center">
             <div className="text-muted-foreground">
-              <p className="text-lg mb-2">Selecione uma seção para editar</p>
-              <p className="text-sm">
-                Clique em qualquer seção na lista à esquerda para começar a personalizar
-              </p>
+              <p className="text-lg mb-2">{t('selectSection')}</p>
+              <p className="text-sm">{t('selectSectionDesc')}</p>
             </div>
           </Card>
         )}

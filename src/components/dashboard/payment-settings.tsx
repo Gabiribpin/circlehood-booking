@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ export function PaymentSettings({
   depositValue: initialDepositValue,
   currency,
 }: PaymentSettingsProps) {
+  const t = useTranslations('payment');
   const [requireDeposit, setRequireDeposit] = useState(initialRequireDeposit);
   const [depositType, setDepositType] = useState<'percentage' | 'fixed'>(
     initialDepositType ?? 'percentage'
@@ -47,12 +49,12 @@ export function PaymentSettings({
     const parsed = parseFloat(depositValue);
     if (requireDeposit) {
       if (!depositValue || isNaN(parsed) || parsed <= 0) {
-        setError('Informe um valor válido para o sinal.');
+        setError(t('errorInvalidValue'));
         setSaving(false);
         return;
       }
       if (depositType === 'percentage' && parsed > 100) {
-        setError('A percentagem não pode exceder 100%.');
+        setError(t('errorPercentageMax'));
         setSaving(false);
         return;
       }
@@ -71,14 +73,14 @@ export function PaymentSettings({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Erro ao salvar configurações.');
+        setError(data.error || t('errorSave'));
         return;
       }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError('Erro de rede. Tente novamente.');
+      setError(t('errorNetwork'));
     } finally {
       setSaving(false);
     }
@@ -87,18 +89,14 @@ export function PaymentSettings({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sinal de Reserva</CardTitle>
-        <CardDescription>
-          Exija um pagamento antecipado ao confirmar agendamentos online.
-        </CardDescription>
+        <CardTitle>{t('depositTitle')}</CardTitle>
+        <CardDescription>{t('depositDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-medium text-sm">Exigir sinal ao agendar</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              O cliente paga o sinal antes do agendamento ser confirmado
-            </p>
+            <p className="font-medium text-sm">{t('requireDeposit')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('requireDepositDesc')}</p>
           </div>
           <Switch
             checked={requireDeposit}
@@ -112,7 +110,7 @@ export function PaymentSettings({
         {requireDeposit && (
           <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
             <div className="space-y-2">
-              <Label>Tipo de sinal</Label>
+              <Label>{t('typeLabel')}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -123,7 +121,7 @@ export function PaymentSettings({
                       : 'border-border text-muted-foreground hover:border-primary/50'
                   }`}
                 >
-                  Percentagem (%)
+                  {t('typePercentage')}
                 </button>
                 <button
                   type="button"
@@ -134,14 +132,14 @@ export function PaymentSettings({
                       : 'border-border text-muted-foreground hover:border-primary/50'
                   }`}
                 >
-                  Valor fixo ({sym})
+                  {t('typeFixed', { sym })}
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="depositValue">
-                {depositType === 'percentage' ? 'Percentagem do serviço' : `Valor fixo (${sym})`}
+                {depositType === 'percentage' ? t('percentageLabel') : t('fixedLabel', { sym })}
               </Label>
               <div className="relative">
                 <Input
@@ -152,7 +150,7 @@ export function PaymentSettings({
                   step="0.01"
                   value={depositValue}
                   onChange={(e) => setDepositValue(e.target.value)}
-                  placeholder={depositType === 'percentage' ? 'Ex: 30' : 'Ex: 20'}
+                  placeholder={depositType === 'percentage' ? t('percentagePlaceholder') : t('fixedPlaceholder')}
                   className="pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -162,8 +160,10 @@ export function PaymentSettings({
               {depositType === 'percentage' && depositValue && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="h-3 w-3" />
-                  Para um serviço de {sym}50 → sinal de {sym}
-                  {(50 * (parseFloat(depositValue) || 0) / 100).toFixed(2)}
+                  {t('percentageHint', {
+                    sym,
+                    amount: (50 * (parseFloat(depositValue) || 0) / 100).toFixed(2),
+                  })}
                 </p>
               )}
             </div>
@@ -171,9 +171,7 @@ export function PaymentSettings({
         )}
 
         {!requireDeposit && (
-          <p className="text-sm text-muted-foreground">
-            Agendamentos são confirmados sem pagamento prévio.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('noDeposit')}</p>
         )}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -186,7 +184,7 @@ export function PaymentSettings({
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          {saved ? 'Guardado!' : 'Guardar configurações'}
+          {saved ? t('saved') : t('save')}
         </Button>
       </CardContent>
     </Card>

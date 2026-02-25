@@ -105,6 +105,7 @@ export default async function AdminDashboardPage() {
   let stripeError: string | null = null;
 
   try {
+    if (!stripe) throw new Error('Stripe not configured');
     const invoices = await stripe.invoices.list({
       created: { gte: Math.floor(startOfMonth.getTime() / 1000) },
       status: 'paid',

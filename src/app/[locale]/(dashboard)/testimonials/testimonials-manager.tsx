@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,10 @@ interface TestimonialsManagerProps {
 }
 
 export function TestimonialsManager({ professionalId, initialTestimonials }: TestimonialsManagerProps) {
+  const t = useTranslations('testimonials');
+  const tc = useTranslations('common');
+  const locale = useLocale();
+
   const [testimonials, setTestimonials] = useState<Testimonial[]>(initialTestimonials);
   const [showDialog, setShowDialog] = useState(false);
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
@@ -63,8 +68,8 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
         );
 
         toast({
-          title: 'Sucesso!',
-          description: 'Depoimento atualizado',
+          title: tc('success'),
+          description: t('updated'),
         });
       } else {
         // Create
@@ -80,8 +85,8 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
         setTestimonials((prev) => [testimonial, ...prev]);
 
         toast({
-          title: 'Sucesso!',
-          description: 'Depoimento adicionado',
+          title: tc('success'),
+          description: t('added'),
         });
       }
 
@@ -90,15 +95,15 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
       setSelectedRating(5);
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao salvar depoimento',
+        title: tc('error'),
+        description: t('saveError'),
         variant: 'destructive',
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja deletar este depoimento?')) return;
+    if (!confirm(t('confirmDelete'))) return;
 
     try {
       const response = await fetch(`/api/testimonials?id=${id}`, {
@@ -110,13 +115,13 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
       setTestimonials((prev) => prev.filter((t) => t.id !== id));
 
       toast({
-        title: 'Sucesso!',
-        description: 'Depoimento removido',
+        title: tc('success'),
+        description: t('removed'),
       });
     } catch (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao deletar depoimento',
+        title: tc('error'),
+        description: t('deleteError'),
         variant: 'destructive',
       });
     }
@@ -161,15 +166,13 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
       {/* Add Button */}
       <Card>
         <CardHeader>
-          <CardTitle>Adicionar Depoimentos</CardTitle>
-          <CardDescription>
-            Compartilhe avaliações positivas de clientes satisfeitos
-          </CardDescription>
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <CardDescription>{t('cardDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={handleNewTestimonial}>
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar Depoimento
+            {t('addBtn')}
           </Button>
         </CardContent>
       </Card>
@@ -194,7 +197,7 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
                   <p className="text-gray-700 italic">"{testimonial.testimonial_text}"</p>
 
                   <p className="text-xs text-muted-foreground">
-                    {new Date(testimonial.testimonial_date).toLocaleDateString('pt-BR')}
+                    {new Date(testimonial.testimonial_date).toLocaleDateString(locale)}
                   </p>
 
                   <div className="flex gap-2 pt-3 border-t">
@@ -205,7 +208,7 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
                       className="flex-1"
                     >
                       <Edit className="w-4 h-4 mr-1" />
-                      Editar
+                      {tc('edit')}
                     </Button>
                     <Button
                       size="sm"
@@ -223,8 +226,8 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
       ) : (
         <Card className="p-12 text-center">
           <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">Nenhum depoimento ainda</p>
-          <Button onClick={handleNewTestimonial}>Adicionar Primeiro Depoimento</Button>
+          <p className="text-muted-foreground mb-4">{t('noTestimonials')}</p>
+          <Button onClick={handleNewTestimonial}>{t('addFirstBtn')}</Button>
         </Card>
       )}
 
@@ -233,54 +236,52 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingTestimonial ? 'Editar Depoimento' : 'Adicionar Depoimento'}
+              {editingTestimonial ? t('editTitle') : t('addTitle')}
             </DialogTitle>
-            <DialogDescription>
-              Preencha os dados do depoimento do cliente
-            </DialogDescription>
+            <DialogDescription>{t('dialogDesc')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="client_name">Nome do Cliente *</Label>
+              <Label htmlFor="client_name">{t('clientNameLabel')} *</Label>
               <Input
                 id="client_name"
                 name="client_name"
                 defaultValue={editingTestimonial?.client_name || ''}
-                placeholder="Ex: Maria Silva"
+                placeholder={t('clientNamePlaceholder')}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="service_name">Serviço (opcional)</Label>
+              <Label htmlFor="service_name">{t('serviceLabel')}</Label>
               <Input
                 id="service_name"
                 name="service_name"
                 defaultValue={editingTestimonial?.service_name || ''}
-                placeholder="Ex: Corte e Escova"
+                placeholder={t('servicePlaceholder')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Avaliação *</Label>
+              <Label>{t('ratingLabel')} *</Label>
               {renderStars(selectedRating, true)}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="testimonial_text">Depoimento *</Label>
+              <Label htmlFor="testimonial_text">{t('testimonialLabel')} *</Label>
               <Textarea
                 id="testimonial_text"
                 name="testimonial_text"
                 defaultValue={editingTestimonial?.testimonial_text || ''}
-                placeholder="Depoimento do cliente..."
+                placeholder={t('testimonialPlaceholder')}
                 rows={4}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="testimonial_date">Data</Label>
+              <Label htmlFor="testimonial_date">{t('dateLabel')}</Label>
               <Input
                 id="testimonial_date"
                 name="testimonial_date"
@@ -294,7 +295,7 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="flex-1">
-                {editingTestimonial ? 'Atualizar' : 'Adicionar'}
+                {editingTestimonial ? t('updateBtn') : t('addBtn')}
               </Button>
               <Button
                 type="button"
@@ -304,7 +305,7 @@ export function TestimonialsManager({ professionalId, initialTestimonials }: Tes
                   setEditingTestimonial(null);
                 }}
               >
-                Cancelar
+                {tc('cancel')}
               </Button>
             </div>
           </form>

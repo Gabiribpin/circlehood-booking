@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,9 @@ export function ServicesManager({
 }: ServicesManagerProps) {
   const router = useRouter();
   const supabase = createClient();
+  const t = useTranslations('services');
+  const tc = useTranslations('common');
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -140,11 +144,7 @@ export function ServicesManager({
       const res = await fetch('/api/generate-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceName: name,
-          businessName,
-          category,
-        }),
+        body: JSON.stringify({ serviceName: name, businessName, category }),
       });
       const data = await res.json();
       if (data.description) setDescription(data.description);
@@ -157,10 +157,10 @@ export function ServicesManager({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Serviços</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <Button onClick={openCreate} size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
-          Adicionar servico
+          {t('addService')}
         </Button>
       </div>
 
@@ -168,7 +168,7 @@ export function ServicesManager({
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">
-              Nenhum servico cadastrado. Comece adicionando seu primeiro servico!
+              {t('noServices')} {t('noServicesFirst')}
             </p>
           </CardContent>
         </Card>
@@ -185,16 +185,16 @@ export function ServicesManager({
                         variant={service.is_active ? 'default' : 'secondary'}
                         className="text-[10px]"
                       >
-                        {service.is_active ? 'Ativo' : 'Inativo'}
+                        {service.is_active ? t('active') : t('inactive')}
                       </Badge>
                       {(service as any).service_location === 'at_home' && (
                         <Badge variant="outline" className="text-[10px] gap-1">
-                          <Home className="h-2.5 w-2.5" /> A domicílio
+                          <Home className="h-2.5 w-2.5" /> {t('atHome')}
                         </Badge>
                       )}
                       {(service as any).service_location === 'both' && (
                         <Badge variant="outline" className="text-[10px] gap-1">
-                          <Home className="h-2.5 w-2.5" /> Salão ou domicílio
+                          <Home className="h-2.5 w-2.5" /> {t('salonOrHome')}
                         </Badge>
                       )}
                     </div>
@@ -214,7 +214,7 @@ export function ServicesManager({
                     </div>
                     {service.lifetime_days && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        🔁 Refazer a cada {service.lifetime_days} dias
+                        {t('redoEvery', { days: service.lifetime_days })}
                       </span>
                     )}
                   </div>
@@ -223,7 +223,7 @@ export function ServicesManager({
                       variant="ghost"
                       size="icon"
                       onClick={() => toggleActive(service)}
-                      title={service.is_active ? 'Desativar' : 'Ativar'}
+                      title={service.is_active ? t('deactivate') : t('activate')}
                     >
                       <span className="text-xs">
                         {service.is_active ? 'Off' : 'On'}
@@ -259,23 +259,23 @@ export function ServicesManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingService ? 'Editar servico' : 'Novo servico'}
+              {editingService ? t('editService') : t('createService')}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
+              <Label htmlFor="name">{t('nameLabel')} *</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Corte de cabelo"
+                placeholder={t('namePlaceholder')}
                 required
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="description">Descrição</Label>
+                <Label htmlFor="description">{t('descriptionLabel')}</Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -289,20 +289,20 @@ export function ServicesManager({
                   ) : (
                     <Sparkles className="h-3 w-3" />
                   )}
-                  Sugerir com IA
+                  {t('suggestAI')}
                 </Button>
               </div>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descreva o servico (opcional)"
+                placeholder={t('descriptionPlaceholder')}
                 rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration">Duracao (min) *</Label>
+                <Label htmlFor="duration">{t('durationLabel')} *</Label>
                 <Input
                   id="duration"
                   type="number"
@@ -315,7 +315,7 @@ export function ServicesManager({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Preco *</Label>
+                <Label htmlFor="price">{t('priceLabel')} *</Label>
                 <Input
                   id="price"
                   type="number"
@@ -329,20 +329,20 @@ export function ServicesManager({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Local de atendimento</Label>
+              <Label>{t('locationLabel')}</Label>
               <Select value={serviceLocation} onValueChange={setServiceLocation}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in_salon">No salão / estabelecimento</SelectItem>
-                  <SelectItem value="at_home">A domicílio (na casa do cliente)</SelectItem>
-                  <SelectItem value="both">Ambos (cliente escolhe)</SelectItem>
+                  <SelectItem value="in_salon">{t('locationInSalon')}</SelectItem>
+                  <SelectItem value="at_home">{t('locationAtHome')}</SelectItem>
+                  <SelectItem value="both">{t('locationBoth')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lifetime">Vida útil (opcional)</Label>
+              <Label htmlFor="lifetime">{t('lifetimeLabel')}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="lifetime"
@@ -354,10 +354,10 @@ export function ServicesManager({
                   onChange={(e) => setLifetimeDays(e.target.value)}
                   className="w-28"
                 />
-                <span className="text-sm text-muted-foreground">dias</span>
+                <span className="text-sm text-muted-foreground">{t('lifetimeDays')}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Cliente recebe lembrete para remarcar após este período
+                {t('lifetimeHint')}
               </p>
             </div>
             <DialogFooter>
@@ -366,11 +366,11 @@ export function ServicesManager({
                 variant="outline"
                 onClick={() => setDialogOpen(false)}
               >
-                Cancelar
+                {tc('cancel')}
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {editingService ? 'Salvar' : 'Criar'}
+                {editingService ? tc('save') : t('create')}
               </Button>
             </DialogFooter>
           </form>
@@ -381,18 +381,17 @@ export function ServicesManager({
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir servico</DialogTitle>
+            <DialogTitle>{t('deleteService')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Tem certeza que deseja excluir &ldquo;{deletingService?.name}&rdquo;?
-            Está ação não pode ser desfeita.
+            {t('confirmDeleteService')}
           </p>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
-              Cancelar
+              {tc('cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -400,7 +399,7 @@ export function ServicesManager({
               disabled={loading}
             >
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Excluir
+              {tc('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

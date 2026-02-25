@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,6 +34,8 @@ export default async function DashboardPage() {
     .single();
 
   if (!professional) redirect('/register');
+
+  const t = await getTranslations('dashboard');
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -165,53 +168,18 @@ export default async function DashboardPage() {
 
   const showOnboardingBanner = !professional.onboarding_completed;
 
-  // Setup checklist — itens obrigatórios e opcionais
+  // Setup checklist
   const setupRequired = [
-    {
-      id: 'phone',
-      label: 'Adicionar telefone de contato',
-      done: !!(professional.phone),
-      href: '/settings',
-    },
-    {
-      id: 'services',
-      label: 'Adicionar pelo menos 1 serviço',
-      done: (totalServices ?? 0) > 0,
-      href: '/services',
-    },
-    {
-      id: 'schedule',
-      label: 'Definir horários de atendimento',
-      done: (workingHoursCount ?? 0) > 0,
-      href: '/schedule',
-    },
-    {
-      id: 'whatsapp',
-      label: 'Configurar WhatsApp Bot',
-      done: whatsappConfig?.is_active === true,
-      href: '/whatsapp-config',
-    },
+    { id: 'phone',     label: t('setupPhone'),      done: !!(professional.phone),                href: '/settings' },
+    { id: 'services',  label: t('setupServices'),   done: (totalServices ?? 0) > 0,              href: '/services' },
+    { id: 'schedule',  label: t('setupSchedule'),   done: (workingHoursCount ?? 0) > 0,          href: '/schedule' },
+    { id: 'whatsapp',  label: t('setupWhatsapp'),   done: whatsappConfig?.is_active === true,    href: '/whatsapp-config' },
   ];
 
   const setupOptional = [
-    {
-      id: 'page',
-      label: 'Personalizar página pública',
-      done: !!(professional.bio && (professional.bio as string).length > 10),
-      href: '/my-page-editor',
-    },
-    {
-      id: 'gallery',
-      label: 'Adicionar fotos à galeria',
-      done: (galleryCount ?? 0) > 0,
-      href: '/gallery',
-    },
-    {
-      id: 'testimonials',
-      label: 'Adicionar depoimentos',
-      done: (testimonialsCount ?? 0) > 0,
-      href: '/testimonials',
-    },
+    { id: 'page',         label: t('setupPage'),         done: !!(professional.bio && (professional.bio as string).length > 10), href: '/my-page-editor' },
+    { id: 'gallery',      label: t('setupGallery'),      done: (galleryCount ?? 0) > 0,                                          href: '/gallery' },
+    { id: 'testimonials', label: t('setupTestimonials'), done: (testimonialsCount ?? 0) > 0,                                     href: '/testimonials' },
   ];
 
   const requiredDone = setupRequired.filter((s) => s.done).length;
@@ -222,11 +190,11 @@ export default async function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 data-testid="dashboard-welcome" className="text-2xl font-bold">
-            Ola, {professional.business_name}!
+            {t('greeting', { name: professional.business_name })}
           </h1>
           {professional.subscription_status === 'trial' && (
             <p className="text-sm text-muted-foreground mt-1">
-              Período de teste: {trialDaysLeft} dias restantes
+              {t('trialDaysLeft', { days: trialDaysLeft })}
             </p>
           )}
         </div>
@@ -238,34 +206,32 @@ export default async function DashboardPage() {
               rel="noopener noreferrer"
             >
               <ExternalLink className="h-4 w-4" />
-              Ver minha página
+              {t('viewMyPage')}
             </a>
           </Button>
         </div>
       </div>
 
-      {/* Checklist de setup — visível enquanto não concluiu onboarding */}
+      {/* Setup checklist */}
       {showOnboardingBanner && (
         <Card data-testid="onboarding-banner" className="border-primary/30">
           <CardContent className="p-5">
-            {/* Header + progresso */}
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="font-semibold text-sm">
-                  {allRequiredDone ? '🎉 Conta pronta para receber clientes!' : 'Configure sua conta'}
+                  {allRequiredDone ? t('allDoneMessage') : t('configureAccount')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {requiredDone} de {setupRequired.length} etapas obrigatórias concluídas
+                  {t('setupProgress', { done: requiredDone, total: setupRequired.length })}
                 </p>
               </div>
               {allRequiredDone && (
                 <Button asChild size="sm" variant="outline">
-                  <Link href="/onboarding">Concluir setup</Link>
+                  <Link href="/onboarding">{t('finishSetup')}</Link>
                 </Button>
               )}
             </div>
 
-            {/* Barra de progresso */}
             <div className="w-full bg-muted rounded-full h-1.5 mb-4">
               <div
                 className="bg-primary h-1.5 rounded-full transition-all duration-500"
@@ -273,7 +239,6 @@ export default async function DashboardPage() {
               />
             </div>
 
-            {/* Itens obrigatórios */}
             <div className="space-y-1.5 mb-4">
               {setupRequired.map((item) => (
                 <Link
@@ -296,11 +261,10 @@ export default async function DashboardPage() {
               ))}
             </div>
 
-            {/* Itens opcionais — colapsados visualmente */}
             <details className="group">
               <summary className="text-xs text-muted-foreground cursor-pointer select-none list-none flex items-center gap-1 mb-2">
                 <ChevronRight className="h-3 w-3 group-open:rotate-90 transition-transform" />
-                Opcional ({setupOptional.filter((s) => s.done).length}/{setupOptional.length} concluídos)
+                {t('optionalSetup', { done: setupOptional.filter((s) => s.done).length, total: setupOptional.length })}
               </summary>
               <div className="space-y-1 pl-1">
                 {setupOptional.map((item) => (
@@ -325,17 +289,16 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {/* Alertas CRM */}
+      {/* CRM Alerts */}
       <AlertsWidget />
 
-      {/* Widget de uso WhatsApp */}
+      {/* WhatsApp usage widget */}
       <WhatsAppUsageWidget />
 
       {/* Stats */}
       <div className="space-y-4">
-        {/* Bookings Stats */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Agendamentos</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionBookings')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 sm:p-6">
@@ -344,7 +307,7 @@ export default async function DashboardPage() {
                     <CalendarDays className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Hoje</p>
+                    <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
                     <p className="text-2xl font-bold">{todayBookings || 0}</p>
                   </div>
                 </div>
@@ -358,7 +321,7 @@ export default async function DashboardPage() {
                     <CalendarRange className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Semana</p>
+                    <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
                     <p className="text-2xl font-bold">{weekBookings || 0}</p>
                   </div>
                 </div>
@@ -372,7 +335,7 @@ export default async function DashboardPage() {
                     <TrendingUp className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Mês</p>
+                    <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
                     <p className="text-2xl font-bold">{monthBookings || 0}</p>
                   </div>
                 </div>
@@ -386,7 +349,7 @@ export default async function DashboardPage() {
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Serviços</p>
+                    <p className="text-xs text-muted-foreground">{t('statsServicesLabel')}</p>
                     <p className="text-2xl font-bold">{totalServices || 0}</p>
                   </div>
                 </div>
@@ -395,9 +358,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Revenue Stats */}
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Receita</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionRevenue')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 sm:p-6">
@@ -406,7 +368,7 @@ export default async function DashboardPage() {
                     <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Hoje</p>
+                    <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                       {currencySymbol}{todayRevenueTotal.toFixed(0)}
                     </p>
@@ -422,7 +384,7 @@ export default async function DashboardPage() {
                     <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Semana</p>
+                    <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                       {currencySymbol}{weekRevenueTotal.toFixed(0)}
                     </p>
@@ -438,7 +400,7 @@ export default async function DashboardPage() {
                     <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Mês</p>
+                    <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                       {currencySymbol}{monthRevenueTotal.toFixed(0)}
                     </p>
@@ -450,16 +412,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Status badge */}
+      {/* Subscription status badge */}
       <Card>
         <CardContent className="p-4 flex items-center justify-between">
-          <span className="text-sm font-medium">Status da assinatura</span>
+          <span className="text-sm font-medium">{t('subscriptionStatus')}</span>
           <Badge variant="secondary">
             {professional.subscription_status === 'trial'
-              ? `Teste grátis (${trialDaysLeft}d)`
+              ? t('subscriptionTrial', { days: trialDaysLeft })
               : professional.subscription_status === 'active'
-                ? 'Ativo'
-                : 'Expirado'}
+                ? t('subscriptionActive')
+                : t('subscriptionExpired')}
           </Badge>
         </CardContent>
       </Card>
@@ -467,20 +429,16 @@ export default async function DashboardPage() {
       {/* Today's bookings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Agendamentos de hoje</CardTitle>
+          <CardTitle className="text-lg">{t('todayBookingsTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           {!todayUpcoming || todayUpcoming.length === 0 ? (
             <div className="text-center py-8">
               <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                Nenhum agendamento para hoje.
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Compartilhe sua página para receber agendamentos!
-              </p>
+              <p className="text-muted-foreground">{t('noBookingsToday')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('sharePageHint')}</p>
               <Button asChild variant="outline" className="mt-4" size="sm">
-                <Link href="/services">Adicionar serviços</Link>
+                <Link href="/services">{t('addServices')}</Link>
               </Button>
             </div>
           ) : (
@@ -512,7 +470,7 @@ export default async function DashboardPage() {
                       href="/bookings"
                       className="text-xs text-muted-foreground hover:underline"
                     >
-                      Gerenciar
+                      {t('manage')}
                     </Link>
                   </div>
                 </div>

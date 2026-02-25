@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 function detectLanguage(phone: string): 'pt' | 'en' {
@@ -23,7 +23,12 @@ export async function POST(request: NextRequest) {
   }
 
   const startTime = Date.now();
-  const supabase = await createClient();
+
+  // Service role — sem sessão de usuário; contorna RLS
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   try {
     // Usar timezone de Dublin para evitar bugs de UTC vs local time
@@ -103,6 +108,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Coletar professional_ids únicos e buscar configs WhatsApp em batch
+    const professionalIds = [...new Set(candidates.map((b) => b.professional_id))];
+
+    const { data: professionals } = await supabase
+      .from('professionals')
+      .select('id, user_id')
+      .in('id', professionalIds);
+
+    const profMap = new Map((professionals ?? []).map((p) => [p.id, p.user_id]));
+
+    const userIds = (professionals ?? []).map((p) => p.user_id).filter(Boolean);
+    const { data: whatsappConfigs } = await supabase
+      .from('whatsapp_config')
+      .select('user_id, provider, evolution_api_url, evolution_api_key, evolution_instance, phone_number_id, access_token, is_active')
+      .in('user_id', userIds)
+      .eq('is_active', true);
+
+    // Map: user_id → whatsapp_config
+    const wcMap = new Map((whatsappConfigs ?? []).map((wc) => [wc.user_id, wc]));
+
     const remindersSent = [];
     const errors = [];
 
@@ -146,23 +171,71 @@ export async function POST(request: NextRequest) {
           service.name
         );
 
-        // Adicionar à fila de notificações
-        await supabase.from('notification_queue').insert({
+        // Obter config WhatsApp do profissional
+        const userId = profMap.get(booking.professional_id);
+        const wc = userId ? wcMap.get(userId) : undefined;
+
+        let sent = false;
+
+        if (wc && wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
+          const normalized = phone.replace(/[^0-9]/g, '');
+          try {
+            const res = await fetch(
+              `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,
+              {
+                method: 'POST',
+                headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: normalized, text: message }),
+              }
+            );
+            sent = res.ok;
+            if (!sent) {
+              console.error('[maintenance-reminders] Evolution error:', res.status, await res.text());
+            }
+          } catch (sendErr: any) {
+            console.error('[maintenance-reminders] Evolution fetch error:', sendErr.message);
+          }
+        } else if (wc && wc.provider === 'meta' && wc.phone_number_id) {
+          try {
+            const res = await fetch(
+              `https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${wc.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  messaging_product: 'whatsapp',
+                  to: phone,
+                  type: 'text',
+                  text: { body: message },
+                }),
+              }
+            );
+            sent = res.ok;
+            if (!sent) {
+              console.error('[maintenance-reminders] Meta error:', res.status, await res.text());
+            }
+          } catch (sendErr: any) {
+            console.error('[maintenance-reminders] Meta fetch error:', sendErr.message);
+          }
+        }
+
+        // Registrar em notification_logs
+        await supabase.from('notification_logs').insert({
           professional_id: booking.professional_id,
+          booking_id: booking.id,
           type: 'maintenance_reminder',
-          recipient_name: booking.client_name,
-          recipient_phone: phone,
-          recipient_email: null,
-          message_template: 'maintenance_reminder',
-          message_data: {
-            booking_id: booking.id,
-            message,
-          },
-          language: lang,
-          status: 'pending',
+          channel: 'whatsapp',
+          recipient: phone,
+          message,
+          status: sent ? 'sent' : 'failed',
+          error_message: sent ? null : 'WhatsApp not configured or send failed',
         });
 
-        // Marcar lembrete como enviado
+        // Marcar lembrete como enviado independente do resultado
+        // (para não tentar novamente no próximo dia)
         await supabase
           .from('bookings')
           .update({
@@ -176,6 +249,7 @@ export async function POST(request: NextRequest) {
           client: booking.client_name,
           service: service.name,
           language: lang,
+          sent,
         });
       } catch (error: any) {
         console.error(`Error processing booking ${booking.id}:`, error);

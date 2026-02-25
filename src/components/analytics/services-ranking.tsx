@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { format } from 'date-fns';
 import {
   Table,
@@ -26,6 +27,7 @@ interface ServicesRankingProps {
 const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
 
 export function ServicesRanking({ period, startDate, endDate, limit = 10, currency }: ServicesRankingProps) {
+  const t = useTranslations('analytics');
   const sym = currencySymbols[currency] ?? currency;
 
   const { data, isLoading } = useQuery({
@@ -45,7 +47,7 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10, curren
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando serviços...</p>
+        <p className="text-muted-foreground">{t('loadingServices')}</p>
       </div>
     );
   }
@@ -55,7 +57,7 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10, curren
   if (services.length === 0) {
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">Nenhum dado de serviços neste período</p>
+        <p className="text-muted-foreground">{t('noServicesData')}</p>
       </div>
     );
   }
@@ -70,18 +72,18 @@ export function ServicesRanking({ period, startDate, endDate, limit = 10, curren
           disabled={!data || services.length === 0}
         >
           <Download className="mr-2 h-4 w-4" />
-          Exportar CSV
+          {t('exportCSV')}
         </Button>
       </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Rank</TableHead>
-            <TableHead>Serviço</TableHead>
-            <TableHead className="text-right">Preço</TableHead>
-            <TableHead className="text-right">Agendamentos</TableHead>
-            <TableHead className="text-right">Receita</TableHead>
-            <TableHead className="text-right">Média/Dia</TableHead>
+            <TableHead>{t('colRank')}</TableHead>
+            <TableHead>{t('colService')}</TableHead>
+            <TableHead className="text-right">{t('colPrice')}</TableHead>
+            <TableHead className="text-right">{t('colBookingsHeader')}</TableHead>
+            <TableHead className="text-right">{t('colRevenue')}</TableHead>
+            <TableHead className="text-right">{t('colDailyAvg')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

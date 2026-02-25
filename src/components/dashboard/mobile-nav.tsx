@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/navigation';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -26,7 +27,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
 interface MobileNavProps {
@@ -39,34 +39,35 @@ const TOUR_IDS: Partial<Record<string, string>> = {
   '/services': 'services',
 };
 
-const MAIN_ITEMS = [
-  { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { href: '/bookings', label: 'Agendamentos', icon: CalendarDays },
-  { href: '/my-page', label: 'Minha Página', icon: Palette },
-  { href: '/services', label: 'Serviços', icon: Scissors },
-];
-
-const MENU_ITEMS = [
-  { href: '/schedule', label: 'Horários', icon: Clock },
-  { href: '/clients', label: 'Clientes', icon: UserCheck },
-  { href: '/marketing', label: 'Marketing', icon: QrCode },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/my-page-editor', label: 'Editor de Página', icon: FileEdit },
-  { href: '/gallery', label: 'Galeria', icon: ImageIcon },
-  { href: '/testimonials', label: 'Depoimentos', icon: MessageSquare },
-  { href: '/whatsapp-config', label: 'WhatsApp Bot', icon: Phone },
-  { href: '/settings', label: 'Configurações', icon: Settings },
-];
-
 export function MobileNav({ professionalSlug }: MobileNavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const t = useTranslations('nav');
+
+  const MAIN_ITEMS = [
+    { href: '/dashboard' as const, label: t('dashboard'), icon: LayoutDashboard },
+    { href: '/bookings' as const, label: t('bookings'), icon: CalendarDays },
+    { href: '/my-page' as const, label: t('myPage'), icon: Palette },
+    { href: '/services' as const, label: t('services'), icon: Scissors },
+  ];
+
+  const MENU_ITEMS = [
+    { href: '/schedule' as const, label: t('schedule'), icon: Clock },
+    { href: '/clients' as const, label: t('clients'), icon: UserCheck },
+    { href: '/marketing' as const, label: t('marketing'), icon: QrCode },
+    { href: '/analytics' as const, label: t('analytics'), icon: BarChart3 },
+    { href: '/my-page-editor' as const, label: t('pageEditor'), icon: FileEdit },
+    { href: '/gallery' as const, label: t('gallery'), icon: ImageIcon },
+    { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
+    { href: '/whatsapp-config' as const, label: t('whatsapp'), icon: Phone },
+    { href: '/settings' as const, label: t('settings'), icon: Settings },
+  ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-50">
       <div className="flex justify-around py-2">
         {MAIN_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.endsWith(item.href);
           return (
             <Link
               key={item.href}
@@ -118,7 +119,7 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground text-sm"
                   >
-                    Ver minha página pública →
+                    {t('viewPublicPage')} →
                   </a>
                 )}
                 <form action="/api/auth/signout" method="POST">
@@ -127,7 +128,7 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground w-full text-left"
                   >
                     <LogOut className="h-5 w-5" />
-                    <span className="text-sm">Sair</span>
+                    <span className="text-sm">{t('logout')}</span>
                   </button>
                 </form>
               </div>

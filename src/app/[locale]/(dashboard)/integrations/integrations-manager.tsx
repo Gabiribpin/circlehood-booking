@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -31,54 +32,56 @@ interface IntegrationsManagerProps {
   integrations: Integration[];
 }
 
-const INTEGRATION_CONFIGS = {
-  google_calendar: {
-    name: 'Google Calendar',
-    description: 'Sincronize agendamentos automaticamente',
-    icon: Calendar,
-    color: 'blue',
-    canConnect: true,
-  },
-  whatsapp_api: {
-    name: 'WhatsApp Business API',
-    description: 'Envio automático de mensagens (€0.01/msg)',
-    icon: MessageCircle,
-    color: 'green',
-    canConnect: false, // Requer configuração manual
-  },
-  instagram: {
-    name: 'Instagram',
-    description: 'Posts automáticos de vagas e promoções',
-    icon: Instagram,
-    color: 'pink',
-    canConnect: true, // ✅ Sprint 8 Fase 2
-  },
-  email_marketing: {
-    name: 'Email Marketing',
-    description: 'Campanhas profissionais via Resend',
-    icon: Mail,
-    color: 'purple',
-    canConnect: true, // ✅ Sprint 8 Fase 2
-  },
-  google_maps: {
-    name: 'Google Maps',
-    description: 'Mapa interativo na sua página pública',
-    icon: MapPin,
-    color: 'red',
-    canConnect: true, // ✅ Sprint 8 Fase 2
-  },
-  revolut: {
-    name: 'Revolut Business',
-    description: 'Pagamentos alternativos (1.2% + €0.20)',
-    icon: CreditCard,
-    color: 'gray',
-    canConnect: true, // ✅ Sprint 8 Fase 2
-  },
-};
-
 export function IntegrationsManager({ professional, integrations }: IntegrationsManagerProps) {
+  const t = useTranslations('integrations');
+  const locale = useLocale();
   const [loading, setLoading] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
+
+  const INTEGRATION_CONFIGS = {
+    google_calendar: {
+      name: 'Google Calendar',
+      description: t('googleCalendarDesc'),
+      icon: Calendar,
+      color: 'blue',
+      canConnect: true,
+    },
+    whatsapp_api: {
+      name: 'WhatsApp Business API',
+      description: t('whatsappApiDesc'),
+      icon: MessageCircle,
+      color: 'green',
+      canConnect: false,
+    },
+    instagram: {
+      name: 'Instagram',
+      description: t('instagramDesc'),
+      icon: Instagram,
+      color: 'pink',
+      canConnect: true,
+    },
+    email_marketing: {
+      name: 'Email Marketing',
+      description: t('emailMarketingDesc'),
+      icon: Mail,
+      color: 'purple',
+      canConnect: true,
+    },
+    google_maps: {
+      name: 'Google Maps',
+      description: t('googleMapsDesc'),
+      icon: MapPin,
+      color: 'red',
+      canConnect: true,
+    },
+    revolut: {
+      name: 'Revolut Business',
+      description: t('revolutDesc'),
+      icon: CreditCard,
+      color: 'gray',
+      canConnect: true,
+    },
+  };
 
   // Transformar array em map
   const integrationsMap: Record<string, Integration> = {};
@@ -101,7 +104,7 @@ export function IntegrationsManager({ professional, integrations }: Integrations
   };
 
   const handleDisconnect = async (type: string) => {
-    if (!confirm('Deseja desconectar esta integração?')) {
+    if (!confirm(t('confirmDisconnect'))) {
       return;
     }
 
@@ -115,10 +118,10 @@ export function IntegrationsManager({ professional, integrations }: Integrations
       if (res.ok) {
         window.location.reload();
       } else {
-        alert('Erro ao desconectar');
+        alert(t('disconnectError'));
       }
-    } catch (error) {
-      alert('Erro ao desconectar');
+    } catch {
+      alert(t('disconnectError'));
     } finally {
       setLoading(null);
     }
@@ -137,10 +140,10 @@ export function IntegrationsManager({ professional, integrations }: Integrations
       if (res.ok) {
         window.location.reload();
       } else {
-        alert('Erro ao atualizar');
+        alert(t('updateError'));
       }
-    } catch (error) {
-      alert('Erro ao atualizar');
+    } catch {
+      alert(t('updateError'));
     } finally {
       setLoading(null);
     }
@@ -157,15 +160,13 @@ export function IntegrationsManager({ professional, integrations }: Integrations
       const data = await res.json();
 
       if (res.ok) {
-        alert(
-          `Sincronização concluída!\n${JSON.stringify(data.result, null, 2)}`
-        );
+        alert(`${t('syncSuccess')}\n${JSON.stringify(data.result, null, 2)}`);
         window.location.reload();
       } else {
-        alert(`Erro: ${data.message || 'Falha na sincronização'}`);
+        alert(t('syncError', { message: data.message || 'Sync failed' }));
       }
-    } catch (error) {
-      alert('Erro ao sincronizar');
+    } catch {
+      alert(t('syncError', { message: 'Network error' }));
     } finally {
       setSyncing(null);
     }
@@ -174,10 +175,8 @@ export function IntegrationsManager({ professional, integrations }: Integrations
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Integrações</h1>
-        <p className="text-gray-600 mt-1">
-          Conecte suas ferramentas favoritas para automatizar seu negócio
-        </p>
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        <p className="text-gray-600 mt-1">{t('subtitle')}</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -211,31 +210,27 @@ export function IntegrationsManager({ professional, integrations }: Integrations
                 {integration?.is_configured ? (
                   <>
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <span className="text-sm text-green-600 font-medium">
-                      Conectado
-                    </span>
+                    <span className="text-sm text-green-600 font-medium">{t('connected')}</span>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="w-5 h-5 text-orange-600" />
-                    <span className="text-sm text-orange-600 font-medium">
-                      Não configurado
-                    </span>
+                    <span className="text-sm text-orange-600 font-medium">{t('notConfigured')}</span>
                   </>
                 )}
               </div>
 
               {integration?.last_sync_at && (
                 <p className="text-xs text-gray-500 mb-4">
-                  Última sincronização:{' '}
-                  {new Date(integration.last_sync_at).toLocaleString('pt-BR')}
+                  {t('lastSync')}{' '}
+                  {new Date(integration.last_sync_at).toLocaleString(locale)}
                 </p>
               )}
 
               {integration?.last_error && (
                 <div className="mb-4 p-3 bg-red-50 rounded-lg">
                   <p className="text-xs text-red-600">
-                    Erro: {integration.last_error}
+                    {t('syncError', { message: integration.last_error })}
                   </p>
                 </div>
               )}
@@ -249,12 +244,12 @@ export function IntegrationsManager({ professional, integrations }: Integrations
                   {loading === type ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Conectando...
+                      {t('connecting')}
                     </>
                   ) : config.canConnect ? (
-                    `Conectar ${config.name}`
+                    t('connect', { name: config.name })
                   ) : (
-                    'Em breve'
+                    t('comingSoon')
                   )}
                 </Button>
               ) : (
@@ -269,12 +264,12 @@ export function IntegrationsManager({ professional, integrations }: Integrations
                       {syncing === type ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Sincronizando...
+                          {t('syncing')}
                         </>
                       ) : (
                         <>
                           <RefreshCw className="w-4 h-4 mr-2" />
-                          Sincronizar
+                          {t('sync')}
                         </>
                       )}
                     </Button>
@@ -288,10 +283,10 @@ export function IntegrationsManager({ professional, integrations }: Integrations
                     {loading === type ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Desconectando...
+                        {t('disconnecting')}
                       </>
                     ) : (
-                      'Desconectar'
+                      t('disconnect')
                     )}
                   </Button>
                 </div>
@@ -303,19 +298,16 @@ export function IntegrationsManager({ professional, integrations }: Integrations
 
       {/* Instruções */}
       <Card className="mt-8 p-6 bg-blue-50">
-        <h3 className="text-lg font-semibold mb-2">ℹ️ Como usar</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('howTitle')}</h3>
         <div className="space-y-2 text-sm text-gray-700">
           <p>
-            <strong>Google Calendar:</strong> Clique em "Conectar" e autorize o
-            acesso. Seus agendamentos serão sincronizados automaticamente.
+            <strong>Google Calendar:</strong> {t('howGoogleCalendar')}
           </p>
           <p>
-            <strong>WhatsApp Business API:</strong> Requer aprovação da Meta
-            Business Suite (1-2 semanas). Custo: ~€0.01/mensagem.
+            <strong>WhatsApp Business API:</strong> {t('howWhatsApp')}
           </p>
           <p>
-            <strong>Outras integrações:</strong> Em breve! Fique atento às
-            atualizações.
+            <strong>Outras integrações:</strong> {t('howOthers')}
           </p>
         </div>
       </Card>

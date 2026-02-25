@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,21 +60,6 @@ function formatPrice(price: number, currency: string) {
   return `${symbol}${Number(price).toFixed(0)}`;
 }
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  confirmed: { label: 'Confirmado',       variant: 'default' },
-  cancelled: { label: 'Cancelado',        variant: 'destructive' },
-  completed: { label: 'Concluído',        variant: 'secondary' },
-  no_show:   { label: 'Não compareceu',   variant: 'outline' },
-};
-
-const CANCEL_TEMPLATES = [
-  'Tive uma emergência familiar',
-  'Estou com um problema de saúde',
-  'Houve um imprevisto no trabalho',
-  'Condições climáticas desfavoráveis',
-  'Preciso remarcar por motivos pessoais',
-];
-
 // ─── BookingCard ──────────────────────────────────────────────────────────────
 
 function BookingCard({
@@ -87,6 +73,16 @@ function BookingCard({
   onStatusChange: (id: string, status: string) => void;
   onCancelClick: (booking: BookingWithService) => void;
 }) {
+  const t = useTranslations('bookings');
+  const locale = useLocale();
+
+  const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    confirmed: { label: t('confirmed'), variant: 'default' },
+    cancelled: { label: t('cancelled'), variant: 'destructive' },
+    completed: { label: t('completed'), variant: 'secondary' },
+    no_show:   { label: t('noShow'),    variant: 'outline' },
+  };
+
   const config = statusConfig[booking.status];
   const dateStr = booking.booking_date.split('-').reverse().join('/');
 
@@ -110,7 +106,7 @@ function BookingCard({
             {booking.service_location === 'at_home' && (
               <div className="flex items-center gap-1 mt-1">
                 <Badge variant="outline" className="text-[10px] gap-1">
-                  <Home className="h-2.5 w-2.5" /> A domicílio
+                  <Home className="h-2.5 w-2.5" /> {t('atHome')}
                 </Badge>
                 {booking.customer_address && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -126,25 +122,25 @@ function BookingCard({
               <p className="text-xs text-muted-foreground mt-1 italic">{booking.notes}</p>
             )}
 
-            {/* Info de cancelamento */}
+            {/* Cancel info */}
             {booking.status === 'cancelled' && (
               <div className="mt-2 pt-2 border-t border-destructive/20">
                 <p className="text-xs text-muted-foreground">
-                  Cancelado {booking.cancelled_by === 'professional' ? 'por você' : 'pelo cliente'}
-                  {booking.cancelled_at && ` em ${new Date(booking.cancelled_at).toLocaleDateString('pt-BR')}`}
+                  {t('cancelledPrefix')} {booking.cancelled_by === 'professional' ? t('cancelledByProfessional') : t('cancelledByClient')}
+                  {booking.cancelled_at && ` ${t('completedOn').replace('✅ ', '')} ${new Date(booking.cancelled_at).toLocaleDateString(locale)}`}
                 </p>
                 {booking.cancellation_reason && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Motivo: <span className="text-foreground">{booking.cancellation_reason}</span>
+                    {t('reasonPrefix')} <span className="text-foreground">{booking.cancellation_reason}</span>
                   </p>
                 )}
               </div>
             )}
 
-            {/* Info de conclusão */}
+            {/* Completed info */}
             {booking.status === 'completed' && booking.completed_at && (
               <p className="text-xs text-muted-foreground mt-1">
-                ✅ Concluído em {new Date(booking.completed_at).toLocaleDateString('pt-BR')}
+                {t('completedOn')} {new Date(booking.completed_at).toLocaleDateString(locale)}
               </p>
             )}
 
@@ -184,7 +180,7 @@ function BookingCard({
                 <a href={`https://wa.me/${booking.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
                   `Olá ${booking.client_name}! Lembrando que você tem um agendamento amanhã: ${booking.services?.name} às ${booking.start_time.slice(0, 5)}. Te espero!`
                 )}`} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-3 w-3" /> Lembrete
+                  <MessageCircle className="h-3 w-3" /> {t('reminder')}
                 </a>
               </Button>
             )}
@@ -192,11 +188,11 @@ function BookingCard({
               <>
                 <Button variant="outline" size="sm"
                   onClick={() => onStatusChange(booking.id, 'completed')}>
-                  Concluir
+                  {t('conclude')}
                 </Button>
                 <Button variant="ghost" size="sm" className="text-destructive"
                   onClick={() => onCancelClick(booking)}>
-                  <XCircle className="h-3.5 w-3.5 mr-1" /> Cancelar
+                  <XCircle className="h-3.5 w-3.5 mr-1" /> {t('cancelBooking')}
                 </Button>
               </>
             )}
@@ -213,13 +209,23 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
   const router = useRouter();
   const supabase = createClient();
   const { toast } = useToast();
+  const t = useTranslations('bookings');
+  const tc = useTranslations('common');
   const [tab, setTab] = useState('all');
 
-  // Estado do modal de cancelamento
   const [cancellingBooking, setCancellingBooking] = useState<BookingWithService | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [sendNotification, setSendNotification] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+
+  // Cancel templates — message content sent to clients (kept in PT-BR)
+  const CANCEL_TEMPLATES = [
+    'Tive uma emergência familiar',
+    'Estou com um problema de saúde',
+    'Houve um imprevisto no trabalho',
+    'Condições climáticas desfavoráveis',
+    'Preciso remarcar por motivos pessoais',
+  ];
 
   async function handleStatusChange(bookingId: string, status: string) {
     const updateData: Record<string, any> = { status };
@@ -241,7 +247,6 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
     setCancelling(true);
 
     try {
-      // 1. Cancelar no banco
       const { error } = await supabase.from('bookings').update({
         status: 'cancelled',
         cancellation_reason: cancellationReason || null,
@@ -251,7 +256,6 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
 
       if (error) throw error;
 
-      // 2. Enviar notificação (se marcado e tem telefone ou email)
       if (sendNotification && (cancellingBooking.client_phone || cancellingBooking.client_email)) {
         try {
           const res = await fetch('/api/bookings/cancel-notification', {
@@ -261,29 +265,33 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
           });
 
           if (res.ok) {
-            toast({ title: 'Cancelado!', description: 'Cliente notificado.' });
+            const data = await res.json().catch(() => ({}));
+            let description = t('cancelledNotified');
+            if (data.emailSent && !data.whatsappSent) description = t('cancelledEmailOnly');
+            else if (!data.emailSent && data.whatsappSent) description = t('cancelledWhatsAppOnly');
+            toast({ title: t('cancelledTitle'), description });
           } else {
             toast({
-              title: 'Cancelado',
-              description: 'Agendamento cancelado, mas não foi possível notificar o cliente.',
+              title: t('cancelled'),
+              description: t('cancelledFailed'),
               variant: 'destructive',
             });
           }
         } catch {
           toast({
-            title: 'Cancelado',
-            description: 'Agendamento cancelado, mas não foi possível notificar o cliente.',
+            title: t('cancelled'),
+            description: t('cancelledFailed'),
             variant: 'destructive',
           });
         }
       } else {
-        toast({ title: 'Agendamento cancelado.' });
+        toast({ title: t('cancelledSuccess') });
       }
 
       setCancellingBooking(null);
       router.refresh();
     } catch (err: any) {
-      toast({ title: 'Erro ao cancelar', description: err.message, variant: 'destructive' });
+      toast({ title: t('errorCancel'), description: err.message, variant: 'destructive' });
     } finally {
       setCancelling(false);
     }
@@ -293,14 +301,14 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Agendamentos</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="all">Todos</TabsTrigger>
-          <TabsTrigger value="confirmed">Confirmados</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelados</TabsTrigger>
-          <TabsTrigger value="completed">Concluídos</TabsTrigger>
+          <TabsTrigger value="all">{t('tabAll')}</TabsTrigger>
+          <TabsTrigger value="confirmed">{t('tabConfirmed')}</TabsTrigger>
+          <TabsTrigger value="cancelled">{t('tabCancelled')}</TabsTrigger>
+          <TabsTrigger value="completed">{t('tabCompleted')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
@@ -308,7 +316,7 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
             <Card>
               <CardContent className="text-center py-8">
                 <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Nenhum agendamento encontrado.</p>
+                <p className="text-muted-foreground">{t('noBookings')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -327,11 +335,11 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Modal de cancelamento */}
+      {/* Cancel dialog */}
       <Dialog open={!!cancellingBooking} onOpenChange={(open) => { if (!open) setCancellingBooking(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancelar Agendamento</DialogTitle>
+            <DialogTitle>{t('cancelTitle')}</DialogTitle>
             <DialogDescription>
               {cancellingBooking?.client_name} · {cancellingBooking?.services?.name}
               <br />
@@ -340,40 +348,37 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Templates rápidos */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">Templates rápidos</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">{t('quickTemplates')}</Label>
               <div className="flex flex-wrap gap-1.5">
-                {CANCEL_TEMPLATES.map((t) => (
+                {CANCEL_TEMPLATES.map((tmpl) => (
                   <button
-                    key={t}
-                    onClick={() => setCancellationReason(t)}
+                    key={tmpl}
+                    onClick={() => setCancellationReason(tmpl)}
                     className={`text-xs px-2 py-1 rounded-md border transition-colors ${
-                      cancellationReason === t
+                      cancellationReason === tmpl
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'border-border hover:bg-muted'
                     }`}
                   >
-                    {t}
+                    {tmpl}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Textarea */}
             <div className="space-y-1.5">
-              <Label htmlFor="reason">Motivo (será enviado ao cliente)</Label>
+              <Label htmlFor="reason">{t('reasonLabel')}</Label>
               <Textarea
                 id="reason"
                 rows={3}
-                placeholder="Escreva o motivo ou escolha um template acima..."
+                placeholder={t('reasonPlaceholder')}
                 value={cancellationReason}
                 onChange={(e) => setCancellationReason(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Seja sincero e educado.</p>
+              <p className="text-xs text-muted-foreground">{t('beSincere')}</p>
             </div>
 
-            {/* Notificação */}
             {cancellingBooking?.client_phone && (
               <div
                 className="flex items-center gap-2 cursor-pointer"
@@ -381,18 +386,17 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
               >
                 <Checkbox
                   checked={sendNotification}
-                  onCheckedChange={(v) => setSendNotification(v)}
+                  onCheckedChange={(v) => setSendNotification(v as boolean)}
                 />
                 <Label className="text-sm cursor-pointer select-none">
-                  Notificar cliente via WhatsApp
+                  {t('notifyWhatsApp')}
                 </Label>
               </div>
             )}
 
-            {/* Preview da mensagem */}
             {sendNotification && cancellingBooking?.client_phone && (
               <div className="bg-muted rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">Prévia da mensagem:</p>
+                <p className="font-medium text-foreground">{t('messagePreview')}</p>
                 <p>Olá {cancellingBooking.client_name}! 😔</p>
                 <p>Infelizmente precisamos cancelar seu agendamento:</p>
                 <p>📅 {cancellingBooking.booking_date.split('-').reverse().join('/')} às {cancellingBooking.start_time.slice(0, 5)}</p>
@@ -406,10 +410,10 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancellingBooking(null)}>
-              Voltar
+              {tc('back')}
             </Button>
             <Button variant="destructive" onClick={confirmCancellation} disabled={cancelling}>
-              {cancelling ? 'Cancelando...' : 'Confirmar cancelamento'}
+              {cancelling ? t('cancelling') : t('confirmCancelBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

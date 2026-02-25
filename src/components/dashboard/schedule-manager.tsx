@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,16 +20,6 @@ interface ScheduleManagerProps {
   professionalId: string;
 }
 
-const DAY_NAMES = [
-  'Domingo',
-  'Segunda',
-  'Terca',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sabado',
-];
-
 interface DayConfig {
   isAvailable: boolean;
   startTime: string;
@@ -43,6 +34,11 @@ export function ScheduleManager({
 }: ScheduleManagerProps) {
   const router = useRouter();
   const supabase = createClient();
+  const t = useTranslations('schedule');
+
+  const DAY_NAMES = [
+    t('day0'), t('day1'), t('day2'), t('day3'), t('day4'), t('day5'), t('day6'),
+  ];
 
   // Initialize days from existing data
   const initialDays: DayConfig[] = Array.from({ length: 7 }, (_, i) => {
@@ -77,13 +73,11 @@ export function ScheduleManager({
   async function saveWorkingHours() {
     setSavingHours(true);
 
-    // Delete all existing
     await supabase
       .from('working_hours')
       .delete()
       .eq('professional_id', professionalId);
 
-    // Insert all 7 days
     const rows = days.map((d, i) => ({
       professional_id: professionalId,
       day_of_week: i,
@@ -147,13 +141,13 @@ export function ScheduleManager({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Horários</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
 
       <Tabs defaultValue="hours">
         <TabsList>
-          <TabsTrigger value="hours">Horários</TabsTrigger>
-          <TabsTrigger value="blocked">Dias bloqueados</TabsTrigger>
-          <TabsTrigger value="periods">Férias / Períodos</TabsTrigger>
+          <TabsTrigger value="hours">{t('tabHours')}</TabsTrigger>
+          <TabsTrigger value="blocked">{t('tabBlocked')}</TabsTrigger>
+          <TabsTrigger value="periods">{t('tabPeriods')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hours" className="mt-4">
@@ -192,7 +186,7 @@ export function ScheduleManager({
                         }
                         className="w-28 sm:w-32"
                       />
-                      <span className="text-muted-foreground text-sm">até</span>
+                      <span className="text-muted-foreground text-sm">{t('until')}</span>
                       <Input
                         type="time"
                         value={day.endTime}
@@ -205,7 +199,7 @@ export function ScheduleManager({
                   )}
                   {!day.isAvailable && (
                     <span className="text-sm text-muted-foreground pl-13 sm:pl-0">
-                      Indisponível
+                      {t('unavailable')}
                     </span>
                   )}
                 </div>
@@ -218,7 +212,7 @@ export function ScheduleManager({
                 {savingHours && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                Salvar horários
+                {t('saveHours')}
               </Button>
             </CardContent>
           </Card>
@@ -238,11 +232,11 @@ export function ScheduleManager({
                 </div>
                 <div className="flex-1 space-y-3">
                   <div className="space-y-2">
-                    <Label>Motivo (opcional)</Label>
+                    <Label>{t('blockReasonLabel')}</Label>
                     <Input
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
-                      placeholder="Ex: Ferias, feriado..."
+                      placeholder={t('blockReasonPlaceholder')}
                     />
                   </div>
                   <Button
@@ -253,14 +247,14 @@ export function ScheduleManager({
                     {savingBlock && (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     )}
-                    Bloquear data
+                    {t('blockDate')}
                   </Button>
                 </div>
               </div>
 
               {blockedDates.length > 0 && (
                 <div className="space-y-2 pt-4 border-t">
-                  <h3 className="text-sm font-medium">Datas bloqueadas</h3>
+                  <h3 className="text-sm font-medium">{t('blockedDatesList')}</h3>
                   {blockedDates.map((bd) => (
                     <div
                       key={bd.id}
@@ -290,17 +284,17 @@ export function ScheduleManager({
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="periods" className="mt-4">
           <Card>
             <CardContent className="p-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Bloqueie um intervalo de datas para férias, feriados prolongados ou recesso.
-                Nenhum horário será exibido para clientes durante esse período.
+                {t('periodsDesc')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="period-start">Data de início</Label>
+                  <Label htmlFor="period-start">{t('startDate')}</Label>
                   <Input
                     id="period-start"
                     type="date"
@@ -310,7 +304,7 @@ export function ScheduleManager({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="period-end">Data de término</Label>
+                  <Label htmlFor="period-end">{t('endDate')}</Label>
                   <Input
                     id="period-end"
                     type="date"
@@ -322,12 +316,12 @@ export function ScheduleManager({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="period-reason">Motivo (opcional)</Label>
+                <Label htmlFor="period-reason">{t('periodReasonLabel')}</Label>
                 <Input
                   id="period-reason"
                   value={periodReason}
                   onChange={(e) => setPeriodReason(e.target.value)}
-                  placeholder="Ex: Férias, Feriado, Recesso..."
+                  placeholder={t('periodReasonPlaceholder')}
                 />
               </div>
 
@@ -337,12 +331,12 @@ export function ScheduleManager({
                 className="w-full sm:w-auto"
               >
                 {savingPeriod && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Bloquear período
+                {t('blockPeriod')}
               </Button>
 
               {blockedPeriods.length > 0 && (
                 <div className="space-y-2 pt-4 border-t">
-                  <h3 className="text-sm font-medium">Períodos bloqueados</h3>
+                  <h3 className="text-sm font-medium">{t('blockedPeriodsList')}</h3>
                   {blockedPeriods.map((bp) => (
                     <div
                       key={bp.id}
@@ -351,7 +345,7 @@ export function ScheduleManager({
                       <div>
                         <p className="text-sm font-medium">
                           {bp.start_date.split('-').reverse().join('/')}
-                          {' até '}
+                          {t('rangeSeparator')}
                           {bp.end_date.split('-').reverse().join('/')}
                         </p>
                         {bp.reason && (

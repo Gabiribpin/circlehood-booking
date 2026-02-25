@@ -6,6 +6,7 @@ function getResend() {
 }
 
 function getFromEmail() {
+  if (process.env.RESEND_FROM_EMAIL) return process.env.RESEND_FROM_EMAIL;
   return process.env.NODE_ENV === 'production'
     ? 'noreply@circlehood-tech.com'
     : 'onboarding@resend.dev';

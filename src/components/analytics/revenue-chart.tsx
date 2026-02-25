@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { format } from 'date-fns';
 import {
   LineChart,
@@ -30,6 +31,7 @@ interface RevenueChartProps {
 const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
 
 export function RevenueChart({ period, startDate, endDate, currency }: RevenueChartProps) {
+  const t = useTranslations('analytics');
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>('day');
 
@@ -52,7 +54,7 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
   if (isLoading) {
     return (
       <div className="h-[400px] flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando gráfico...</p>
+        <p className="text-muted-foreground">{t('loadingChart')}</p>
       </div>
     );
   }
@@ -64,6 +66,10 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
     avgTicket: Number(item.avg_ticket || 0),
   })) || [];
 
+  const legendRevenue = t('legendRevenue');
+  const legendBookings = t('legendBookings');
+  const legendAvgTicket = t('legendAvgTicket');
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 justify-end">
@@ -74,16 +80,16 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
           disabled={!data}
         >
           <Download className="mr-2 h-4 w-4" />
-          Exportar CSV
+          {t('exportCSV')}
         </Button>
         <Select value={granularity} onValueChange={(v) => setGranularity(v as any)}>
           <SelectTrigger className="w-[120px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="day">Diário</SelectItem>
-            <SelectItem value="week">Semanal</SelectItem>
-            <SelectItem value="month">Mensal</SelectItem>
+            <SelectItem value="day">{t('granularityDay')}</SelectItem>
+            <SelectItem value="week">{t('granularityWeek')}</SelectItem>
+            <SelectItem value="month">{t('granularityMonth')}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -92,8 +98,8 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="line">Gráfico de Linha</SelectItem>
-            <SelectItem value="bar">Gráfico de Barras</SelectItem>
+            <SelectItem value="line">{t('chartLine')}</SelectItem>
+            <SelectItem value="bar">{t('chartBar')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -106,7 +112,6 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
               dataKey="period"
               tick={{ fontSize: 12 }}
               tickFormatter={(value) => {
-                // Format based on granularity
                 if (granularity === 'day') return value.split('-').slice(1).join('/');
                 return value;
               }}
@@ -116,9 +121,9 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
             <Tooltip
               formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
-                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Receita' : 'Ticket Médio'];
+                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? legendRevenue : legendAvgTicket];
                 }
-                return [value, 'Agendamentos'];
+                return [value, legendBookings];
               }}
             />
             <Legend />
@@ -128,7 +133,7 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
               dataKey="revenue"
               stroke="#8884d8"
               strokeWidth={2}
-              name="Receita"
+              name={legendRevenue}
             />
             <Line
               yAxisId="right"
@@ -136,7 +141,7 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
               dataKey="bookings"
               stroke="#82ca9d"
               strokeWidth={2}
-              name="Agendamentos"
+              name={legendBookings}
             />
           </LineChart>
         ) : (
@@ -155,14 +160,14 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
             <Tooltip
               formatter={(value: any, name?: string) => {
                 if (name === 'revenue' || name === 'avgTicket') {
-                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? 'Receita' : 'Ticket Médio'];
+                  return [`${sym} ${Number(value).toFixed(2)}`, name === 'revenue' ? legendRevenue : legendAvgTicket];
                 }
-                return [value, 'Agendamentos'];
+                return [value, legendBookings];
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Receita" />
-            <Bar yAxisId="right" dataKey="bookings" fill="#82ca9d" name="Agendamentos" />
+            <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name={legendRevenue} />
+            <Bar yAxisId="right" dataKey="bookings" fill="#82ca9d" name={legendBookings} />
           </BarChart>
         )}
       </ResponsiveContainer>

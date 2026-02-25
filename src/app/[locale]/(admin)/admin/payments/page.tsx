@@ -31,6 +31,7 @@ export default async function AdminPaymentsPage() {
   let stripeError: string | null = null;
 
   try {
+    if (!stripe) throw new Error('Stripe not configured');
     const [balanceRes, priceRes, invoicesRes, payoutsRes] = await Promise.allSettled([
       stripe.balance.retrieve(),
       PRICE_ID ? stripe.prices.retrieve(PRICE_ID, { expand: ['product'] }) : Promise.reject('No PRICE_ID'),

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ interface AlertItem {
 
 export function AlertsWidget() {
   const router = useRouter();
+  const t = useTranslations('alerts');
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +63,6 @@ export function AlertsWidget() {
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
     const sixtyDaysAgoStr = sixtyDaysAgo.toISOString().split('T')[0];
 
-    // Buscar contatos com last booking anterior a 60 dias
     const { data: allContacts } = await supabase
       .from('contacts')
       .select('phone')
@@ -101,45 +102,53 @@ export function AlertsWidget() {
     const alertItems: AlertItem[] = [
       {
         icon: '🎂',
-        title: birthdayCount ? `${birthdayCount} aniversariante${birthdayCount !== 1 ? 's' : ''}!` : 'Nenhum aniversariante',
-        description: birthdayCount ? 'Enviar mensagem de parabéns' : 'Próximos 7 dias',
+        title: birthdayCount
+          ? t('birthdayTitle', { count: birthdayCount })
+          : t('birthdayNone'),
+        description: birthdayCount ? t('birthdayDesc') : t('birthdayDescNone'),
         count: birthdayCount || 0,
         color: 'text-purple-700',
         bgColor: 'bg-purple-50',
-        badgeLabel: 'Enviar',
+        badgeLabel: t('birthdayBadge'),
         badgeColor: 'bg-purple-600 text-white hover:bg-purple-700',
         href: '/clients?filter=birthday',
       },
       {
         icon: '⏰',
-        title: remindersCount ? `${remindersCount} lembrete${remindersCount !== 1 ? 's' : ''} para amanhã` : 'Nenhum lembrete pendente',
-        description: remindersCount ? 'Serão enviados automaticamente às 10h' : 'Sem agendamentos amanhã',
+        title: remindersCount
+          ? t('reminderTitle', { count: remindersCount })
+          : t('reminderNone'),
+        description: remindersCount ? t('reminderDesc') : t('reminderDescNone'),
         count: remindersCount || 0,
         color: 'text-blue-700',
         bgColor: 'bg-blue-50',
-        badgeLabel: 'Automático',
+        badgeLabel: t('reminderBadge'),
         badgeColor: 'border border-blue-300 text-blue-700',
         href: '/bookings',
       },
       {
         icon: '⚠️',
-        title: inactiveCount ? `${inactiveCount} cliente${inactiveCount !== 1 ? 's' : ''} inativo${inactiveCount !== 1 ? 's' : ''}` : 'Todos ativos!',
-        description: inactiveCount ? 'Sem visita há 60+ dias — enviar "Sentimos sua falta"?' : 'Nenhum cliente sumiu',
+        title: inactiveCount
+          ? t('inactiveTitle', { count: inactiveCount })
+          : t('inactiveNone'),
+        description: inactiveCount ? t('inactiveDesc') : t('inactiveDescNone'),
         count: inactiveCount,
         color: 'text-yellow-700',
         bgColor: 'bg-yellow-50',
-        badgeLabel: 'Revisar',
+        badgeLabel: t('inactiveBadge'),
         badgeColor: 'bg-yellow-500 text-white hover:bg-yellow-600',
         href: '/clients?filter=inactive',
       },
       {
         icon: '📝',
-        title: waitlistCount ? `${waitlistCount} na lista de espera` : 'Lista de espera vazia',
-        description: waitlistCount ? 'Um horário pode ter liberado — notificar?' : 'Ninguém aguardando',
+        title: waitlistCount
+          ? t('waitlistTitle', { count: waitlistCount })
+          : t('waitlistNone'),
+        description: waitlistCount ? t('waitlistDesc') : t('waitlistDescNone'),
         count: waitlistCount || 0,
         color: 'text-green-700',
         bgColor: 'bg-green-50',
-        badgeLabel: 'Notificar',
+        badgeLabel: t('waitlistBadge'),
         badgeColor: 'bg-green-600 text-white hover:bg-green-700',
         href: '/bookings',
       },
@@ -152,7 +161,7 @@ export function AlertsWidget() {
   if (loading) {
     return (
       <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">🔔 Alertas Importantes</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('title')}</h2>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
@@ -168,10 +177,10 @@ export function AlertsWidget() {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">🔔 Alertas Importantes</h2>
+        <h2 className="text-lg font-semibold">{t('title')}</h2>
         {hasAlerts && (
           <Badge className="bg-red-500 text-white text-xs">
-            {activeAlerts.length} novo{activeAlerts.length !== 1 ? 's' : ''}
+            {t('newBadge', { count: activeAlerts.length })}
           </Badge>
         )}
       </div>
@@ -179,7 +188,7 @@ export function AlertsWidget() {
       {!hasAlerts ? (
         <div className="text-center py-6 text-muted-foreground">
           <p className="text-2xl mb-2">✅</p>
-          <p className="text-sm">Tudo em dia! Nenhum alerta no momento.</p>
+          <p className="text-sm">{t('allGood')}</p>
         </div>
       ) : (
         <div className="space-y-3">

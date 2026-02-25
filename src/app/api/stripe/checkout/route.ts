@@ -23,6 +23,9 @@ export async function POST() {
   }
 
   const stripe = getStripe();
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+  }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
   // Create or reuse Stripe customer
