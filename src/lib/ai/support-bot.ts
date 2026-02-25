@@ -78,7 +78,7 @@ export async function generateSupportResponse(
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 600,
-      system: `Você é o assistente de suporte do CircleHood Booking — um SaaS de agendamentos para profissionais de beleza e saúde.
+      system: `Você é o assistente de suporte do CircleHood Booking — um SaaS de agendamentos para profissionais autônomos de qualquer área que trabalham com hora marcada.
 
 Responda em português brasileiro, de forma amigável e clara.
 Use a FAQ abaixo para responder dúvidas comuns.

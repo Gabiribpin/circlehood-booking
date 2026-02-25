@@ -26,14 +26,22 @@ import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 const CATEGORIES = [
-  'Nail Tech',
-  'Cabeleireira',
   'Barbeiro',
-  'Esteticista',
-  'Personal Trainer',
+  'Cabeleireiro(a)',
+  'Coach / Consultor',
   'Cleaner',
-  'Massagista',
+  'Dog Groomer / Pet',
+  'Esteticista',
+  'Fisioterapeuta',
+  'Fotógrafo',
+  'Instrutor de Yoga/Pilates',
   'Makeup Artist',
+  'Massagista',
+  'Nail Tech',
+  'Nutricionista',
+  'Personal Trainer',
+  'Professor / Tutor',
+  'Psicólogo / Terapeuta',
   'Outro',
 ];
 
