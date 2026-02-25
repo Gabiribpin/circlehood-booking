@@ -30,8 +30,7 @@ export async function proxy(request: NextRequest) {
   // 2. Run next-intl middleware for locale detection / cookie / redirects
   const intlResponse = intlMiddleware(request);
 
-  // If next-intl is redirecting (locale prefix fix), honour it
-  // Attach Supabase cookies so the session survives the redirect
+  // If next-intl is redirecting (locale prefix fix), honour it and attach Supabase cookies
   if (intlResponse.status >= 300 && intlResponse.status < 400) {
     supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
       intlResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
@@ -39,17 +38,16 @@ export async function proxy(request: NextRequest) {
     return intlResponse;
   }
 
-  // 3. Build a combined response that forwards the full request context to server components.
+  // 3. Build combined response that:
+  //    a) forwards the original request headers (incl. Cookie) to server components
+  //    b) honours any URL rewrite next-intl needs (e.g. /admin/support → /pt-BR/admin/support)
   //
-  // Problem: intlResponse is NextResponse.next() without { request }, so server components
-  // cannot read the request cookies via cookies() from next/headers — cookieCount = 0.
+  // Why: intlResponse may be NextResponse.rewrite('/pt-BR/...') for default-locale routes.
+  // Returning NextResponse.next() instead loses that rewrite → 404.
+  // Returning intlResponse as-is loses the Cookie header → cookieCount=0 → Auth session missing.
   //
-  // Fix: create a new NextResponse.next({ request: { headers } }) that carries:
-  //   - all original request headers (including the Cookie header with auth tokens)
-  //   - any headers added by intlMiddleware (e.g. x-next-intl-locale)
-  // This makes cookies() in server components return the correct session cookies.
-  // Copy only next-intl request headers (x-next-intl-*) — copying all intlResponse headers
-  // breaks routing because Next.js internals like x-middleware-rewrite get overwritten.
+  // Fix: detect rewrite URL from intlResponse and create the appropriate response type
+  // while always forwarding request.headers (which includes Cookie).
   const requestHeaders = new Headers(request.headers);
   intlResponse.headers.forEach((value, key) => {
     if (key.startsWith('x-next-intl-')) {
@@ -57,11 +55,13 @@ export async function proxy(request: NextRequest) {
     }
   });
 
-  const combinedResponse = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  const rewriteUrl = intlResponse.headers.get('x-middleware-rewrite');
 
-  // Copy Set-Cookie from both Supabase (auth token refresh) and intl (locale cookie)
+  const combinedResponse = rewriteUrl
+    ? NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
+    : NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Copy Set-Cookie from Supabase (auth token refresh) and intl (locale preference)
   supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
     combinedResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
   });
