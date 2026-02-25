@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
 function detectLanguage(phone: string): 'pt' | 'en' {
   if (phone.startsWith('+55') || phone.startsWith('+351')) return 'pt';
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
         let sent = false;
 
         if (wc && wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
-          const normalized = phone.replace(/[^0-9]/g, '');
+          const normalized = normalizePhoneForWhatsApp(phone);
           try {
             const res = await fetch(
               `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,

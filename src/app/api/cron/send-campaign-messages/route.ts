@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
 const BATCH_SIZE = 30; // max mensagens por execução (evitar timeout)
 
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
 // ─── Helpers de envio ────────────────────────────────────────────────────────
 
 async function sendEvolution(phone: string, message: string, wc: any) {
-  const normalized = phone.replace(/[^0-9]/g, '');
+  const normalized = normalizePhoneForWhatsApp(phone);
   const url = `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`;
   const res = await fetch(url, {
     method: 'POST',

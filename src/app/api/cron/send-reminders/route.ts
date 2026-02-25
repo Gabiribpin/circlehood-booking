@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
 // Templates de mensagem por idioma
 const MESSAGE_TEMPLATES = {
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
 
         if (booking.client_phone && wc) {
           if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
-            const normalized = booking.client_phone.replace(/[^0-9]/g, '');
+            const normalized = normalizePhoneForWhatsApp(booking.client_phone);
             try {
               const res = await fetch(
                 `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,

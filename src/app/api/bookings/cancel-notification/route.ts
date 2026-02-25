@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendCancellationEmail } from '@/lib/resend';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,14 +76,18 @@ export async function POST(request: NextRequest) {
 
     if (booking.client_phone && wc) {
       if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
-        const normalized = booking.client_phone.replace(/[^0-9]/g, '');
-        const res = await fetch(`${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`, {
+        const normalized = normalizePhoneForWhatsApp(booking.client_phone);
+        const evoUrl = `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`;
+        console.log('[cancel-notification] WhatsApp attempt:', { raw: booking.client_phone, normalized, url: evoUrl, hasApiKey: !!wc.evolution_api_key });
+        const res = await fetch(evoUrl, {
           method: 'POST',
           headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: normalized, text: message }),
         });
+        const resBody = await res.text();
+        console.log('[cancel-notification] WhatsApp response:', { status: res.status, ok: res.ok, body: resBody.slice(0, 300) });
         whatsappSent = res.ok;
-        if (!whatsappSent) console.error('[cancel-notification] Evolution error:', res.status, await res.text());
+        if (!whatsappSent) console.error('[cancel-notification] Evolution error:', res.status, resBody);
       }
 
       if (!whatsappSent && wc.provider === 'meta' && wc.phone_number_id) {
