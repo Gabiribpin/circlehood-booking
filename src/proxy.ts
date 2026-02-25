@@ -48,9 +48,13 @@ export async function proxy(request: NextRequest) {
   //   - all original request headers (including the Cookie header with auth tokens)
   //   - any headers added by intlMiddleware (e.g. x-next-intl-locale)
   // This makes cookies() in server components return the correct session cookies.
+  // Copy only next-intl request headers (x-next-intl-*) — copying all intlResponse headers
+  // breaks routing because Next.js internals like x-middleware-rewrite get overwritten.
   const requestHeaders = new Headers(request.headers);
   intlResponse.headers.forEach((value, key) => {
-    requestHeaders.set(key, value);
+    if (key.startsWith('x-next-intl-')) {
+      requestHeaders.set(key, value);
+    }
   });
 
   const combinedResponse = NextResponse.next({
