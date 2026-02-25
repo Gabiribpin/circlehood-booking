@@ -284,6 +284,31 @@ export default defineConfig({
       dependencies: ['auth-setup'],
     },
 
+    // ─── Páginas legais + checkbox de termos (sem auth) ─────────────
+    {
+      name: 'legal',
+      testMatch: ['**/legal-pages.spec.ts', '**/register-terms.spec.ts'],
+      retries: 1, // 1 retry: cold start Vercel pode atrasar SSR das páginas estáticas
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        // Sem storageState — páginas públicas (privacy, terms, register)
+      },
+    },
+
+    // ─── GDPR: export de dados + UI zona de perigo + import WhatsApp ─
+    {
+      name: 'gdpr',
+      testMatch: ['**/gdpr-account.spec.ts', '**/import-whatsapp.spec.ts'],
+      retries: 1, // 1 retry: timing de componentes React async (useEffect)
+      use: {
+        browserName: 'chromium',
+        headless: true,
+        storageState: 'e2e/.auth/user.json',
+      },
+      dependencies: ['auth-setup'],
+    },
+
     // ─── Mobile responsive (iPhone SE, iPhone 12, Pixel 5) ───────────
     {
       name: 'mobile',

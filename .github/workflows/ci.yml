@@ -572,7 +572,39 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 14: Bot E2E (API, chama Claude)
+  # Job 14: GDPR + Páginas Legais (autenticado + público)
+  # ─────────────────────────────────────────────────────────────
+  gdpr-legal-e2e:
+    name: Playwright (GDPR + páginas legais)
+    runs-on: ubuntu-latest
+    environment: test
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - name: Run GDPR and legal pages tests
+        run: npx playwright test --project=auth-setup --project=legal --project=gdpr
+        env:
+          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-gdpr
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 15: Bot E2E (API, chama Claude)
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E)
@@ -625,6 +657,7 @@ jobs:
       - mobile-e2e
       - critical-race
       - critical-idempotency
+      - gdpr-legal-e2e
       - bot-e2e
       - bot-reschedule
       - timezone-dst
