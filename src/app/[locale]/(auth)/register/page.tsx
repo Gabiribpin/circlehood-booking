@@ -50,6 +50,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Step 1: Account
   const [email, setEmail] = useState('');
@@ -123,6 +124,12 @@ export default function RegisterPage() {
 
     if (!slugAvailable) {
       setError('Escolha um link disponível para sua página.');
+      setLoading(false);
+      return;
+    }
+
+    if (!termsAccepted) {
+      setError('Você deve aceitar os Termos de Uso para criar uma conta.');
       setLoading(false);
       return;
     }
@@ -311,6 +318,26 @@ export default function RegisterPage() {
                 <p className="text-xs text-muted-foreground">
                   💡 Você poderá adicionar bio, telefone, redes sociais e foto depois no painel!
                 </p>
+              </div>
+
+              <div className="flex items-start gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 cursor-pointer"
+                />
+                <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                  Li e aceito os{' '}
+                  <Link href="/terms" target="_blank" className="text-primary underline hover:no-underline">
+                    Termos de Uso
+                  </Link>
+                  {' '}e a{' '}
+                  <Link href="/privacy" target="_blank" className="text-primary underline hover:no-underline">
+                    Política de Privacidade
+                  </Link>
+                </label>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
