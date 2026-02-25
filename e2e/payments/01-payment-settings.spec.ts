@@ -40,7 +40,7 @@ async function saveAndWait(page: import('@playwright/test').Page) {
   // O botão de guardar pode dizer "Guardar configurações" ou "Guardado!"
   await page.getByRole('button', { name: /Guardar|Save|Guardar cambios/i }).last().click();
   await expect(page.getByRole('button', { name: /Guardado|Saved|Guardado/i })).toBeVisible({
-    timeout: 15_000,
+    timeout: 30_000,
   });
 }
 

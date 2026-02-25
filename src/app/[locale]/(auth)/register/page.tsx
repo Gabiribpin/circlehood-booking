@@ -330,11 +330,11 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
                   Li e aceito os{' '}
-                  <Link href="/terms" target="_blank" className="text-primary underline hover:no-underline">
+                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
                     Termos de Uso
                   </Link>
                   {' '}e a{' '}
-                  <Link href="/privacy" target="_blank" className="text-primary underline hover:no-underline">
+                  <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
                     Política de Privacidade
                   </Link>
                 </label>

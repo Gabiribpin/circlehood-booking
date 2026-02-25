@@ -34,8 +34,8 @@ test.describe('Importação de Contatos — Estrutura', () => {
       timeout: 15_000,
     });
 
-    // Card de instruções ("Como importar" / "Step 1")
-    await expect(page.getByText(/como importar|instruções|step 1/i).first()).toBeVisible({
+    // Card de instruções ("Como preparar seu arquivo" / "Selecionar arquivo")
+    await expect(page.getByText(/como preparar|selecionar arquivo/i).first()).toBeVisible({
       timeout: 10_000,
     });
   });
@@ -62,14 +62,15 @@ test.describe('Importação de Contatos — Estrutura', () => {
 test.describe('Botão "Importar do WhatsApp"', () => {
   test('botão aparece OU não aparece conforme config Evolution da conta de teste', async ({ page }) => {
     // Consulta direta ao banco para saber o estado esperado
+    // A página usa professional_id (não user_id) e verifica apenas provider === 'evolution'
     const supabase = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
     const { data: wConfig } = await supabase
       .from('whatsapp_config')
-      .select('provider, is_active')
-      .eq('user_id', TEST.USER_ID)
+      .select('provider')
+      .eq('professional_id', TEST.PROFESSIONAL_ID)
       .maybeSingle();
 
-    const expectEvolution = wConfig?.provider === 'evolution' && wConfig?.is_active === true;
+    const expectEvolution = wConfig?.provider === 'evolution';
 
     await page.goto(`${BASE}/clients/import`);
     await expect(page.getByRole('heading', { name: /importar contatos/i }).first()).toBeVisible({
@@ -98,12 +99,12 @@ test.describe('Botão "Importar do WhatsApp"', () => {
     const supabase = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
     const { data: wConfig } = await supabase
       .from('whatsapp_config')
-      .select('provider, is_active')
-      .eq('user_id', TEST.USER_ID)
+      .select('provider')
+      .eq('professional_id', TEST.PROFESSIONAL_ID)
       .maybeSingle();
 
     // Pular este teste se Evolution estiver configurada (coberto pelo teste anterior)
-    if (wConfig?.provider === 'evolution' && wConfig?.is_active === true) {
+    if (wConfig?.provider === 'evolution') {
       test.skip(true, 'Evolution configurada — este teste só roda sem Evolution');
       return;
     }

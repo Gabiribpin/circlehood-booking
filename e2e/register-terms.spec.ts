@@ -17,7 +17,7 @@ const BASE = TEST.BASE_URL;
 
 // ─── Helper: navegar até o step 2 ────────────────────────────────────────────
 
-async function goToStep2(page: Parameters<Parameters<typeof test>[1]>[0]) {
+async function goToStep2(page: import('@playwright/test').Page) {
   await page.goto(`${BASE}/register`, { timeout: 30_000 });
   await page.fill('#email', `terms-test-${Date.now()}@test.io`);
   await page.fill('#password', 'ValidoTerms1!');

@@ -72,7 +72,7 @@ test.describe('Termos de Uso — PT-BR', () => {
 
   test('link para Política de Privacidade visível', async ({ page }) => {
     await page.goto(`${BASE}/pt-BR/terms`);
-    await expect(page.getByRole('link', { name: /política de privacidade/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('link', { name: /política de privacidade/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 });
 

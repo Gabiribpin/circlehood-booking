@@ -57,7 +57,7 @@ test.describe('GDPR Art. 20 — Exportação de Dados', () => {
     // Verificar estrutura mínima do JSON
     const body = await response.json().catch(() => null);
     expect(body).not.toBeNull();
-    expect(body).toHaveProperty('exportedAt');
+    expect(body).toHaveProperty('exported_at');
     expect(body).toHaveProperty('professional');
     expect(body).toHaveProperty('services');
     expect(body).toHaveProperty('bookings');
@@ -96,7 +96,7 @@ test.describe('GDPR Art. 17 — Zona de Perigo', () => {
     // Step 1: mensagem de aviso visível (não pede input ainda)
     // O texto de aviso mencionado na config: tAccount('deleteWarning') ou tAccount('confirmTitle')
     await expect(
-      page.getByText(/irreversível|confirmação|dados serão excluídos/i).first()
+      page.getByText(/Tem certeza|apagados permanentemente/i).first()
     ).toBeVisible({ timeout: 5_000 });
 
     // Botão "Cancelar" (step 1) deve aparecer para poder recuar
@@ -121,7 +121,7 @@ test.describe('GDPR Art. 17 — Zona de Perigo', () => {
     await continueBtn.click();
 
     // Step 2: campo de texto para digitar EXCLUIR deve aparecer
-    const input = page.getByRole('textbox');
+    const input = page.getByPlaceholder('EXCLUIR');
     await expect(input).toBeVisible({ timeout: 5_000 });
 
     // Botão final de confirmação deve estar desabilitado com texto errado

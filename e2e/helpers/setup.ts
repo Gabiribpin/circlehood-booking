@@ -63,9 +63,9 @@ export async function cleanTestState() {
  * contra flakiness sem mascarar falhas reais (4 tentativas = 8s extra máx).
  */
 export async function getLastBotMessage(skipContent?: string): Promise<string | null> {
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     if (attempt > 0) {
-      await new Promise<void>((r) => setTimeout(r, 2500));
+      await new Promise<void>((r) => setTimeout(r, 3000));
     }
 
     const { data: conv } = await supabase

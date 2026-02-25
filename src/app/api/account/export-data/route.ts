@@ -19,19 +19,22 @@ export async function GET(_request: NextRequest) {
     );
 
     // Fetch professional profile (exclude internal fields)
-    const { data: professional } = await supabase
+    const { data: professionalRaw } = await supabase
       .from('professionals')
-      .select(
-        'id, business_name, slug, email, phone, whatsapp, instagram, bio, address, address_city, address_country, category, currency, locale, subscription_status, created_at, onboarding_completed_at'
-      )
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (!professional) {
+    if (!professionalRaw) {
       return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
     }
 
-    const pid = professional.id;
+    // Excluir campos sensíveis do export (Stripe IDs não pertencem ao titular do dado)
+    const professional = { ...professionalRaw } as Record<string, unknown>;
+    delete professional.stripe_customer_id;
+    delete professional.stripe_subscription_id;
+
+    const pid = professionalRaw.id;
 
     // Fetch all related data in parallel
     const [
