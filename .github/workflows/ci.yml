@@ -29,6 +29,7 @@ jobs:
   smoke:
     name: Playwright (smoke público)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +59,7 @@ jobs:
   dashboard-e2e:
     name: Playwright (dashboard autenticado)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +91,7 @@ jobs:
   api-e2e:
     name: Playwright (API pública + ciclo profissional)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +120,7 @@ jobs:
   security-e2e:
     name: Playwright (segurança)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -145,6 +149,7 @@ jobs:
   user-journey-e2e:
     name: Playwright (jornada do usuário)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -176,6 +181,7 @@ jobs:
   navigation-e2e:
     name: Playwright (navegação)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -207,6 +213,7 @@ jobs:
   ux-e2e:
     name: Playwright (UX consistency)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -238,6 +245,7 @@ jobs:
   i18n-e2e:
     name: Playwright (i18n — language switching)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -269,6 +277,7 @@ jobs:
   notifications-e2e:
     name: Playwright (notificações)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -297,6 +306,7 @@ jobs:
   mobile-e2e:
     name: Playwright (mobile)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -328,6 +338,7 @@ jobs:
   critical-race:
     name: Playwright (race condition)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -353,9 +364,9 @@ jobs:
   # Job 12: Idempotência crítica — todo push e PR
   # ─────────────────────────────────────────────────────────────
   critical-idempotency:
-
     name: Playwright (idempotência crítica)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -380,13 +391,13 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 13: Bot Reagendamento (chama Claude) — desabilitado
-  # Rodar localmente: npx playwright test --project=bot-reschedule
+  # Job 13: Bot Reagendamento (chama Claude)
+  # Serializado após bot-e2e: ambos usam TEST.PHONE — não podem rodar em paralelo
   # ─────────────────────────────────────────────────────────────
   bot-reschedule:
     name: Playwright (reagendamento bot)
     runs-on: ubuntu-latest
-    # Serializado após bot-e2e: ambos usam TEST.PHONE — não podem rodar em paralelo
+    environment: test
     needs: [unit, bot-e2e]
     steps:
       - uses: actions/checkout@v4
@@ -417,6 +428,7 @@ jobs:
   timezone-dst:
     name: Playwright (timezone/DST)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -445,6 +457,7 @@ jobs:
   blocked-periods-api:
     name: Playwright (bloqueio de período — API)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -467,13 +480,13 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 17: Bloqueio de período — Bot (chama Claude) — desabilitado
-  # Rodar localmente: npx playwright test --project=blocked-periods-bot
+  # Job 17: Bloqueio de período — Bot (chama Claude)
+  # Serializado após bot-reschedule: compartilha TEST.PHONE
   # ─────────────────────────────────────────────────────────────
   blocked-periods-bot:
     name: Playwright (bloqueio de período — bot)
     runs-on: ubuntu-latest
-    # Serializado após bot-reschedule: compartilha TEST.PHONE
+    environment: test
     needs: [unit, bot-reschedule]
     steps:
       - uses: actions/checkout@v4
@@ -497,14 +510,13 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 17: Consistência Bot ↔ Página (chama Claude) — desabilitado
-  # (renumerado de 15 → 17 após adição de bloqueios)
-  # Rodar localmente: npx playwright test --project=consistency-bot-page
+  # Job 17: Consistência Bot ↔ Página (chama Claude)
+  # Serializado após blocked-periods-bot: compartilha TEST.PHONE
   # ─────────────────────────────────────────────────────────────
   consistency-bot-page:
     name: Playwright (consistência bot ↔ página)
     runs-on: ubuntu-latest
-    # Serializado após blocked-periods-bot: compartilha TEST.PHONE
+    environment: test
     needs: [unit, blocked-periods-bot]
     steps:
       - uses: actions/checkout@v4
@@ -534,6 +546,7 @@ jobs:
   payment-e2e:
     name: Playwright (pagamentos / sinal)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -559,11 +572,12 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 14: Bot E2E (API, chama Claude) — desabilitado
+  # Job 14: Bot E2E (API, chama Claude)
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E)
     runs-on: ubuntu-latest
+    environment: test
     needs: unit
     steps:
       - uses: actions/checkout@v4
@@ -586,3 +600,70 @@ jobs:
           name: playwright-report-bot
           path: e2e-report/
           retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # Cleanup: apaga dados [E2E] do banco de testes após todos os jobs
+  # Roda SEMPRE (mesmo se testes falharem) via if: always()
+  # Usa o environment: test para resolver NEXT_PUBLIC_SUPABASE_URL
+  # e SUPABASE_SERVICE_ROLE_KEY do banco de testes, não de produção.
+  # ─────────────────────────────────────────────────────────────
+  cleanup-test-db:
+    name: Cleanup test database
+    runs-on: ubuntu-latest
+    environment: test
+    if: always()
+    needs:
+      - smoke
+      - dashboard-e2e
+      - api-e2e
+      - security-e2e
+      - user-journey-e2e
+      - navigation-e2e
+      - ux-e2e
+      - i18n-e2e
+      - notifications-e2e
+      - mobile-e2e
+      - critical-race
+      - critical-idempotency
+      - bot-e2e
+      - bot-reschedule
+      - timezone-dst
+      - blocked-periods-api
+      - blocked-periods-bot
+      - consistency-bot-page
+      - payment-e2e
+    steps:
+      - name: Delete E2E test data via Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+
+          echo "🧹 Iniciando cleanup de dados [E2E]..."
+
+          # Agendamentos criados por testes (client_name contém E2E, Teste, Race ou Lifecycle)
+          BOOKINGS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            "${SUPABASE_URL}/rest/v1/bookings?or=(client_name.ilike.*E2E*,client_name.ilike.*Teste*,client_name.ilike.*Race*,client_name.ilike.*Lifecycle*)" \
+            -H "apikey: ${SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_KEY}" \
+            -H "Prefer: return=minimal")
+          echo "  bookings DELETE → HTTP ${BOOKINGS}"
+
+          # Serviços marcados com [E2E] no nome (%5B = '[', %5D = ']')
+          SERVICES=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            "${SUPABASE_URL}/rest/v1/services?name=ilike.*%5BE2E%5D*" \
+            -H "apikey: ${SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_KEY}" \
+            -H "Prefer: return=minimal")
+          echo "  services DELETE → HTTP ${SERVICES}"
+
+          # Contatos criados por testes (name contém E2E)
+          CONTACTS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            "${SUPABASE_URL}/rest/v1/contacts?name=ilike.*E2E*" \
+            -H "apikey: ${SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SERVICE_KEY}" \
+            -H "Prefer: return=minimal")
+          echo "  contacts DELETE → HTTP ${CONTACTS}"
+
+          echo "✅ Cleanup concluído"
