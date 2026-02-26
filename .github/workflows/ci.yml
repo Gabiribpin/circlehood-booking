@@ -744,3 +744,24 @@ jobs:
           echo "  contacts DELETE → HTTP ${CONTACTS}"
 
           echo "✅ Cleanup concluído"
+
+  # ─────────────────────────────────────────────────────────────
+  # Migrate: aplica migrations pendentes em produção
+  # Roda APENAS em push para main (nunca em PRs).
+  # Corre em paralelo com os testes — é tão rápido (<30s) que
+  # termina antes que os primeiros testes precisem do novo schema.
+  # Requer secret SUPABASE_DB_URL no environment "production".
+  # ─────────────────────────────────────────────────────────────
+  migrate:
+    name: Apply DB migrations
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install postgresql-client
+        run: sudo apt-get install -y postgresql-client
+      - name: Apply pending migrations
+        run: bash scripts/migrate.sh
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
