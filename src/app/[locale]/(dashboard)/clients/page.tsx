@@ -342,11 +342,11 @@ function ManageView() {
     if (!professional) return;
     setProfessionalId(professional.id);
 
-    // Check if WhatsApp Bot is configured (same fields the import API requires)
+    // Check if WhatsApp Bot is configured (whatsapp_config uses user_id, not professional_id)
     const { data: waConfig } = await supabase
       .from('whatsapp_config')
       .select('provider, evolution_api_url, evolution_api_key, evolution_instance, is_active')
-      .eq('professional_id', professional.id)
+      .eq('user_id', user.id)
       .maybeSingle();
     const configured =
       !!waConfig &&

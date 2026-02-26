@@ -38,10 +38,11 @@ export async function POST(_request: NextRequest) {
     }
 
     // Fetch WhatsApp config (must be Evolution API)
+    // whatsapp_config uses user_id as identifier (not professional_id)
     const { data: config } = await supabase
       .from('whatsapp_config')
       .select('provider, evolution_api_url, evolution_api_key, evolution_instance, is_active')
-      .eq('professional_id', professional.id)
+      .eq('user_id', user.id)
       .single();
 
     if (!config || config.provider !== 'evolution') {
