@@ -183,11 +183,11 @@ export default async function DashboardLayout({
         )}
 
         {/* Trial expiration banner — shown when ≤7 days remain */}
-        {trialStatus?.isTrialActive && trialStatus.daysRemaining <= 7 && trialStatus.trialEndsAt && (
+        {trialStatus?.isActive && trialStatus.daysRemaining <= 7 && trialStatus.trialEndDate && (
           <div className="px-4 pt-3">
             <TrialExpirationBanner
               daysRemaining={trialStatus.daysRemaining}
-              trialEndsAt={trialStatus.trialEndsAt.toISOString()}
+              trialEndsAt={trialStatus.trialEndDate.toISOString()}
             />
           </div>
         )}

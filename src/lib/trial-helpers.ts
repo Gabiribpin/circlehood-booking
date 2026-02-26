@@ -1,15 +1,24 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hasPassedBusinessDays } from '@/lib/business-days';
 
+export interface TrialStatus {
+  isActive: boolean;       // Trial still valid (not expired)
+  daysRemaining: number;   // Days left (0 if expired or not on trial)
+  trialEndDate: Date | null;
+  hasExpired: boolean;     // On trial AND past trial_ends_at
+}
+
+export interface PublicPageStatus {
+  available: boolean;
+  reason?: 'not_found' | 'trial_expired' | 'payment_failed' | 'manually_disabled';
+}
+
+/** Subset of reasons shown to the visitor on the public page */
 export type PageUnavailableReason = 'trial_expired' | 'payment_failed';
 
-export interface TrialStatus {
-  isTrialActive: boolean;   // On trial and not yet expired
-  hasExpired: boolean;      // On trial AND past trial_ends_at
-  isPaidPlan: boolean;      // subscription_status = 'active'
-  daysRemaining: number;    // Days left (0 if expired)
-  trialEndsAt: Date | null;
-}
+// ---------------------------------------------------------------------------
+// Trial status helpers
+// ---------------------------------------------------------------------------
 
 /**
  * Returns the trial status for a professional looked up by their auth user_id.
@@ -46,17 +55,18 @@ export async function getTrialStatusById(professionalId: string): Promise<TrialS
   return computeTrialStatus(professional.subscription_status, professional.trial_ends_at);
 }
 
-function computeTrialStatus(subscriptionStatus: string, trialEndsAt: string | null): TrialStatus {
-  const isPaidPlan = subscriptionStatus === 'active';
+function computeTrialStatus(
+  subscriptionStatus: string,
+  trialEndsAt: string | null
+): TrialStatus {
   const isTrial = subscriptionStatus === 'trial';
 
   if (!isTrial || !trialEndsAt) {
     return {
-      isTrialActive: false,
-      hasExpired: false,
-      isPaidPlan,
+      isActive: false,
       daysRemaining: 0,
-      trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
+      trialEndDate: trialEndsAt ? new Date(trialEndsAt) : null,
+      hasExpired: false,
     };
   }
 
@@ -67,45 +77,60 @@ function computeTrialStatus(subscriptionStatus: string, trialEndsAt: string | nu
   const hasExpired = endDate < now;
 
   return {
-    isTrialActive: !hasExpired,
+    isActive: !hasExpired,
     hasExpired,
-    isPaidPlan: false,
     daysRemaining,
-    trialEndsAt: endDate,
+    trialEndDate: endDate,
   };
 }
 
-export interface PageAvailability {
-  available: boolean;
-  reason?: PageUnavailableReason;
-}
+// ---------------------------------------------------------------------------
+// Public page availability
+// ---------------------------------------------------------------------------
 
 /**
  * Returns whether the professional's public page should be accessible,
  * along with the reason if unavailable.
  *
  * Rules:
- * - Paid plan (active): available, unless payment_failed_at + 5 business days has passed
- * - Trial: available while trial_ends_at >= now
- * - Anything else: unavailable (trial_expired)
+ * - Deleted (deleted_at set)           → not_found
+ * - Manually disabled (is_active=false) → manually_disabled
+ * - Paid plan (active):
+ *     payment_failed_at + 5 business days → payment_failed
+ *     otherwise                            → available
+ * - Trial:
+ *     trial_ends_at >= now → available
+ *     trial_ends_at < now  → trial_expired
+ * - Any other status → trial_expired
  */
-export async function isPublicPageAvailable(professionalId: string): Promise<PageAvailability> {
+export async function isPublicPageAvailable(professionalId: string): Promise<PublicPageStatus> {
   const supabase = createAdminClient();
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('subscription_status, trial_ends_at, is_active, payment_failed_at')
+    .select('subscription_status, trial_ends_at, is_active, deleted_at, payment_failed_at')
     .eq('id', professionalId)
     .maybeSingle();
 
-  if (!professional) return { available: false, reason: 'trial_expired' };
-  if (!professional.is_active) return { available: false, reason: 'trial_expired' };
+  if (!professional) {
+    return { available: false, reason: 'not_found' };
+  }
 
-  // Paid plan
+  // Deleted → 404
+  if (professional.deleted_at) {
+    return { available: false, reason: 'not_found' };
+  }
+
+  // Manually disabled
+  if (!professional.is_active) {
+    return { available: false, reason: 'manually_disabled' };
+  }
+
+  // Paid plan — check payment failure grace period
   if (professional.subscription_status === 'active') {
     if (professional.payment_failed_at) {
-      const failedAt = new Date(professional.payment_failed_at);
-      if (hasPassedBusinessDays(failedAt, 5)) {
+      const failedDate = new Date(professional.payment_failed_at);
+      if (hasPassedBusinessDays(failedDate, 5)) {
         return { available: false, reason: 'payment_failed' };
       }
     }
@@ -114,16 +139,24 @@ export async function isPublicPageAvailable(professionalId: string): Promise<Pag
 
   // Trial
   if (professional.subscription_status === 'trial') {
-    if (!professional.trial_ends_at) return { available: false, reason: 'trial_expired' };
-    if (new Date(professional.trial_ends_at) >= new Date()) return { available: true };
+    if (!professional.trial_ends_at) {
+      return { available: false, reason: 'trial_expired' };
+    }
+    if (new Date(professional.trial_ends_at) >= new Date()) {
+      return { available: true };
+    }
     return { available: false, reason: 'trial_expired' };
   }
 
   return { available: false, reason: 'trial_expired' };
 }
 
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+
 /**
- * Calculates a trial end date 14 days from now.
+ * Calculates a trial end date N days from now (default: 14 days).
  */
 export function calculateTrialEndDate(days = 14): Date {
   const end = new Date();

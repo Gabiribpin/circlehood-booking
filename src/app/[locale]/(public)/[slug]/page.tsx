@@ -9,7 +9,7 @@ import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { isPublicPageAvailable } from '@/lib/trial-helpers';
-import type { PageUnavailableReason } from '@/lib/trial-helpers';
+import type { PublicPageStatus } from '@/lib/trial-helpers';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -56,8 +56,7 @@ async function getProfessional(slug: string) {
     services: (services || []) as Service[],
     workingHours: workingHours || [],
     sections: (sections || []) as PageSection[],
-    pageUnavailable: !pageAvailability.available,
-    unavailableReason: pageAvailability.reason as PageUnavailableReason | undefined,
+    pageAvailability,
   };
 }
 
@@ -172,7 +171,18 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const { professional, services, workingHours, sections, pageUnavailable, unavailableReason } = data;
+  const { professional, services, workingHours, sections, pageAvailability } = data;
+
+  // not_found or manually_disabled → hard 404
+  if (
+    !pageAvailability.available &&
+    (pageAvailability.reason === 'not_found' || pageAvailability.reason === 'manually_disabled')
+  ) {
+    notFound();
+  }
+
+  const pageUnavailable = !pageAvailability.available;
+  const unavailableReason = pageAvailability.reason as PublicPageStatus['reason'];
 
   // Se não houver seções customizadas, usar layout padrão
   if (!sections || sections.length === 0) {
@@ -267,8 +277,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Renderizar seções em ordem */}
-        {sections.map((section) => (
+        {/* Renderizar seções em ordem — apenas se página disponível */}
+        {!pageUnavailable && sections.map((section) => (
           <SectionRenderer
             key={section.id}
             section={section}

@@ -1,11 +1,13 @@
 import { AlertTriangle, ExternalLink } from 'lucide-react';
-import type { PageUnavailableReason } from '@/lib/trial-helpers';
+import type { PublicPageStatus } from '@/lib/trial-helpers';
+
+type BannerReason = NonNullable<PublicPageStatus['reason']>;
 
 interface TrialBannerProps {
-  reason?: PageUnavailableReason;
+  reason?: BannerReason;
 }
 
-const MESSAGES: Record<PageUnavailableReason, { subtitle: string; professionalCta: string }> = {
+const MESSAGES: Record<BannerReason, { subtitle: string; professionalCta: string }> = {
   trial_expired: {
     subtitle: 'O período de teste expirou.',
     professionalCta:
@@ -15,6 +17,14 @@ const MESSAGES: Record<PageUnavailableReason, { subtitle: string; professionalCt
     subtitle: 'Houve um problema com o pagamento da assinatura.',
     professionalCta:
       'Faça login e atualize seu método de pagamento para reativar sua página.',
+  },
+  manually_disabled: {
+    subtitle: 'Esta página foi temporariamente desativada pelo profissional.',
+    professionalCta: 'Faça login para reativar sua página.',
+  },
+  not_found: {
+    subtitle: 'Esta página não está disponível.',
+    professionalCta: 'Se você é o profissional, faça login para verificar sua conta.',
   },
 };
 
