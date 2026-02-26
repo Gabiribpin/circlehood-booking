@@ -76,6 +76,11 @@ export default async function DashboardLayout({
     .eq('user_id', user.id)
     .single();
 
+  // Block dashboard access if email not verified yet
+  if (professional && professional.email_verified === false) {
+    redirect('/verify-email-pending');
+  }
+
   // Badge: contagem de notificações com falha nos últimos 30 dias
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { count: failedNotificationsCount } = professional
@@ -165,8 +170,8 @@ export default async function DashboardLayout({
 
         <GuidedTour />
 
-        {/* Email verification banner */}
-        {!user.email_confirmed_at && user.email && (
+        {/* Email verification banner — shown if email_verified=false (shouldn't reach here due to redirect, but safety net) */}
+        {professional?.email_verified === false && user.email && (
           <div className="px-4 pt-3">
             <EmailVerificationBanner userEmail={user.email} />
           </div>

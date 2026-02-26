@@ -26,6 +26,7 @@ export interface Professional {
   stripe_account_id?: string | null;
   stripe_onboarding_completed?: boolean;
   account_number?: string | null;
+  email_verified?: boolean;
   deleted_at?: string | null;
   deletion_scheduled_for?: string | null;
   created_at: string;

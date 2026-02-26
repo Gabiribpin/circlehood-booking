@@ -26,7 +26,7 @@ export function EmailVerificationBanner({ userEmail }: EmailVerificationBannerPr
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/resend-verification', { method: 'POST' });
+      const res = await fetch('/api/auth/resend-verification-email', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? t('emailVerifError'));

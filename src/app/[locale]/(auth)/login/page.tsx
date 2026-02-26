@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
@@ -9,13 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations('auth');
   const locale = useLocale();
+  const isVerified = searchParams.get('verified') === 'true';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,6 +65,12 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
+            {isVerified && (
+              <div className="flex items-center gap-2 bg-green-50 text-green-800 border border-green-200 text-sm p-3 rounded-md">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Email confirmado com sucesso! Faça login para acessar sua conta.
+              </div>
+            )}
             {errorKey && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                 {t.rich(errorKey, {

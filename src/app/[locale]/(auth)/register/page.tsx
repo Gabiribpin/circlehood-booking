@@ -178,11 +178,11 @@ export default function RegisterPage() {
     }
 
     try {
-      const res = await fetch('/api/register', {
+      const res = await fetch('/api/auth/signup-with-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
+          email: email.trim().toLowerCase(),
           password,
           slug,
           businessName,
@@ -201,21 +201,11 @@ export default function RegisterPage() {
         return;
       }
 
-      // Sign in the user after registration
+      // Sign in automatically then redirect to email verification page
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
 
-      if (signInError) {
-        setError('Conta criada! Faça login para continuar.');
-        setLoading(false);
-        router.push('/login');
-        return;
-      }
-
-      router.push('/dashboard');
+      router.push('/verify-email-pending');
       router.refresh();
     } catch {
       setError('Erro de conexão. Tente novamente.');

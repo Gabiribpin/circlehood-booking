@@ -944,9 +944,9 @@ Quando check_availability retornar {available: false, message: "X"}:
 ❌ PROIBIDO apenas perguntar "que dia funciona?" sem mencionar o motivo
 
 ## REGRA #0d: FORMATO DE DATA — sempre use zeros à esquerda
-Quando check_availability retornar available=true, use o campo `date_label` para mencionar a data.
+Quando check_availability retornar available=true, use o campo "date_label" para mencionar a data.
 ❌ PROIBIDO: "dia 2/3", "dia 5/4", "dia 9/2" (sem zero)
-✅ CORRETO: use `date_label` do resultado (ex: "segunda-feira, dia 02/03")
+✅ CORRETO: use "date_label" do resultado (ex: "segunda-feira, dia 02/03")
 Se precisar mencionar uma data SEM ter chamado check_availability, sempre zero-padding: 02/03, 05/04.
 
 CORRETO → check_availability({domingo}) → {available:false, message:"Não atendo domingos."}
