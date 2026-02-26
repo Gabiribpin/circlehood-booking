@@ -547,7 +547,10 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       }
     }
 
-    return { available: true, work_hours: `${workStart} – ${workEnd}` };
+    const [, mm, dd] = normalizedDate.split('-');
+    const weekday = new Date(normalizedDate + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+    const date_label = `${weekday}, dia ${dd}/${mm}`;
+    return { available: true, work_hours: `${workStart} – ${workEnd}`, date_label };
   }
 
   private async createAppointment(
@@ -939,6 +942,12 @@ Quando check_availability retornar {available: false, message: "X"}:
 ✅ SEMPRE diga "X" (ou equivalente) ANTES de perguntar alternativa
 ✅ O cliente PRECISA saber o motivo (dia fechado, feriado, fora do expediente)
 ❌ PROIBIDO apenas perguntar "que dia funciona?" sem mencionar o motivo
+
+## REGRA #0d: FORMATO DE DATA — sempre use zeros à esquerda
+Quando check_availability retornar available=true, use o campo `date_label` para mencionar a data.
+❌ PROIBIDO: "dia 2/3", "dia 5/4", "dia 9/2" (sem zero)
+✅ CORRETO: use `date_label` do resultado (ex: "segunda-feira, dia 02/03")
+Se precisar mencionar uma data SEM ter chamado check_availability, sempre zero-padding: 02/03, 05/04.
 
 CORRETO → check_availability({domingo}) → {available:false, message:"Não atendo domingos."}
 → "Não atendo domingos. Que dia da semana prefere? 😊"
