@@ -6,6 +6,16 @@
       "has": [{ "type": "host", "value": "circlehood-booking.vercel.app" }],
       "destination": "https://booking.circlehood-tech.com/$1",
       "permanent": true
+    },
+    {
+      "source": "/signup",
+      "destination": "/register",
+      "permanent": true
+    },
+    {
+      "source": "/:locale/signup",
+      "destination": "/:locale/register",
+      "permanent": true
     }
   ],
   "crons": [
