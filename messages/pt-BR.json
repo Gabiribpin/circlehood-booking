@@ -49,7 +49,9 @@
     "password": "Senha",
     "forgotPassword": "Esqueci minha senha",
     "dontHaveAccount": "Não tem conta?",
-    "alreadyHaveAccount": "Já tem conta?"
+    "alreadyHaveAccount": "Já tem conta?",
+    "errorInvalidCredentials": "Conta não encontrada. Verifique seu email ou <link>cadastre-se</link>.",
+    "errorGeneric": "Erro ao entrar. Tente novamente."
   },
   "dashboard": {
     "welcome": "Bem-vindo, {name}!",

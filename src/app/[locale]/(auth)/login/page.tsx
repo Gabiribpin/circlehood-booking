@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,24 +14,30 @@ import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
+  const locale = useLocale();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [errorKey, setErrorKey] = useState<'errorInvalidCredentials' | 'errorGeneric' | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setErrorKey(null);
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError('Email ou senha incorretos.');
+      // "Invalid login credentials" covers both wrong password and email not found
+      const isCredentialsError =
+        error.message.toLowerCase().includes('invalid login credentials') ||
+        error.message.toLowerCase().includes('user not found') ||
+        error.status === 400;
+
+      setErrorKey(isCredentialsError ? 'errorInvalidCredentials' : 'errorGeneric');
       setLoading(false);
       return;
     }
@@ -38,6 +45,8 @@ export default function LoginPage() {
     router.push('/dashboard');
     router.refresh();
   }
+
+  const registerHref = locale === 'pt-BR' ? '/register' : `/${locale}/register`;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
@@ -53,9 +62,18 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            {error && (
+            {errorKey && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                {error}
+                {t.rich(errorKey, {
+                  link: (chunks) => (
+                    <Link
+                      href={registerHref}
+                      className="underline font-medium hover:no-underline"
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </div>
             )}
             <div className="space-y-2">
@@ -93,7 +111,7 @@ export default function LoginPage() {
             </Button>
             <p className="text-sm text-muted-foreground text-center">
               Ainda não tem conta?{' '}
-              <Link href="/register" className="text-primary underline hover:no-underline">
+              <Link href={registerHref} className="text-primary underline hover:no-underline">
                 Cadastre-se grátis
               </Link>
             </p>

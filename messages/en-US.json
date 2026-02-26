@@ -49,7 +49,9 @@
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "dontHaveAccount": "Don't have an account?",
-    "alreadyHaveAccount": "Already have an account?"
+    "alreadyHaveAccount": "Already have an account?",
+    "errorInvalidCredentials": "Account not found. Check your email or <link>sign up</link>.",
+    "errorGeneric": "Login failed. Please try again."
   },
   "dashboard": {
     "welcome": "Welcome, {name}!",
