@@ -26,6 +26,7 @@ interface SearchParams {
   status?: string;
   priority?: string;
   search?: string;
+  account?: string;
 }
 
 export default async function AdminSupportPage({
@@ -33,16 +34,16 @@ export default async function AdminSupportPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { status, priority, search } = await searchParams;
+  const { status, priority, search, account } = await searchParams;
   const adminClient = createAdminClient();
 
   // Build query
   let query = adminClient
     .from('support_tickets')
     .select(`
-      id, subject, status, priority, ai_escalated, created_at, updated_at,
+      id, ticket_number, subject, status, priority, ai_escalated, created_at, updated_at,
       professionals (
-        business_name
+        business_name, account_number
       )
     `)
     .order('updated_at', { ascending: false });
@@ -53,13 +54,21 @@ export default async function AdminSupportPage({
   const { data: tickets } = await query;
 
   // Client-side search filter (small dataset)
-  const filtered = search
-    ? (tickets ?? []).filter(
-        (t) =>
-          t.subject.toLowerCase().includes(search.toLowerCase()) ||
-          (t.professionals as any)?.business_name?.toLowerCase().includes(search.toLowerCase())
-      )
-    : (tickets ?? []);
+  const filtered = (tickets ?? []).filter((t) => {
+    const prof = t.professionals as any;
+    if (account && !prof?.account_number?.toLowerCase().includes(account.toLowerCase())) {
+      return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        t.subject.toLowerCase().includes(q) ||
+        prof?.business_name?.toLowerCase().includes(q) ||
+        (t as any).ticket_number?.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   // Stats
   const openCount = (tickets ?? []).filter((t) => t.status === 'open').length;
@@ -121,10 +130,17 @@ export default async function AdminSupportPage({
           <option value="low">Baixa</option>
         </select>
         <input
+          name="account"
+          type="text"
+          defaultValue={account ?? ''}
+          placeholder="Filtrar por ACC-..."
+          className="text-sm border rounded-md px-3 py-2 bg-background w-44"
+        />
+        <input
           name="search"
           type="text"
           defaultValue={search ?? ''}
-          placeholder="Buscar por cliente ou assunto..."
+          placeholder="Buscar por cliente, assunto ou TKT-..."
           className="text-sm border rounded-md px-3 py-2 bg-background flex-1 min-w-[200px]"
         />
         <button
@@ -133,7 +149,7 @@ export default async function AdminSupportPage({
         >
           Filtrar
         </button>
-        {(status || priority || search) && (
+        {(status || priority || search || account) && (
           <a
             href="/admin/support"
             className="text-sm text-muted-foreground hover:text-foreground px-2 py-2 transition-colors"
@@ -160,6 +176,7 @@ export default async function AdminSupportPage({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground border-b">
+                    <th className="text-left pb-3 font-medium">Ticket / Account</th>
                     <th className="text-left pb-3 font-medium">Cliente</th>
                     <th className="text-left pb-3 font-medium">Assunto</th>
                     <th className="text-left pb-3 font-medium">Status</th>
@@ -171,6 +188,18 @@ export default async function AdminSupportPage({
                 <tbody className="divide-y">
                   {filtered.map((ticket) => (
                     <tr key={ticket.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-3 pr-4">
+                        {(ticket as any).ticket_number && (
+                          <code className="text-[10px] bg-muted px-1 py-0.5 rounded block">
+                            {(ticket as any).ticket_number}
+                          </code>
+                        )}
+                        {(ticket.professionals as any)?.account_number && (
+                          <code className="text-[10px] text-muted-foreground px-1 block">
+                            {(ticket.professionals as any).account_number}
+                          </code>
+                        )}
+                      </td>
                       <td className="py-3 pr-4">
                         <p className="font-medium">
                           {(ticket.professionals as any)?.business_name ?? '—'}

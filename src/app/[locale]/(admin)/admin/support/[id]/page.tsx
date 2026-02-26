@@ -34,10 +34,9 @@ export default async function AdminTicketDetailPage({
   const { data: ticket } = await adminClient
     .from('support_tickets')
     .select(`
-      id, subject, message, status, priority, ai_escalated, created_at, updated_at,
+      id, ticket_number, subject, message, status, priority, ai_escalated, created_at, updated_at,
       professionals (
-        business_name,
-        user_id,
+        id, business_name, account_number, user_id,
         users:user_id (email)
       )
     `)
@@ -80,6 +79,22 @@ export default async function AdminTicketDetailPage({
         </div>
         <h1 className="text-xl font-bold">{ticket.subject}</h1>
         <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+          {(ticket as any).ticket_number && (
+            <span>
+              <strong>Ticket:</strong>{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                {(ticket as any).ticket_number}
+              </code>
+            </span>
+          )}
+          {prof?.account_number && (
+            <span>
+              <strong>Account:</strong>{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                {prof.account_number}
+              </code>
+            </span>
+          )}
           <span>
             <strong>Cliente:</strong> {prof?.business_name ?? '—'}
           </span>

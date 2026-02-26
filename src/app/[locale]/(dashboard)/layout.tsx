@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { GuidedTour } from '@/components/onboarding/guided-tour';
+import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner';
 import { getTranslations } from 'next-intl/server';
 import {
   LayoutDashboard,
@@ -163,6 +164,13 @@ export default async function DashboardLayout({
         <MobileNav professionalSlug={professional?.slug} failedNotificationsCount={failedCount} />
 
         <GuidedTour />
+
+        {/* Email verification banner */}
+        {!user.email_confirmed_at && user.email && (
+          <div className="px-4 pt-3">
+            <EmailVerificationBanner userEmail={user.email} />
+          </div>
+        )}
 
         {/* Deletion pending banner */}
         {professional?.deleted_at && professional?.deletion_scheduled_for && (

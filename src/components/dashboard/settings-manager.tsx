@@ -429,6 +429,15 @@ export function SettingsManager({
             </p>
           </div>
 
+          {professional.account_number && (
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-muted-foreground">{t('accountNumber')}</span>
+              <code className="text-xs bg-muted px-2 py-1 rounded tracking-wider">
+                {professional.account_number}
+              </code>
+            </div>
+          )}
+
           <div className="flex items-center justify-between py-1">
             <span className="text-sm text-muted-foreground">{t('memberSince')}</span>
             <span className="text-sm">

@@ -25,6 +25,9 @@ export interface Professional {
   deposit_value?: number | null;
   stripe_account_id?: string | null;
   stripe_onboarding_completed?: boolean;
+  account_number?: string | null;
+  deleted_at?: string | null;
+  deletion_scheduled_for?: string | null;
   created_at: string;
 }
 

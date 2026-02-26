@@ -15,6 +15,7 @@ import { Plus, ChevronDown, ChevronUp, Send, Bot, User, Shield } from 'lucide-re
 
 interface Ticket {
   id: string;
+  ticket_number?: string;
   subject: string;
   status: 'open' | 'in_progress' | 'resolved';
   priority: 'low' | 'medium' | 'high';
@@ -196,6 +197,11 @@ export default function SupportPage() {
                       <Badge variant={STATUS_VARIANT[ticket.status]}>
                         {statusLabels[ticket.status] ?? ticket.status}
                       </Badge>
+                      {ticket.ticket_number && (
+                        <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                          {ticket.ticket_number}
+                        </code>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {t('priorityLabel')} {priorityLabels[ticket.priority] ?? ticket.priority}
                       </span>
