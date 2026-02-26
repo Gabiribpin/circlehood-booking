@@ -5,6 +5,8 @@ import { MobileNav } from '@/components/dashboard/mobile-nav';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { GuidedTour } from '@/components/onboarding/guided-tour';
 import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner';
+import { TrialExpirationBanner } from '@/components/dashboard/trial-expiration-banner';
+import { getTrialStatus } from '@/lib/trial-helpers';
 import { getTranslations } from 'next-intl/server';
 import {
   LayoutDashboard,
@@ -80,6 +82,9 @@ export default async function DashboardLayout({
   if (professional && professional.email_verified === false) {
     redirect('/verify-email-pending');
   }
+
+  // Trial status for banner
+  const trialStatus = user ? await getTrialStatus(user.id) : null;
 
   // Badge: contagem de notificações com falha nos últimos 30 dias
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -174,6 +179,16 @@ export default async function DashboardLayout({
         {professional?.email_verified === false && user.email && (
           <div className="px-4 pt-3">
             <EmailVerificationBanner userEmail={user.email} />
+          </div>
+        )}
+
+        {/* Trial expiration banner — shown when ≤7 days remain */}
+        {trialStatus?.isTrialActive && trialStatus.daysRemaining <= 7 && trialStatus.trialEndsAt && (
+          <div className="px-4 pt-3">
+            <TrialExpirationBanner
+              daysRemaining={trialStatus.daysRemaining}
+              trialEndsAt={trialStatus.trialEndsAt.toISOString()}
+            />
           </div>
         )}
 

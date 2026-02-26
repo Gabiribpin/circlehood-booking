@@ -1,18 +1,72 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 
+/**
+ * Shown on the public page when a professional's trial has expired.
+ * Informs the visitor and provides a CTA for the professional to upgrade.
+ */
 export function TrialBanner() {
+  const loginUrl = process.env.NEXT_PUBLIC_BASE_URL
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}/login`
+    : '/login';
+
   return (
-    <div className="mx-4 sm:mx-6 mt-4 p-4 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-700">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
-            Agendamento temporariamente indisponível
-          </p>
-          <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
-            O período de teste deste profissional expirou. Entre em contato diretamente para agendar.
+    <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm text-center space-y-6">
+        {/* Icon */}
+        <div className="flex justify-center">
+          <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+          </div>
+        </div>
+
+        {/* Title */}
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900">Página Indisponível</h1>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Esta página profissional está temporariamente indisponível.
+            O período de teste expirou.
           </p>
         </div>
+
+        {/* Box for professional */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Para o profissional
+          </p>
+          <p className="text-sm text-gray-600">
+            Faça login e assine o Plano Pro para reativar sua página e continuar recebendo agendamentos.
+          </p>
+          <a
+            href={loginUrl}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline mt-1"
+          >
+            Fazer Login e Assinar <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
+        {/* Box for clients */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Para clientes
+          </p>
+          <p className="text-sm text-gray-600">
+            Por favor, entre em contato diretamente com o profissional por telefone ou WhatsApp para agendar.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <p className="text-xs text-gray-400">
+          Powered by{' '}
+          <a
+            href="https://circlehood-tech.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-600"
+          >
+            CircleHood Tech
+          </a>
+        </p>
       </div>
     </div>
   );
