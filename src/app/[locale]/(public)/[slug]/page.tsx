@@ -8,6 +8,8 @@ import type { Professional, Service } from '@/types/database';
 import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
+import { isPublicPageAvailable } from '@/lib/trial-helpers';
+import type { PageUnavailableReason } from '@/lib/trial-helpers';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -18,7 +20,7 @@ async function getProfessional(slug: string) {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('*, stripe_account_id')
     .eq('slug', slug)
     .eq('is_active', true)
     .single();
@@ -47,16 +49,15 @@ async function getProfessional(slug: string) {
     .eq('is_visible', true)
     .order('order_index', { ascending: true });
 
-  const trialExpired =
-    professional.subscription_status === 'trial' &&
-    new Date(professional.trial_ends_at) < new Date();
+  const pageAvailability = await isPublicPageAvailable(professional.id);
 
   return {
     professional: professional as Professional,
     services: (services || []) as Service[],
     workingHours: workingHours || [],
     sections: (sections || []) as PageSection[],
-    trialExpired,
+    pageUnavailable: !pageAvailability.available,
+    unavailableReason: pageAvailability.reason as PageUnavailableReason | undefined,
   };
 }
 
@@ -171,7 +172,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const { professional, services, workingHours, sections, trialExpired } = data;
+  const { professional, services, workingHours, sections, pageUnavailable, unavailableReason } = data;
 
   // Se não houver seções customizadas, usar layout padrão
   if (!sections || sections.length === 0) {
@@ -183,8 +184,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
             <h1 className="text-3xl font-bold mb-4">{professional.business_name}</h1>
             {professional.bio && <p className="text-gray-600 mb-6">{professional.bio}</p>}
           </div>
-          {trialExpired && <TrialBanner />}
-          {!trialExpired && (
+          {pageUnavailable && <TrialBanner reason={unavailableReason} />}
+          {!pageUnavailable && (
             <>
               <AddressCard professional={professional} />
               <BookingSection
@@ -195,6 +196,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 requireDeposit={professional.require_deposit ?? false}
                 depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
                 depositValue={professional.deposit_value ?? null}
+                stripeAccountId={(professional as any).stripe_account_id ?? null}
               />
             </>
           )}
@@ -259,9 +261,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
       <div className="min-h-screen bg-background">
         <div className="max-w-5xl mx-auto">
-        {trialExpired && (
+        {pageUnavailable && (
           <div className="max-w-lg mx-auto">
-            <TrialBanner />
+            <TrialBanner reason={unavailableReason} />
           </div>
         )}
 
@@ -276,8 +278,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
           />
         ))}
 
-        {/* Booking Section - sempre no final se não estiver no trial expirado */}
-        {!trialExpired && (
+        {/* Booking Section - sempre no final se não estiver indisponível */}
+        {!pageUnavailable && (
           <div className="max-w-lg mx-auto py-8 px-4">
             <AddressCard professional={professional} />
             <BookingSection
@@ -288,6 +290,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
               requireDeposit={professional.require_deposit ?? false}
               depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
               depositValue={professional.deposit_value ?? null}
+              stripeAccountId={(professional as any).stripe_account_id ?? null}
             />
           </div>
         )}

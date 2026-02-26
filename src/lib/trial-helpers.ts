@@ -1,4 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { hasPassedBusinessDays } from '@/lib/business-days';
+
+export type PageUnavailableReason = 'trial_expired' | 'payment_failed';
 
 export interface TrialStatus {
   isTrialActive: boolean;   // On trial and not yet expired
@@ -72,26 +75,51 @@ function computeTrialStatus(subscriptionStatus: string, trialEndsAt: string | nu
   };
 }
 
+export interface PageAvailability {
+  available: boolean;
+  reason?: PageUnavailableReason;
+}
+
 /**
- * Returns true if the professional's public page should be accessible.
- * Page is unavailable when trial has expired and professional is not on a paid plan.
+ * Returns whether the professional's public page should be accessible,
+ * along with the reason if unavailable.
+ *
+ * Rules:
+ * - Paid plan (active): available, unless payment_failed_at + 5 business days has passed
+ * - Trial: available while trial_ends_at >= now
+ * - Anything else: unavailable (trial_expired)
  */
-export async function isPublicPageAvailable(professionalId: string): Promise<boolean> {
+export async function isPublicPageAvailable(professionalId: string): Promise<PageAvailability> {
   const supabase = createAdminClient();
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('subscription_status, trial_ends_at, is_active')
+    .select('subscription_status, trial_ends_at, is_active, payment_failed_at')
     .eq('id', professionalId)
     .maybeSingle();
 
-  if (!professional) return false;
-  if (!professional.is_active) return false;
-  if (professional.subscription_status === 'active') return true;
-  if (professional.subscription_status !== 'trial') return false;
+  if (!professional) return { available: false, reason: 'trial_expired' };
+  if (!professional.is_active) return { available: false, reason: 'trial_expired' };
 
-  // Trial: available while not expired
-  return new Date(professional.trial_ends_at) >= new Date();
+  // Paid plan
+  if (professional.subscription_status === 'active') {
+    if (professional.payment_failed_at) {
+      const failedAt = new Date(professional.payment_failed_at);
+      if (hasPassedBusinessDays(failedAt, 5)) {
+        return { available: false, reason: 'payment_failed' };
+      }
+    }
+    return { available: true };
+  }
+
+  // Trial
+  if (professional.subscription_status === 'trial') {
+    if (!professional.trial_ends_at) return { available: false, reason: 'trial_expired' };
+    if (new Date(professional.trial_ends_at) >= new Date()) return { available: true };
+    return { available: false, reason: 'trial_expired' };
+  }
+
+  return { available: false, reason: 'trial_expired' };
 }
 
 /**
