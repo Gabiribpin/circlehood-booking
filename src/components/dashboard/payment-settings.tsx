@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Check, Info } from 'lucide-react';
+import { Loader2, Save, Check, Info, AlertTriangle } from 'lucide-react';
 
 interface PaymentSettingsProps {
   requireDeposit: boolean;
   depositType: 'percentage' | 'fixed' | null;
   depositValue: number | null;
   currency: string;
+  stripeConnected?: boolean;
 }
 
 export function PaymentSettings({
@@ -21,6 +22,7 @@ export function PaymentSettings({
   depositType: initialDepositType,
   depositValue: initialDepositValue,
   currency,
+  stripeConnected = false,
 }: PaymentSettingsProps) {
   const t = useTranslations('payment');
   const [requireDeposit, setRequireDeposit] = useState(initialRequireDeposit);
@@ -93,13 +95,22 @@ export function PaymentSettings({
         <CardDescription>{t('depositDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {!stripeConnected && (
+          <div data-testid="stripe-required-warning" className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900">
+            <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-yellow-800 dark:text-yellow-300">{t('stripeConnectRequired')}</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
             <p className="font-medium text-sm">{t('requireDeposit')}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t('requireDepositDesc')}</p>
           </div>
           <Switch
+            data-testid="require-deposit-toggle"
             checked={requireDeposit}
+            disabled={!stripeConnected}
             onCheckedChange={(v) => {
               setRequireDeposit(v);
               setError(null);
@@ -144,6 +155,7 @@ export function PaymentSettings({
               <div className="relative">
                 <Input
                   id="depositValue"
+                  data-testid="deposit-amount"
                   type="number"
                   min="0"
                   max={depositType === 'percentage' ? '100' : undefined}
@@ -174,9 +186,15 @@ export function PaymentSettings({
           <p className="text-sm text-muted-foreground">{t('noDeposit')}</p>
         )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p data-testid="amount-error" className="text-sm text-destructive">{error}</p>}
 
-        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+        {saved && (
+          <span data-testid="save-success" className="sr-only">
+            {t('saved')}
+          </span>
+        )}
+
+        <Button data-testid="save-settings" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : saved ? (

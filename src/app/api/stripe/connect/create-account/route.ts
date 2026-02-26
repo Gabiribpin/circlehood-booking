@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getStripeServer } from '@/lib/stripe/server';
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://booking.circlehood-tech.com';
+
+export async function POST(_request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id, country, currency, stripe_account_id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+  }
+
+  const stripe = getStripeServer();
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+  }
+
+  const admin = createAdminClient();
+
+  // Se já tem stripe_account_id → apenas gerar novo AccountLink (refresh)
+  let stripeAccountId = professional.stripe_account_id as string | null;
+
+  if (!stripeAccountId) {
+    // Verificar se já tem conta na tabela connect (edge case)
+    const { data: existing } = await admin
+      .from('stripe_connect_accounts')
+      .select('stripe_account_id')
+      .eq('professional_id', professional.id)
+      .maybeSingle();
+
+    if (existing) {
+      stripeAccountId = existing.stripe_account_id;
+    }
+  }
+
+  if (!stripeAccountId) {
+    // Criar nova conta Express
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: (professional.country as string) || 'IE',
+      email: email ?? undefined,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: {
+        professional_id: professional.id,
+      },
+    });
+
+    stripeAccountId = account.id;
+
+    // INSERT na tabela connect
+    await admin.from('stripe_connect_accounts').upsert({
+      professional_id: professional.id,
+      stripe_account_id: stripeAccountId,
+      country: (professional.country as string) || 'IE',
+      currency: (professional.currency as string)?.toLowerCase() || 'eur',
+    });
+
+    // UPDATE professionals.stripe_account_id
+    await admin
+      .from('professionals')
+      .update({ stripe_account_id: stripeAccountId })
+      .eq('id', professional.id);
+  }
+
+  // Criar AccountLink
+  const accountLink = await stripe.accountLinks.create({
+    account: stripeAccountId,
+    refresh_url: `${BASE_URL}/settings/payment?connect=refresh`,
+    return_url: `${BASE_URL}/settings/payment?connect=success`,
+    type: 'account_onboarding',
+  });
+
+  return NextResponse.json({ url: accountLink.url });
+}

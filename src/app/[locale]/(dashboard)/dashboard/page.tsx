@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ShareLinkCard } from '@/components/dashboard/share-link-card';
 import { AlertsWidget } from './components/alerts-widget';
-import { WhatsAppUsageWidget } from '@/components/whatsapp/usage-widget';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -291,9 +290,6 @@ export default async function DashboardPage() {
 
       {/* CRM Alerts */}
       <AlertsWidget />
-
-      {/* WhatsApp usage widget */}
-      <WhatsAppUsageWidget />
 
       {/* Stats */}
       <div className="space-y-4">

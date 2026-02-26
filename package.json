@@ -13,7 +13,16 @@
     "test:e2e:bot": "playwright test --project=bot-api",
     "test:e2e:dashboard": "playwright test --project=dashboard",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report e2e-report"
+    "test:e2e:report": "playwright show-report e2e-report",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:chrome": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:safari": "playwright test --project=webkit",
+    "test:payment": "playwright test e2e/payment/04-payment-flow.spec.ts",
+    "test:no-payment": "playwright test e2e/payment/03-booking-no-payment.spec.ts",
+    "test:settings": "playwright test e2e/payment/02-payment-settings.spec.ts",
+    "test:deposit": "playwright test e2e/payment/"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",

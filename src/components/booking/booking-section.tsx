@@ -41,6 +41,7 @@ interface BookingSectionProps {
   requireDeposit?: boolean;
   depositType?: 'percentage' | 'fixed' | null;
   depositValue?: number | null;
+  stripeAccountId?: string | null;
 }
 
 interface DepositInfo {
@@ -64,6 +65,7 @@ export function BookingSection({
   requireDeposit = false,
   depositType = null,
   depositValue = null,
+  stripeAccountId = null,
 }: BookingSectionProps) {
   const availableDays = new Set(workingHours.map(wh => wh.day_of_week));
 
@@ -134,10 +136,53 @@ export function BookingSection({
       return;
     }
 
-    // Com sinal: criar PaymentIntent
     setSubmitting(true);
     setError('');
 
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const bookingPayload = {
+      professional_id: professionalId,
+      service_id: selectedService.id,
+      booking_date: dateStr,
+      start_time: selectedSlot,
+      client_name: formData.clientName,
+      client_email: formData.clientEmail || undefined,
+      client_phone: formData.clientPhone,
+      notes: formData.notes || undefined,
+      service_location: selectedLocation,
+      customer_address: selectedLocation === 'at_home' ? (customerAddress || undefined) : undefined,
+      customer_address_city: selectedLocation === 'at_home' ? (customerAddressCity || undefined) : undefined,
+    };
+
+    // Com sinal + Stripe Connect: redirecionar para Checkout
+    if (stripeAccountId) {
+      try {
+        const res = await fetch('/api/bookings/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bookingPayload),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          setError(data.error || 'Erro ao iniciar pagamento. Tente novamente.');
+          setSubmitting(false);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.session_url) {
+          window.location.href = data.session_url;
+          return;
+        }
+      } catch {
+        setError('Erro de rede. Tente novamente.');
+      }
+      setSubmitting(false);
+      return;
+    }
+
+    // Fallback: criar PaymentIntent (Elements — retrocompat)
     try {
       const res = await fetch('/api/payment/create-intent', {
         method: 'POST',
@@ -245,9 +290,15 @@ export function BookingSection({
       {/* Step 1: Select service */}
       {step === 1 && (
         <div className="space-y-3">
+          {requireDeposit && (
+            <div data-testid="deposit-info" className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 text-sm text-blue-800 dark:text-blue-300">
+              <span>Sinal de reserva exigido</span>
+            </div>
+          )}
           {services.map((service) => (
             <Card
               key={service.id}
+              data-service-id={service.id}
               className="cursor-pointer hover:border-primary transition-colors"
               onClick={() => selectService(service)}
             >
@@ -277,7 +328,7 @@ export function BookingSection({
 
       {/* Step 2: Select date */}
       {step === 2 && (
-        <Card>
+        <Card data-testid="date-picker">
           <CardContent className="p-4 flex justify-center">
             <Calendar
               mode="single"
@@ -315,12 +366,22 @@ export function BookingSection({
         <Card>
           <CardContent className="p-4 space-y-4">
             {/* Summary */}
-            <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+            <div data-testid="booking-summary" className="p-3 rounded-lg bg-muted/50 space-y-1">
               <p className="text-sm font-medium">{selectedService.name}</p>
               <p className="text-xs text-muted-foreground">
                 {formattedDate} às {selectedSlot} &mdash;{' '}
-                {formatPrice(selectedService.price, currency)}
+                <span data-testid="service-price">{formatPrice(selectedService.price, currency)}</span>
               </p>
+              {requireDeposit && (
+                <p data-testid="deposit-amount" className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  Sinal: aguarda cálculo
+                </p>
+              )}
+              {!requireDeposit && (
+                <p data-testid="payment-note" className="text-xs text-muted-foreground">
+                  Pagamento no local
+                </p>
+              )}
             </div>
 
             {/* Seleção de local para serviços "both" */}
@@ -392,6 +453,7 @@ export function BookingSection({
             )}
 
             <Button
+              data-testid="confirm-booking"
               className="w-full"
               onClick={handleContinue}
               disabled={
@@ -410,7 +472,7 @@ export function BookingSection({
 
       {/* Step 5 (com sinal): Formulário de pagamento Stripe */}
       {step === 5 && requireDeposit && depositInfo && (
-        <Card>
+        <Card data-testid="payment-section">
           <CardContent className="p-4 space-y-4">
             {/* Summary */}
             <div className="p-3 rounded-lg bg-muted/50 space-y-1">
@@ -439,10 +501,15 @@ export function BookingSection({
         <Card>
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <h3 className="text-xl font-semibold">Agendamento confirmado!</h3>
+            <h3 data-testid="success-message" className="text-xl font-semibold">Agendamento confirmado!</h3>
             <p className="text-sm text-muted-foreground">
               {selectedService?.name} &mdash; {formattedDate} às {selectedSlot}
             </p>
+            {depositInfo && (
+              <p data-testid="payment-confirmed" className="text-sm font-medium text-green-700 dark:text-green-400">
+                Sinal pago com sucesso
+              </p>
+            )}
             {formData.clientEmail && (
               <p className="text-xs text-muted-foreground">
                 Um email de confirmação foi enviado para {formData.clientEmail}.

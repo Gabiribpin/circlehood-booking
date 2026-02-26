@@ -59,6 +59,8 @@ export function TimeSlots({
       {slots.map((slot) => (
         <Button
           key={slot}
+          data-testid="available-slot"
+          data-time={slot}
           variant={selectedSlot === slot ? 'default' : 'outline'}
           size="sm"
           onClick={() => onSelect(slot)}
