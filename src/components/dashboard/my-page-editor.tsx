@@ -129,7 +129,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Minha Página</h1>
+        <h1 className="text-2xl font-bold">Página Pública</h1>
         <Button asChild variant="outline" size="sm" className="gap-2">
           <a
             href={`/${professional.slug}`}
