@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 
 const COUNTRIES: { code: string; label: string }[] = [
@@ -95,6 +95,7 @@ export default function RegisterPage() {
   // Step 1: Account
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Step 2: Business
   const [businessName, setBusinessName] = useState('');
@@ -262,14 +263,25 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Minimo 6 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Mínimo 6 caracteres"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
