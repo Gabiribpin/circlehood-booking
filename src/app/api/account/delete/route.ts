@@ -58,22 +58,24 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', professional.id);
 
-    // Cancel Stripe subscription if exists (cancel at period end)
+    // Cancel Stripe subscription IMMEDIATELY (not at period end) to avoid future charges.
+    // Queries both 'active' and 'trialing' to catch trial-to-paid conversions.
     if (professional.stripe_customer_id) {
       try {
         const { default: Stripe } = await import('stripe');
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
           apiVersion: '2026-01-28.clover',
         });
+        // No status filter → returns active + trialing + past_due (all non-cancelled)
         const subscriptions = await stripe.subscriptions.list({
           customer: professional.stripe_customer_id,
-          status: 'active',
-          limit: 1,
+          limit: 5,
         });
-        if (subscriptions.data.length > 0) {
-          await stripe.subscriptions.update(subscriptions.data[0].id, {
-            cancel_at_period_end: true,
-          });
+        for (const sub of subscriptions.data) {
+          if (sub.status !== 'canceled') {
+            // Immediate cancellation — no further charges
+            await stripe.subscriptions.cancel(sub.id);
+          }
         }
       } catch (stripeError) {
         console.error('[account-delete] Stripe cancellation failed:', stripeError);
