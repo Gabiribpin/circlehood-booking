@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const { data: professional } = await supabase
       .from('professionals')
-      .select('id, business_name, stripe_customer_id, email')
+      .select('id, business_name, stripe_customer_id')
       .eq('user_id', user.id)
       .single();
 
