@@ -99,11 +99,12 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
               <span className="text-[10px]">Menu</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-auto">
-            <SheetHeader>
+          <SheetContent side="bottom" className="flex flex-col max-h-[80vh]">
+            <SheetHeader className="shrink-0">
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
-            <div className="py-4 space-y-2">
+            {/* Scrollable menu items */}
+            <div className="flex-1 overflow-y-auto py-2 space-y-1">
               {MENU_ITEMS.map((item) => (
                 <Link
                   key={item.href}
@@ -120,28 +121,28 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
                   )}
                 </Link>
               ))}
-
-              <div className="pt-2 border-t">
-                {professionalSlug && (
-                  <a
-                    href={`/${professionalSlug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground text-sm"
-                  >
-                    {t('viewPublicPage')} →
-                  </a>
-                )}
-                <form action="/api/auth/signout" method="POST">
-                  <button
-                    type="submit"
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground w-full text-left"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span className="text-sm">{t('logout')}</span>
-                  </button>
-                </form>
-              </div>
+            </div>
+            {/* Fixed bottom: public page + logout — always visible */}
+            <div className="shrink-0 border-t pt-2 pb-1 space-y-1">
+              {professionalSlug && (
+                <a
+                  href={`/${professionalSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground text-sm"
+                >
+                  {t('viewPublicPage')} →
+                </a>
+              )}
+              <form action="/api/auth/signout" method="POST">
+                <button
+                  type="submit"
+                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-muted-foreground w-full text-left"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="text-sm">{t('logout')}</span>
+                </button>
+              </form>
             </div>
           </SheetContent>
         </Sheet>

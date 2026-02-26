@@ -90,8 +90,8 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-muted/30">
-        <div className="p-4 pb-3">
+      <aside className="hidden md:flex w-64 flex-col border-r bg-muted/30 h-screen sticky top-0">
+        <div className="p-4 pb-3 shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2">
             <CircleHoodLogoCompact size="sm" />
             <span className="text-sm font-bold leading-tight">CircleHood<br /><span className="text-xs font-normal text-muted-foreground">Booking</span></span>
@@ -103,7 +103,7 @@ export default async function DashboardLayout({
           )}
         </div>
 
-        <nav className="flex-1 px-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 space-y-1 py-1">
           {NAV_ITEM_DEFS.map((item) => (
             <Link
               key={item.href}
@@ -122,7 +122,7 @@ export default async function DashboardLayout({
           ))}
         </nav>
 
-        <div className="p-3 border-t">
+        <div className="shrink-0 p-3 border-t">
           {professional && (
             <a
               href={`/${professional.slug}`}
