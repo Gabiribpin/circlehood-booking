@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2, Edit, Upload, Search, Users, Cake } from 'lucide-react';
+import { Plus, Trash2, Edit, RefreshCw, Search, Users, Cake, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RegionSelector } from '@/components/clients/region-selector';
 
@@ -310,12 +310,13 @@ function CRMView() {
 function ManageView() {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
-  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [botFilter, setBotFilter] = useState<BotFilter>('all');
   const [professionalId, setProfessionalId] = useState('');
+  const [whatsappConfigured, setWhatsappConfigured] = useState(false);
+  const [syncingWhatsApp, setSyncingWhatsApp] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -340,6 +341,14 @@ function ManageView() {
       .from('professionals').select('id').eq('user_id', user.id).single();
     if (!professional) return;
     setProfessionalId(professional.id);
+
+    // Check if WhatsApp is configured
+    const { data: waConfig } = await supabase
+      .from('whatsapp_config')
+      .select('id, instance_name')
+      .eq('professional_id', professional.id)
+      .maybeSingle();
+    setWhatsappConfigured(!!waConfig?.instance_name);
 
     const { data, error } = await supabase
       .from('contacts').select('*').eq('professional_id', professional.id)
@@ -394,6 +403,26 @@ function ManageView() {
 
   function resetForm() {
     setEditingContact(null); setName(''); setPhone(''); setEmail(''); setCategory(''); setNotes(''); setBirthday(''); setRegions([]);
+  }
+
+  async function handleSyncWhatsApp() {
+    setSyncingWhatsApp(true);
+    try {
+      const res = await fetch('/api/contacts/import-whatsapp', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: t('syncError'), description: data.error ?? '', variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: t('syncSuccess', { imported: data.imported, skipped: data.skipped }),
+      });
+      loadContacts();
+    } catch {
+      toast({ title: t('syncError'), variant: 'destructive' });
+    } finally {
+      setSyncingWhatsApp(false);
+    }
   }
 
   async function updateUseBot(id: string, val: boolean) {
@@ -452,9 +481,26 @@ function ManageView() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-muted-foreground text-sm">{t('managingContacts')}</p>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push('/clients/import')}>
-            <Upload className="mr-2 h-4 w-4" /> {t('importCSV')}
-          </Button>
+          {whatsappConfigured ? (
+            <Button
+              variant="outline"
+              className="gap-2 border-green-500 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30"
+              onClick={handleSyncWhatsApp}
+              disabled={syncingWhatsApp}
+            >
+              {syncingWhatsApp ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+              {syncingWhatsApp ? t('syncingWhatsApp') : t('syncWhatsApp')}
+            </Button>
+          ) : (
+            <Button variant="outline" disabled title={t('whatsappNotConfigured')} className="gap-2 opacity-60">
+              <MessageCircle className="h-4 w-4" />
+              {t('syncWhatsApp')}
+            </Button>
+          )}
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button><Plus className="mr-2 h-4 w-4" /> {t('addContact')}</Button>
@@ -613,17 +659,19 @@ function ManageView() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('csvTitle')}</CardTitle>
-          <CardDescription>{t('csvDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <pre className="bg-muted p-4 rounded-lg text-sm">{`nome,telefone,email,aniversario,notas
-Maria Silva,+5511999999999,maria@exemplo.com,15/05/1990,Cliente VIP
-Ana Costa,+353851234567,ana@exemplo.com,,`}</pre>
-        </CardContent>
-      </Card>
+      {!whatsappConfigured && (
+        <Card className="border-dashed">
+          <CardContent className="py-4 flex items-center gap-3 text-sm text-muted-foreground">
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            <span>
+              {t('configureWhatsApp')}{' '}
+              <a href="/whatsapp-config" className="text-primary underline hover:no-underline">
+                WhatsApp Bot →
+              </a>
+            </span>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
