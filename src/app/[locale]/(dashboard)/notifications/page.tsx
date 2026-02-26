@@ -18,14 +18,13 @@ export default async function NotificationsPage() {
 
   if (!professional) redirect('/register');
 
-  // Últimas 100 notificações de email nos últimos 30 dias
+  // Últimas 100 notificações (email + whatsapp) nos últimos 30 dias
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: logs } = await supabase
     .from('notification_logs')
-    .select('id, type, recipient, message, status, error_message, booking_id, created_at')
+    .select('id, channel, type, recipient, message, status, error_message, booking_id, created_at')
     .eq('professional_id', professional.id)
-    .eq('channel', 'email')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(100);

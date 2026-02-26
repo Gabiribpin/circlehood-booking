@@ -20,6 +20,7 @@ import {
   LogOut,
   Phone,
   LifeBuoy,
+  Bell,
 } from 'lucide-react';
 import {
   Sheet,
@@ -32,6 +33,7 @@ import { useState } from 'react';
 
 interface MobileNavProps {
   professionalSlug?: string;
+  failedNotificationsCount?: number;
 }
 
 // data-tour-id values for guided tour — only items visible in the bottom bar
@@ -40,7 +42,7 @@ const TOUR_IDS: Partial<Record<string, string>> = {
   '/services': 'services',
 };
 
-export function MobileNav({ professionalSlug }: MobileNavProps) {
+export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: MobileNavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const t = useTranslations('nav');
@@ -60,6 +62,7 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
     { href: '/my-page-editor' as const, label: t('pageEditor'), icon: FileEdit },
     { href: '/gallery' as const, label: t('gallery'), icon: ImageIcon },
     { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
+    { href: '/notifications' as const, label: t('notifications'), icon: Bell },
     { href: '/whatsapp-config' as const, label: t('whatsapp'), icon: Phone },
     { href: '/settings' as const, label: t('settings'), icon: Settings },
     { href: '/support' as const, label: t('support'), icon: LifeBuoy },
@@ -110,6 +113,11 @@ export function MobileNav({ professionalSlug }: MobileNavProps) {
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="text-sm">{item.label}</span>
+                  {item.href === '/notifications' && failedNotificationsCount > 0 && (
+                    <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                      {failedNotificationsCount > 99 ? '99+' : failedNotificationsCount}
+                    </span>
+                  )}
                 </Link>
               ))}
 

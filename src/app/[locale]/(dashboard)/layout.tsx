@@ -19,7 +19,6 @@ import {
   FileEdit,
   ImageIcon,
   MessageSquare,
-  Zap,
   Phone,
   Bell,
   LifeBuoy,
@@ -42,7 +41,6 @@ const NAV_ITEM_DEFS = [
   { href: '/clients', tKey: 'clients', icon: Users },
   { href: '/marketing', tKey: 'marketing', icon: QrCode },
   { href: '/analytics', tKey: 'analytics', icon: BarChart3 },
-  { href: '/automations', tKey: 'automations', icon: Zap },
   { href: '/notifications', tKey: 'notifications', icon: Bell },
   { href: '/whatsapp-config', tKey: 'whatsapp', icon: Phone },
   { href: '/my-page-editor', tKey: 'pageEditor', icon: FileEdit },
@@ -52,6 +50,8 @@ const NAV_ITEM_DEFS = [
   { href: '/settings', tKey: 'settings', icon: Settings },
   { href: '/support', tKey: 'support', icon: LifeBuoy },
 ] as const;
+
+// Automações removida do nav intencionalmente (rota ainda existe)
 
 export default async function DashboardLayout({
   children,
@@ -74,6 +74,18 @@ export default async function DashboardLayout({
     .select('*')
     .eq('user_id', user.id)
     .single();
+
+  // Badge: contagem de notificações com falha nos últimos 30 dias
+  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { count: failedNotificationsCount } = professional
+    ? await supabase
+        .from('notification_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('professional_id', professional.id)
+        .eq('status', 'failed')
+        .gte('created_at', since30d)
+    : { count: 0 };
+  const failedCount = failedNotificationsCount ?? 0;
 
   return (
     <div className="min-h-screen flex">
@@ -101,6 +113,11 @@ export default async function DashboardLayout({
             >
               <item.icon className="h-4 w-4" />
               {t(item.tKey)}
+              {item.href === '/notifications' && failedCount > 0 && (
+                <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                  {failedCount > 99 ? '99+' : failedCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -143,7 +160,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Mobile bottom nav */}
-        <MobileNav professionalSlug={professional?.slug} />
+        <MobileNav professionalSlug={professional?.slug} failedNotificationsCount={failedCount} />
 
         <GuidedTour />
 
