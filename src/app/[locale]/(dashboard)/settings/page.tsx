@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { SettingsManager } from '@/components/dashboard/settings-manager';
 import { getPlanPrice } from '@/lib/pricing';
 
@@ -37,6 +38,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const planPrice = getPlanPrice(professional.currency ?? 'eur');
+  const headersList = await headers();
+  const host = headersList.get('host') ?? 'booking.circlehood-tech.com';
 
   return (
     <SettingsManager
@@ -46,6 +49,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
       success={params.success === 'true'}
       cancelled={params.cancelled === 'true'}
       planPrice={planPrice}
+      host={host}
     />
   );
 }

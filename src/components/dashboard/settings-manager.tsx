@@ -27,6 +27,7 @@ interface SettingsManagerProps {
   success?: boolean;
   cancelled?: boolean;
   planPrice: PlanPrice;
+  host: string;
 }
 
 export function SettingsManager({
@@ -36,6 +37,7 @@ export function SettingsManager({
   success,
   cancelled,
   planPrice,
+  host,
 }: SettingsManagerProps) {
   const t = useTranslations('settings');
   const tAccount = useTranslations('account');
@@ -391,7 +393,7 @@ export function SettingsManager({
             <Label htmlFor="slug">{t('pageUrlLabel')}</Label>
             <div className="flex items-center gap-1">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {typeof window !== 'undefined' ? window.location.host : 'circlehood-booking.vercel.app'}/
+                {host}/
               </span>
               <Input
                 id="slug"
