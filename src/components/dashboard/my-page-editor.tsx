@@ -49,7 +49,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   const [instagram, setInstagram] = useState(professional.instagram || '');
   const [address, setAddress] = useState(professional.address || '');
   const [addressCity, setAddressCity] = useState((professional as any).address_city || '');
-  const [addressCountry, setAddressCountry] = useState((professional as any).address_country || 'Ireland');
+  const [addressCountry, setAddressCountry] = useState((professional as any).address_country || 'IE');
   const [showAddressOnPage, setShowAddressOnPage] = useState((professional as any).show_address_on_page !== false);
   const [profileImageUrl, setProfileImageUrl] = useState(professional.profile_image_url || '');
   const [coverImageUrl, setCoverImageUrl] = useState(professional.cover_image_url || '');
@@ -300,7 +300,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                     id="addressCountry"
                     value={addressCountry}
                     onChange={(e) => setAddressCountry(e.target.value)}
-                    placeholder="Ex: Ireland"
+                    placeholder="Ex: IE"
                   />
                 </div>
               </div>
