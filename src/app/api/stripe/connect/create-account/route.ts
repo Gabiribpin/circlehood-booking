@@ -18,7 +18,7 @@ export async function POST(_request: NextRequest) {
 
     const { data: professional } = await supabase
       .from('professionals')
-      .select('id, country, currency, stripe_account_id')
+      .select('id, country, address_country, currency, stripe_account_id')
       .eq('user_id', user.id)
       .single();
 
@@ -53,7 +53,7 @@ export async function POST(_request: NextRequest) {
     if (!stripeAccountId) {
       // Criar nova conta Standard
       const email = user.email;
-      const country = (professional.country as string) || 'IE';
+      const country = (professional.address_country as string) || (professional.country as string) || 'IE';
 
       console.log('[stripe/connect/create-account] creating Standard account', {
         country,
