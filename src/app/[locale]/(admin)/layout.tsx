@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2 } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target } from 'lucide-react';
 import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -17,14 +17,22 @@ export default async function AdminLayout({
     redirect('/admin-login');
   }
 
-  // Badge: contas marcadas para exclusão (ainda no período de 30 dias)
   const supabase = createAdminClient();
+
+  // Badge: contas marcadas para exclusão (ainda no período de 30 dias)
   const { count: deletedCount } = await supabase
     .from('professionals')
     .select('*', { count: 'exact', head: true })
     .not('deleted_at', 'is', null)
     .gt('deletion_scheduled_for', new Date().toISOString());
   const pendingDeletions = deletedCount ?? 0;
+
+  // Badge: leads novos não contactados
+  const { count: newLeadsCount } = await supabase
+    .from('sales_leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'new');
+  const newLeads = newLeadsCount ?? 0;
 
   return (
     <div className="min-h-screen flex">
@@ -59,6 +67,18 @@ export default async function AdminLayout({
           >
             <LifeBuoy className="h-4 w-4" />
             Chamados
+          </Link>
+          <Link
+            href="/admin/leads"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <Target className="h-4 w-4" />
+            Leads de Vendas
+            {newLeads > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-indigo-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                {newLeads}
+              </span>
+            )}
           </Link>
           <Link
             href="/admin/deleted-accounts"
