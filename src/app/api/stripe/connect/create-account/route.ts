@@ -51,17 +51,17 @@ export async function POST(_request: NextRequest) {
     }
 
     if (!stripeAccountId) {
-      // Criar nova conta Express
+      // Criar nova conta Standard
       const email = user.email;
       const country = (professional.country as string) || 'IE';
 
-      console.log('[stripe/connect/create-account] creating Express account', {
+      console.log('[stripe/connect/create-account] creating Standard account', {
         country,
         hasEmail: !!email,
       });
 
       const account = await stripe.accounts.create({
-        type: 'express',
+        type: 'standard',
         country,
         email: email ?? undefined,
         capabilities: {
