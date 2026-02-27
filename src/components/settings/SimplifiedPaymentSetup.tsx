@@ -52,6 +52,7 @@ export function SimplifiedPaymentSetup({
   // Stripe fields
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
+  const [dobError, setDobError] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
@@ -82,6 +83,34 @@ export function SimplifiedPaymentSetup({
     }
   }
 
+  function handleDobChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // Mantém apenas dígitos e aplica máscara DD/MM/AAAA automaticamente
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+    let masked = digits;
+    if (digits.length > 2) masked = digits.slice(0, 2) + '/' + digits.slice(2);
+    if (digits.length > 4) masked = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+    setDob(masked);
+    setDobError(digits.length === 8 ? (getDobError(masked) ?? '') : '');
+  }
+
+  // Retorna string de erro ou null se válido
+  function getDobError(value: string): string | null {
+    const parts = value.split('/');
+    if (parts.length !== 3 || value.length < 10) return 'Data incompleta — use DD/MM/AAAA';
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    if (year < 1900 || year > 2008) return 'Ano deve ser entre 1900 e 2008';
+    if (month < 1 || month > 12) return 'Mês inválido (01–12)';
+    if (day < 1 || day > 31) return 'Dia inválido (01–31)';
+    // Verifica se a data existe de fato (ex: 31/02 é inválido)
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return 'Data inválida';
+    }
+    return null;
+  }
+
   function parseDob(input: string): string {
     const parts = input.split('/');
     if (parts.length === 3) {
@@ -102,8 +131,15 @@ export function SimplifiedPaymentSetup({
         setStatus('error');
         return;
       }
-      if (!dob.trim()) {
+      if (!dob.trim() || dob.length < 10) {
         setErrorMsg(t('setupErrorDob'));
+        setStatus('error');
+        return;
+      }
+      const dobErr = getDobError(dob);
+      if (dobErr) {
+        setDobError(dobErr);
+        setErrorMsg(dobErr);
         setStatus('error');
         return;
       }
@@ -264,11 +300,16 @@ export function SimplifiedPaymentSetup({
               <Input
                 id="dob"
                 value={dob}
-                onChange={(e) => setDob(e.target.value)}
+                onChange={handleDobChange}
                 placeholder="DD/MM/AAAA"
                 maxLength={10}
+                inputMode="numeric"
                 disabled={status === 'saving'}
+                className={dobError ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {dobError && (
+                <p className="text-xs text-destructive">{dobError}</p>
+              )}
             </div>
 
             {/* Conta bancária (dinâmica por país) */}
