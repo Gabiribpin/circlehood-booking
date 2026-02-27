@@ -42,7 +42,7 @@ jobs:
       - name: Run smoke tests (Chromium, WebKit, Firefox)
         run: npx playwright test --project=smoke-chromium --project=smoke-webkit --project=smoke-firefox
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -72,7 +72,7 @@ jobs:
       - name: Run dashboard authenticated tests
         run: npx playwright test --project=auth-setup --project=dashboard
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -103,7 +103,7 @@ jobs:
       - name: Run API and lifecycle tests
         run: npx playwright test --project=api-tests
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -132,7 +132,7 @@ jobs:
       - name: Run security tests
         run: npx playwright test --project=security
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -162,7 +162,7 @@ jobs:
       - name: Run user journey tests
         run: npx playwright test --project=auth-setup --project=user-journey
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -194,7 +194,7 @@ jobs:
       - name: Run navigation tests
         run: npx playwright test --project=auth-setup --project=navigation
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -226,7 +226,7 @@ jobs:
       - name: Run UX consistency tests
         run: npx playwright test --project=auth-setup --project=ux
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -258,7 +258,7 @@ jobs:
       - name: Run i18n tests
         run: npx playwright test --project=auth-setup --project=i18n
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -289,7 +289,7 @@ jobs:
       - name: Run notification tests
         run: npx playwright test --project=notifications
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -319,7 +319,7 @@ jobs:
       - name: Run mobile responsive tests
         run: npx playwright test --project=auth-setup --project=mobile
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -350,7 +350,7 @@ jobs:
       - name: Run race condition tests
         run: npx playwright test --project=critical-race
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - uses: actions/upload-artifact@v4
@@ -379,7 +379,7 @@ jobs:
       - name: Run idempotency tests
         run: npx playwright test --project=critical-idempotency
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -409,7 +409,7 @@ jobs:
       - name: Run bot reschedule tests
         run: npx playwright test --project=bot-reschedule
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -440,7 +440,7 @@ jobs:
       - name: Run timezone/DST tests
         run: npx playwright test --project=timezone-dst
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           TZ: Europe/Dublin
@@ -469,7 +469,7 @@ jobs:
       - name: Run blocked periods API tests
         run: npx playwright test --project=blocked-periods-api
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - uses: actions/upload-artifact@v4
@@ -498,7 +498,7 @@ jobs:
       - name: Run blocked periods bot tests
         run: npx playwright test --project=blocked-periods-bot
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -528,7 +528,7 @@ jobs:
       - name: Run consistency tests
         run: npx playwright test --project=consistency-bot-page
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -559,7 +559,7 @@ jobs:
       - name: Run payment tests
         run: npx playwright test --project=payment
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -591,7 +591,7 @@ jobs:
         run: |
           echo "Aguardando Vercel publicar commit $GITHUB_SHA..."
           for i in $(seq 1 30); do
-            if curl -sfL --max-time 15 https://circlehood-booking.vercel.app/register 2>/dev/null | grep -q 'noopener'; then
+            if curl -sfL --max-time 15 https://booking.circlehood-tech.com/register 2>/dev/null | grep -q 'noopener'; then
               echo "✅ Vercel deployment pronto (tentativa $i)"
               exit 0
             fi
@@ -602,7 +602,7 @@ jobs:
       - name: Run GDPR and legal pages tests
         run: npx playwright test --project=auth-setup --project=legal --project=gdpr
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -651,7 +651,7 @@ jobs:
       - name: Run bot E2E tests
         run: npm run test:e2e:bot
         env:
-          TEST_BASE_URL: https://circlehood-booking.vercel.app
+          TEST_BASE_URL: https://booking.circlehood-tech.com
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
