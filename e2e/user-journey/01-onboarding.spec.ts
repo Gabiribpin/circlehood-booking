@@ -183,6 +183,10 @@ test.describe('Registro — API /api/register', () => {
 // Testes de browser: verificam comportamento do formulário antes de submeter.
 // ═══════════════════════════════════════════════════════════════════════════
 test.describe('Registro — Formulário UI', () => {
+  // Sem storageState: o usuário de teste já tem professional → useEffect em
+  // register/page.tsx faria router.replace('/dashboard') imediatamente.
+  // Com sessão limpa, a página permanece e os campos ficam disponíveis.
+  test.use({ storageState: { cookies: [], origins: [] } });
   // ── 2a: Senha curta → erro no step 1 ───────────────────────────────────
   test('senha com 5 chars → erro "pelo menos 6 caracteres"', async ({ page }) => {
     test.setTimeout(90_000); // cold start Vercel pode demorar
@@ -310,14 +314,12 @@ test.describe('Fluxo completo de registro', () => {
     test.setTimeout(60_000);
 
     // Contexto fresco: sem sessão salva (simula usuário novo).
-    // extraHTTPHeaders força Accept-Language: pt-BR para overridar o padrão en-US
-    // do CI (GitHub Actions) — sem isso next-intl redireciona /register → /en-US/register.
-    const ctx = await browser.newContext({
-      extraHTTPHeaders: { 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.5' },
-    });
+    // locale: 'pt-BR' força o locale do Chromium (não só HTTP header) → next-intl
+    // detecta pt-BR corretamente mesmo no CI onde o sistema é en-US.
+    const ctx = await browser.newContext({ locale: 'pt-BR' });
     const page = await ctx.newPage();
 
-    // Cookie NEXT_LOCALE como fallback adicional (dois layers de proteção).
+    // Cookie NEXT_LOCALE como camada extra de proteção (belt-and-suspenders).
     const baseUrl = new URL(BASE);
     await ctx.addCookies([{
       name: 'NEXT_LOCALE',

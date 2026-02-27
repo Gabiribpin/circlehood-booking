@@ -20,12 +20,12 @@ export default defineConfig({
     baseURL: process.env.TEST_BASE_URL ?? 'https://circlehood-booking.vercel.app',
     extraHTTPHeaders: {
       'Content-Type': 'application/json',
-      // Força PT-BR em TODOS os testes: CI envia Accept-Language: en-US por padrão,
-      // o que faz next-intl redirecionar /dashboard → /en-US/dashboard.
-      // URL prefix tem prioridade sobre este header → testes i18n que navegam
-      // para /en-US/ ou /es-ES/ não são afetados.
-      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.5',
     },
+    // Força locale PT-BR no Chromium: muda navigator.language e Accept-Language
+    // no nível do browser (não apenas HTTP header), evitando que next-intl detecte
+    // en-US do sistema do CI e redirecione para /en-US/. URL prefix tem prioridade
+    // sobre locale → testes i18n que navegam para /en-US/ ou /es-ES/ não são afetados.
+    locale: 'pt-BR',
     // Screenshots e traces só em falha (para debug)
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
