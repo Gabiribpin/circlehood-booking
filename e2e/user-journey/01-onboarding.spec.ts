@@ -352,10 +352,11 @@ test.describe('Fluxo completo de registro', () => {
 
       // Substitui slug pelo único garantido
       await page.fill('#slug', newSlug);
-      await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
+      await page.waitForTimeout(3500); // aguarda verificação async (contexto fresh = 1ª chamada Supabase)
 
       // Confirma que slug está disponível (ícone verde)
-      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 10_000 });
+      // 20s: contexto fresco sem cache → 1ª chamada Supabase pode demorar mais no CI
+      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 20_000 });
 
       await page.fill('#city', 'Dublin');
 
