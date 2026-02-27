@@ -214,6 +214,9 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
   // ── 1. Salvar EN-US ────────────────────────────────────────────────────────
 
   test('Salvar EN-US: redireciona para /en-US/settings e persiste ao recarregar', async ({ page }) => {
+    // 90s: cold start Vercel + PATCH Supabase + 1.5s timer + navegação + reload
+    test.setTimeout(90_000);
+
     await page.goto(`${BASE}/settings`, { waitUntil: 'domcontentloaded' });
     await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
 
@@ -223,6 +226,9 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     // Aguardar redirect para /en-US/settings (50s: cold start + PATCH Supabase + 1.5s timer)
     // Nota: não aguardar botão "Saved!" — janela de 1.5s antes do redirect é muito curta/instável
     await page.waitForURL(`${BASE}/en-US/settings`, { timeout: 50_000 });
+
+    // Aguardar replica Supabase propagar (evita select#locale mostrar valor antigo após reload)
+    await page.waitForTimeout(2_000);
 
     // Recarregar → locale deve persistir
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -253,6 +259,9 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
   // ── 3. Salvar ES-ES ────────────────────────────────────────────────────────
 
   test('Salvar ES-ES: redireciona para /es-ES/settings e persiste ao recarregar', async ({ page }) => {
+    // 90s: cold start Vercel + PATCH Supabase + 1.5s timer + navegação + reload
+    test.setTimeout(90_000);
+
     await page.goto(`${BASE}/en-US/settings`, { waitUntil: 'domcontentloaded' });
     await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
 
@@ -261,6 +270,9 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
 
     // Aguardar redirect para /es-ES/settings (50s: PATCH Supabase + 1.5s timer + navegação)
     await page.waitForURL(`${BASE}/es-ES/settings`, { timeout: 50_000 });
+
+    // Aguardar replica Supabase propagar (evita select#locale mostrar valor antigo após reload)
+    await page.waitForTimeout(2_000);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Configuración', { timeout: 20_000 });
@@ -290,6 +302,9 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
   // ── 5. Restaurar PT-BR ────────────────────────────────────────────────────
 
   test('Restaurar PT-BR: redireciona para /settings (sem prefixo) e persiste', async ({ page }) => {
+    // 90s: cold start Vercel + PATCH Supabase + 1.5s timer + navegação + reload
+    test.setTimeout(90_000);
+
     await page.goto(`${BASE}/es-ES/settings`, { waitUntil: 'domcontentloaded' });
     await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
 
@@ -299,6 +314,10 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     // PT-BR usa 'as-needed' → sem prefixo na URL
     // settings-manager redireciona 1.5s após o save completar (50s: cold start + PATCH + timer)
     await page.waitForURL(`${BASE}/settings`, { timeout: 50_000 });
+
+    // Aguardar cookie NEXT_LOCALE=pt-BR ser propagado para o browser e replica Supabase
+    // (sem isso, page.goto abaixo pode receber conteúdo ES-ES do servidor)
+    await page.waitForTimeout(3_000);
 
     // Navega explicitamente (não reload) para garantir que o middleware detecta
     // NEXT_LOCALE=pt-BR corretamente e serve conteúdo PT-BR

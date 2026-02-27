@@ -293,9 +293,17 @@ test.describe('Registro — Formulário UI', () => {
 
     const uniqueSlug = `e2e-unique-${Date.now()}`;
     await page.fill('#slug', uniqueSlug);
-    await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
 
-    await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible();
+    // Aguardar spinner checkingSlug desaparecer (indica que Supabase respondeu)
+    // No CI com contexto fresco, 1ª chamada pode levar >3.5s → usar polling em vez de timeout fixo
+    try {
+      await page.locator('.animate-spin').waitFor({ state: 'visible', timeout: 3_000 });
+    } catch (_) {
+      // spinner pode não ter aparecido (verificação instantânea) — ok
+    }
+    await page.waitForFunction(() => !document.querySelector('.animate-spin'), { timeout: 25_000 });
+
+    await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -352,11 +360,18 @@ test.describe('Fluxo completo de registro', () => {
 
       // Substitui slug pelo único garantido
       await page.fill('#slug', newSlug);
-      await page.waitForTimeout(3500); // aguarda verificação async (contexto fresh = 1ª chamada Supabase)
+
+      // Aguardar spinner checkingSlug desaparecer (contexto fresco → 1ª chamada Supabase pode levar >3.5s)
+      // Usa polling em vez de timeout fixo para ser robusto em diferentes latências de CI
+      try {
+        await page.locator('.animate-spin').waitFor({ state: 'visible', timeout: 3_000 });
+      } catch (_) {
+        // spinner pode não ter aparecido (verificação instantânea) — ok
+      }
+      await page.waitForFunction(() => !document.querySelector('.animate-spin'), { timeout: 25_000 });
 
       // Confirma que slug está disponível (ícone verde)
-      // 20s: contexto fresco sem cache → 1ª chamada Supabase pode demorar mais no CI
-      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 5_000 });
 
       await page.fill('#city', 'Dublin');
 
