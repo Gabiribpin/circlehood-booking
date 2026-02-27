@@ -30,7 +30,9 @@ async function cleanupVerificationUser(email: string): Promise<void> {
     .maybeSingle();
 
   if (prof) {
-    await sb.from('email_verification_tokens').delete().eq('professional_id', prof.id).catch(() => {});
+    // Supabase PostgrestBuilder é PromiseLike (não Promise) — .catch() não está disponível
+    // diretamente no builder; usar try-catch para ignorar erros (ex: tabela inexistente)
+    try { await sb.from('email_verification_tokens').delete().eq('professional_id', prof.id); } catch (_) {}
     await sb.from('bookings').delete().eq('professional_id', prof.id);
     await sb.from('services').delete().eq('professional_id', prof.id);
     await sb.from('working_hours').delete().eq('professional_id', prof.id);

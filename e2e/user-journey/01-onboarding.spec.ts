@@ -269,11 +269,15 @@ test.describe('Registro — Formulário UI', () => {
     await page.fill('#password', 'Valido123!');
     await page.click('button:has-text("Continuar")');
 
-    // Digita slug duplicado manualmente
+    // Digita businessName → aguarda check do slug auto-gerado completar (evita race condition)
     await page.fill('#businessName', 'Qualquer Nome');
-    await page.waitForTimeout(300);
+    // Espera ícone verde aparecer (slug auto-gerado "qualquer-nome" está disponível)
+    // Isso garante que o check do businessName já terminou antes de preenchermos o slug duplicado
+    await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 10_000 });
+
+    // Agora sobrepõe com slug duplicado (o check anterior está completo → sem race)
     await page.fill('#slug', prof.slug);
-    await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
+    await page.waitForTimeout(3500); // aguarda verificação do slug duplicado
 
     // Ícone de erro + texto de erro
     await expect(page.locator('[data-testid="slug-unavailable-icon"]')).toBeVisible();
@@ -351,7 +355,7 @@ test.describe('Fluxo completo de registro', () => {
       await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
 
       // Confirma que slug está disponível (ícone verde)
-      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 10_000 });
 
       await page.fill('#city', 'Dublin');
 

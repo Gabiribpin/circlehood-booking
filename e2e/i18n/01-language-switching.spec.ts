@@ -220,8 +220,11 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.selectOption('select#locale', 'en-US');
     await page.getByRole('button', { name: 'Salvar Alterações' }).click();
 
-    // Aguardar redirect para /en-US/settings
-    await page.waitForURL(`${BASE}/en-US/settings`, { timeout: 20_000 });
+    // Aguarda confirmação de save antes do redirect (1.5s timer no settings-manager)
+    await expect(page.getByRole('button', { name: /Guardado|Saved/i })).toBeVisible({ timeout: 20_000 });
+
+    // Aguardar redirect para /en-US/settings (35s: cold start + 1.5s timer + navegação)
+    await page.waitForURL(`${BASE}/en-US/settings`, { timeout: 35_000 });
 
     // Recarregar → locale deve persistir
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -258,7 +261,10 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.selectOption('select#locale', 'es-ES');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
-    await page.waitForURL(`${BASE}/es-ES/settings`, { timeout: 20_000 });
+    // Aguarda confirmação de save antes do redirect
+    await expect(page.getByRole('button', { name: /Saved|Guardado/i })).toBeVisible({ timeout: 20_000 });
+
+    await page.waitForURL(`${BASE}/es-ES/settings`, { timeout: 35_000 });
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Configuración', { timeout: 20_000 });
@@ -294,13 +300,19 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.selectOption('select#locale', 'pt-BR');
     await page.getByRole('button', { name: 'Guardar Cambios' }).click();
 
-    // PT-BR usa 'as-needed' → sem prefixo na URL
-    await page.waitForURL(`${BASE}/settings`, { timeout: 20_000 });
+    // Aguarda confirmação de save (aparece assim que o PATCH ao Supabase completa)
+    await expect(page.getByRole('button', { name: /Guardado/i })).toBeVisible({ timeout: 20_000 });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    // PT-BR usa 'as-needed' → sem prefixo na URL
+    // settings-manager redireciona 1.5s após o save completar
+    await page.waitForURL(`${BASE}/settings`, { timeout: 35_000 });
+
+    // Navega explicitamente (não reload) para garantir que o middleware detecta
+    // NEXT_LOCALE=pt-BR corretamente e serve conteúdo PT-BR
+    await page.goto(`${BASE}/settings`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Configurações', { timeout: 20_000 });
     expect(page.url()).not.toContain('/en-US/');
     expect(page.url()).not.toContain('/es-ES/');
-    await expect(page.locator('select#locale')).toHaveValue('pt-BR');
+    await expect(page.locator('select#locale')).toHaveValue('pt-BR', { timeout: 15_000 });
   });
 });

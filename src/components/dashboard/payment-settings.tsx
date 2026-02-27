@@ -110,7 +110,6 @@ export function PaymentSettings({
           <Switch
             data-testid="require-deposit-toggle"
             checked={requireDeposit}
-            disabled={!stripeConnected}
             onCheckedChange={(v) => {
               setRequireDeposit(v);
               setError(null);

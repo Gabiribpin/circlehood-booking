@@ -214,8 +214,8 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await confirmBtn.click();
     await confirmBtn.click({ force: true });
 
-    // Aguardar sucesso (20s: inclui cold start Vercel + latência de rede no CI)
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
+    // Aguardar sucesso (30s: inclui cold start Vercel + latência de rede no CI)
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 30_000 });
 
     // Apenas 1 chamada à API deve ter sido feita
     expect(apiCallCount).toBe(1);
@@ -244,7 +244,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await page
       .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
       .click();
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 30_000 });
 
     // 1 agendamento após o sucesso
     expect(await countActiveIdempotencyBookings()).toBe(1);
@@ -286,7 +286,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await page
       .locator('button', { hasText: /Confirmar agendamento|Continuar para pagamento/ })
       .click();
-    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 30_000 });
 
     expect(await countActiveIdempotencyBookings()).toBe(1);
 
