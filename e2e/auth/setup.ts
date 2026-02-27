@@ -34,12 +34,19 @@ setup('autenticar Salão da Rita', async ({ page }) => {
 
   // Forçar locale pt-BR via cookie — evita que o CI (Accept-Language: en-US)
   // redirecione para /en-US/* e quebre verificações de URL e texto do sidebar.
+  // IMPORTANTE: o servidor pode ter setado NEXT_LOCALE=en-US durante o login
+  // (baseado no Accept-Language do CI). clearCookies(name) remove o cookie
+  // server-side antes de adicionar o pt-BR, garantindo que não coexistam.
+  await page.context().clearCookies({ name: 'NEXT_LOCALE' });
   const baseUrl = new URL(TEST.BASE_URL);
   await page.context().addCookies([{
     name: 'NEXT_LOCALE',
     value: 'pt-BR',
     domain: baseUrl.hostname,
     path: '/',
+    sameSite: 'Lax',
+    secure: baseUrl.protocol === 'https:',
+    httpOnly: false,
   }]);
 
   // Salvar estado de autenticação (cookies + localStorage)

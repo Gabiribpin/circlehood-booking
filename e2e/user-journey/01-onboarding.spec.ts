@@ -313,6 +313,19 @@ test.describe('Fluxo completo de registro', () => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
+    // Forçar locale pt-BR — CI envia Accept-Language: en-US e sem cookie o
+    // servidor redireciona para /en-US/register, quebrando os seletores em PT-BR.
+    const baseUrl = new URL(BASE);
+    await ctx.addCookies([{
+      name: 'NEXT_LOCALE',
+      value: 'pt-BR',
+      domain: baseUrl.hostname,
+      path: '/',
+      sameSite: 'Lax',
+      secure: baseUrl.protocol === 'https:',
+      httpOnly: false,
+    }]);
+
     try {
       await page.goto(BASE + '/register');
 

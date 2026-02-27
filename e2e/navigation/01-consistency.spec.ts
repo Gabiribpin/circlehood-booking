@@ -37,7 +37,7 @@ test.describe('Sidebar — Desktop', () => {
       { href: '/schedule',       heading: 'Horários'                    },
       { href: '/settings',       heading: 'Configurações'               },
       { href: '/whatsapp-config',heading: /Configuração WhatsApp/i      },
-      { href: '/my-page',        heading: 'Minha Página'                },
+      { href: '/my-page',        heading: 'Página Pública'              },
     ];
 
     for (const route of routes) {
@@ -81,7 +81,7 @@ test.describe('Deep Links — Acesso Direto', () => {
       { url: '/services',  heading: 'Serviços'      },
       { url: '/settings',  heading: 'Configurações' },
       { url: '/schedule',  heading: 'Horários'      },
-      { url: '/my-page',   heading: 'Minha Página'  },
+      { url: '/my-page',   heading: 'Página Pública' },
     ];
 
     for (const link of deepLinks) {
