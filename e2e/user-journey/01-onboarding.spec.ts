@@ -269,7 +269,7 @@ test.describe('Registro — Formulário UI', () => {
     await page.fill('#businessName', 'Qualquer Nome');
     await page.waitForTimeout(300);
     await page.fill('#slug', prof.slug);
-    await page.waitForTimeout(2000); // aguarda verificação async
+    await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
 
     // Ícone de erro + texto de erro
     await expect(page.locator('[data-testid="slug-unavailable-icon"]')).toBeVisible();
@@ -285,7 +285,7 @@ test.describe('Registro — Formulário UI', () => {
 
     const uniqueSlug = `e2e-unique-${Date.now()}`;
     await page.fill('#slug', uniqueSlug);
-    await page.waitForTimeout(2000); // aguarda verificação async
+    await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
 
     await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible();
   });
@@ -309,12 +309,15 @@ test.describe('Fluxo completo de registro', () => {
   test('registro 2 passos → redireciona /dashboard → banner de setup → welcome', async ({ browser }) => {
     test.setTimeout(60_000);
 
-    // Contexto fresco: sem sessão salva (simula usuário novo)
-    const ctx = await browser.newContext();
+    // Contexto fresco: sem sessão salva (simula usuário novo).
+    // extraHTTPHeaders força Accept-Language: pt-BR para overridar o padrão en-US
+    // do CI (GitHub Actions) — sem isso next-intl redireciona /register → /en-US/register.
+    const ctx = await browser.newContext({
+      extraHTTPHeaders: { 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.5' },
+    });
     const page = await ctx.newPage();
 
-    // Forçar locale pt-BR — CI envia Accept-Language: en-US e sem cookie o
-    // servidor redireciona para /en-US/register, quebrando os seletores em PT-BR.
+    // Cookie NEXT_LOCALE como fallback adicional (dois layers de proteção).
     const baseUrl = new URL(BASE);
     await ctx.addCookies([{
       name: 'NEXT_LOCALE',
@@ -343,7 +346,7 @@ test.describe('Fluxo completo de registro', () => {
 
       // Substitui slug pelo único garantido
       await page.fill('#slug', newSlug);
-      await page.waitForTimeout(2000); // aguarda verificação async
+      await page.waitForTimeout(3500); // aguarda verificação async (3500ms no CI)
 
       // Confirma que slug está disponível (ícone verde)
       await expect(page.locator('[data-testid="slug-available-icon"]')).toBeVisible({ timeout: 5000 });
