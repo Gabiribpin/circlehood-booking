@@ -616,13 +616,31 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
-  # Job 15: Bot E2E (API, chama Claude)
+  # Job 15: Bot E2E (API, chama Claude) 💰 CARO
+  # Só roda se TODOS os jobs baratos passarem — economiza API calls
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
-    name: Playwright (bot E2E)
+    name: Playwright (bot E2E) 💰
     runs-on: ubuntu-latest
     environment: test
-    needs: unit
+    needs:
+      - unit
+      - smoke
+      - dashboard-e2e
+      - api-e2e
+      - security-e2e
+      - user-journey-e2e
+      - navigation-e2e
+      - ux-e2e
+      - i18n-e2e
+      - notifications-e2e
+      - mobile-e2e
+      - critical-race
+      - critical-idempotency
+      - gdpr-legal-e2e
+      - payment-e2e
+      - timezone-dst
+      - blocked-periods-api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
