@@ -1,25 +1,50 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, AlertCircle, CreditCard, Smartphone } from 'lucide-react';
 import { formatIBAN } from '@/lib/validators/iban';
+import { validatePaymentAccount, getAccountLabel } from '@/lib/validators/payment-account';
 
 type Method = 'stripe_pending' | 'manual';
 type Status = 'idle' | 'saving' | 'success' | 'error';
 
+interface Country {
+  code: string;
+  label: string;
+  flag: string;
+}
+
+const COUNTRIES: Country[] = [
+  { code: 'IE', label: 'Ireland', flag: '🇮🇪' },
+  { code: 'GB', label: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'DE', label: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', label: 'France', flag: '🇫🇷' },
+  { code: 'ES', label: 'Spain', flag: '🇪🇸' },
+  { code: 'PT', label: 'Portugal', flag: '🇵🇹' },
+  { code: 'IT', label: 'Italy', flag: '🇮🇹' },
+  { code: 'NL', label: 'Netherlands', flag: '🇳🇱' },
+  { code: 'BR', label: 'Brasil', flag: '🇧🇷' },
+  { code: 'US', label: 'United States', flag: '🇺🇸' },
+];
+
 interface SimplifiedPaymentSetupProps {
   currentMethod?: string | null;
   currentKey?: string | null;
+  currentCountry?: string | null;
 }
 
 export function SimplifiedPaymentSetup({
   currentMethod,
   currentKey,
+  currentCountry,
 }: SimplifiedPaymentSetupProps) {
+  const t = useTranslations('payment');
+
   const [selectedMethod, setSelectedMethod] = useState<Method>(
     currentMethod === 'manual' ? 'manual' : 'stripe_pending'
   );
@@ -27,11 +52,14 @@ export function SimplifiedPaymentSetup({
   // Stripe fields
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
-  const [iban, setIban] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState(
+    currentCountry || COUNTRIES[0].code
+  );
 
   // Manual field
   const [manualKey, setManualKey] = useState(currentKey || '');
@@ -42,13 +70,18 @@ export function SimplifiedPaymentSetup({
     currentMethod === 'manual' ? 'manual' : currentMethod === 'stripe_pending' ? 'stripe_pending' : null
   );
 
-  function handleIbanChange(value: string) {
-    // Formata enquanto digita
-    const raw = value.replace(/\s+/g, '').toUpperCase();
-    setIban(raw.length > 0 ? formatIBAN(raw) : '');
+  const isEuropean = !['BR', 'US'].includes(country);
+  const accountMeta = getAccountLabel(country);
+
+  function handleAccountChange(value: string) {
+    if (isEuropean) {
+      const raw = value.replace(/\s+/g, '').toUpperCase();
+      setAccountNumber(raw.length > 0 ? formatIBAN(raw) : '');
+    } else {
+      setAccountNumber(value);
+    }
   }
 
-  // Converte DD/MM/YYYY → YYYY-MM-DD para o backend
   function parseDob(input: string): string {
     const parts = input.split('/');
     if (parts.length === 3) {
@@ -62,6 +95,39 @@ export function SimplifiedPaymentSetup({
     setStatus('saving');
     setErrorMsg('');
 
+    // Validações client-side
+    if (selectedMethod === 'stripe_pending') {
+      if (!fullName.trim()) {
+        setErrorMsg(t('setupErrorName'));
+        setStatus('error');
+        return;
+      }
+      if (!dob.trim()) {
+        setErrorMsg(t('setupErrorDob'));
+        setStatus('error');
+        return;
+      }
+      if (!addressLine1.trim() || !city.trim() || !postalCode.trim()) {
+        setErrorMsg(t('setupErrorAddress'));
+        setStatus('error');
+        return;
+      }
+      if (accountNumber.trim()) {
+        const validation = validatePaymentAccount(accountNumber, country);
+        if (!validation.valid) {
+          setErrorMsg(validation.message ?? t('setupErrorAccount'));
+          setStatus('error');
+          return;
+        }
+      }
+    }
+
+    if (selectedMethod === 'manual' && !manualKey.trim()) {
+      setErrorMsg(t('setupErrorManualKey'));
+      setStatus('error');
+      return;
+    }
+
     try {
       let body: Record<string, unknown>;
 
@@ -70,12 +136,12 @@ export function SimplifiedPaymentSetup({
           method: 'stripe_pending',
           full_name: fullName,
           dob: parseDob(dob),
-          iban: iban.replace(/\s+/g, ''),
+          iban: accountNumber.replace(/\s+/g, ''),
           address_line1: addressLine1,
           address_line2: addressLine2,
           city,
           postal_code: postalCode,
-          country: 'IE',
+          country,
         };
       } else {
         body = {
@@ -93,7 +159,7 @@ export function SimplifiedPaymentSetup({
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.error || 'Erro ao salvar configuração');
+        setErrorMsg(data.error || t('setupErrorSave'));
         setStatus('error');
         return;
       }
@@ -102,7 +168,7 @@ export function SimplifiedPaymentSetup({
       setStatus('success');
       setTimeout(() => setStatus('idle'), 5000);
     } catch {
-      setErrorMsg('Erro de conexão. Tente novamente.');
+      setErrorMsg(t('setupErrorNetwork'));
       setStatus('error');
     }
   }
@@ -110,10 +176,8 @@ export function SimplifiedPaymentSetup({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Receber Pagamentos</CardTitle>
-        <CardDescription>
-          Configure como deseja receber os pagamentos dos seus clientes.
-        </CardDescription>
+        <CardTitle>{t('setupTitle')}</CardTitle>
+        <CardDescription>{t('setupDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
 
@@ -122,9 +186,7 @@ export function SimplifiedPaymentSetup({
           <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
             <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
             <p className="text-sm text-green-800 dark:text-green-300">
-              {savedMethod === 'manual'
-                ? '✅ Pagamento manual ativado'
-                : '✅ Configuração salva — em processamento'}
+              {savedMethod === 'manual' ? t('setupSavedManual') : t('setupSavedStripe')}
             </p>
           </div>
         )}
@@ -141,8 +203,8 @@ export function SimplifiedPaymentSetup({
             }`}
           >
             <CreditCard className={`h-5 w-5 mb-2 ${selectedMethod === 'stripe_pending' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className="font-medium text-sm">Automático</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Via cartão / transferência</p>
+            <p className="font-medium text-sm">{t('setupMethodAuto')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('setupMethodAutoDesc')}</p>
           </button>
 
           <button
@@ -155,27 +217,50 @@ export function SimplifiedPaymentSetup({
             }`}
           >
             <Smartphone className={`h-5 w-5 mb-2 ${selectedMethod === 'manual' ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className="font-medium text-sm">Manual</p>
-            <p className="text-xs text-muted-foreground mt-0.5">PIX, IBAN ou outro</p>
+            <p className="font-medium text-sm">{t('setupMethodManual')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('setupMethodManualDesc')}</p>
           </button>
         </div>
 
-        {/* Formulário Automático (Stripe pending) */}
+        {/* Formulário Automático */}
         {selectedMethod === 'stripe_pending' && (
           <div className="space-y-4">
+            {/* País */}
             <div className="space-y-1.5">
-              <Label htmlFor="fullName">Nome completo <span className="text-destructive">*</span></Label>
+              <Label htmlFor="country">{t('setupCountry')} <span className="text-destructive">*</span></Label>
+              <select
+                id="country"
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setAccountNumber('');
+                }}
+                disabled={status === 'saving'}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.label} ({c.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Nome completo */}
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName">{t('setupFullName')} <span className="text-destructive">*</span></Label>
               <Input
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ex: Maria Silva"
+                placeholder={t('setupFullNamePlaceholder')}
                 disabled={status === 'saving'}
               />
             </div>
 
+            {/* Data de nascimento */}
             <div className="space-y-1.5">
-              <Label htmlFor="dob">Data de nascimento <span className="text-destructive">*</span></Label>
+              <Label htmlFor="dob">{t('setupDob')} <span className="text-destructive">*</span></Label>
               <Input
                 id="dob"
                 value={dob}
@@ -186,60 +271,62 @@ export function SimplifiedPaymentSetup({
               />
             </div>
 
+            {/* Conta bancária (dinâmica por país) */}
             <div className="space-y-1.5">
-              <Label htmlFor="iban">IBAN</Label>
+              <Label htmlFor="accountNumber">{accountMeta.label}</Label>
               <Input
-                id="iban"
-                value={iban}
-                onChange={(e) => handleIbanChange(e.target.value)}
-                placeholder="IE29 AIBK 9311 5212 3456 78"
-                maxLength={32}
+                id="accountNumber"
+                value={accountNumber}
+                onChange={(e) => handleAccountChange(e.target.value)}
+                placeholder={accountMeta.placeholder}
+                maxLength={isEuropean ? 36 : 60}
                 disabled={status === 'saving'}
-                className="font-mono"
+                className={isEuropean ? 'font-mono' : ''}
               />
-              <p className="text-xs text-muted-foreground">Formato: IE + 20 dígitos</p>
+              <p className="text-xs text-muted-foreground">{accountMeta.hint}</p>
             </div>
 
+            {/* Morada */}
             <div className="space-y-1.5">
-              <Label htmlFor="addressLine1">Morada (linha 1) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="addressLine1">{t('setupAddress1')} <span className="text-destructive">*</span></Label>
               <Input
                 id="addressLine1"
                 value={addressLine1}
                 onChange={(e) => setAddressLine1(e.target.value)}
-                placeholder="Ex: 12 Main Street"
+                placeholder={t('setupAddress1Placeholder')}
                 disabled={status === 'saving'}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="addressLine2">Morada (linha 2)</Label>
+              <Label htmlFor="addressLine2">{t('setupAddress2')}</Label>
               <Input
                 id="addressLine2"
                 value={addressLine2}
                 onChange={(e) => setAddressLine2(e.target.value)}
-                placeholder="Apartamento, andar... (opcional)"
+                placeholder={t('setupAddress2Placeholder')}
                 disabled={status === 'saving'}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="city">Cidade <span className="text-destructive">*</span></Label>
+                <Label htmlFor="city">{t('setupCity')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="city"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Ex: Dublin"
+                  placeholder={t('setupCityPlaceholder')}
                   disabled={status === 'saving'}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="postalCode">Código postal <span className="text-destructive">*</span></Label>
+                <Label htmlFor="postalCode">{t('setupPostalCode')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="postalCode"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="Ex: D01 F5P2"
+                  placeholder={t('setupPostalCodePlaceholder')}
                   disabled={status === 'saving'}
                 />
               </div>
@@ -251,22 +338,20 @@ export function SimplifiedPaymentSetup({
         {selectedMethod === 'manual' && (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="manualKey">Chave PIX ou IBAN <span className="text-destructive">*</span></Label>
+              <Label htmlFor="manualKey">{t('setupManualKey')} <span className="text-destructive">*</span></Label>
               <Input
                 id="manualKey"
                 value={manualKey}
                 onChange={(e) => setManualKey(e.target.value)}
-                placeholder="Ex: IE29AIBK... ou email@pix.com"
+                placeholder={t('setupManualKeyPlaceholder')}
                 disabled={status === 'saving'}
               />
-              <p className="text-xs text-muted-foreground">
-                Esta chave será exibida ao cliente após o agendamento.
-              </p>
+              <p className="text-xs text-muted-foreground">{t('setupManualKeyHint')}</p>
             </div>
           </div>
         )}
 
-        {/* Feedback de erro */}
+        {/* Erro */}
         {status === 'error' && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
             <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
@@ -274,38 +359,30 @@ export function SimplifiedPaymentSetup({
           </div>
         )}
 
-        {/* Feedback de sucesso */}
+        {/* Sucesso */}
         {status === 'success' && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
             <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
             <p className="text-sm text-green-800 dark:text-green-300">
-              {selectedMethod === 'manual'
-                ? 'Pagamento manual configurado com sucesso!'
-                : 'Configuração salva! Você receberá uma notificação quando a verificação for concluída.'}
+              {selectedMethod === 'manual' ? t('setupSuccessManual') : t('setupSuccessStripe')}
             </p>
           </div>
         )}
 
-        {/* Botão de submit */}
+        {/* Botão */}
         <Button
           onClick={handleSubmit}
           disabled={status === 'saving'}
           className="w-full"
         >
           {status === 'saving' ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Salvando...
-            </>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('setupSaving')}</>
           ) : status === 'success' ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Salvo!
-            </>
+            <><CheckCircle2 className="h-4 w-4 mr-2" />{t('setupSaved')}</>
           ) : selectedMethod === 'manual' ? (
-            'Usar Pagamento Manual'
+            t('setupBtnManual')
           ) : (
-            'Configurar Pagamentos Automáticos'
+            t('setupBtnAuto')
           )}
         </Button>
 

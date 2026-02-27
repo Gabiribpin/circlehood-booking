@@ -17,7 +17,7 @@ export default async function PaymentSettingsPage() {
   const { data: professional } = await supabase
     .from('professionals')
     .select(
-      'id, currency, require_deposit, deposit_type, deposit_value, payment_method, manual_payment_key'
+      'id, currency, require_deposit, deposit_type, deposit_value, payment_method, manual_payment_key, payment_country'
     )
     .eq('user_id', user.id)
     .single();
@@ -43,6 +43,7 @@ export default async function PaymentSettingsPage() {
       <SimplifiedPaymentSetup
         currentMethod={(professional.payment_method as string) ?? null}
         currentKey={(professional.manual_payment_key as string) ?? null}
+        currentCountry={(professional.payment_country as string) ?? null}
       />
 
       <PaymentSettings
