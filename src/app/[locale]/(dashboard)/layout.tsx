@@ -83,6 +83,19 @@ export default async function DashboardLayout({
     redirect('/verify-email-pending');
   }
 
+  // Block dashboard access if no active subscription (must go through Stripe Checkout first)
+  if (professional && professional.subscription_status !== 'active') {
+    // Allow access if subscription_status is 'trial' AND they have a stripe_customer_id
+    // (meaning they went through checkout and Stripe gave them a trial)
+    const hasStripeSubscription = !!professional.stripe_customer_id;
+    if (!hasStripeSubscription) {
+      redirect('/subscribe');
+    }
+  }
+
+  // Check if onboarding is incomplete (used for persistent banner below)
+  const onboardingPending = professional && !professional.onboarding_completed;
+
   // Trial status for banner
   const trialStatus = user ? await getTrialStatus(user.id) : null;
 
@@ -144,6 +157,11 @@ export default async function DashboardLayout({
               {t('viewPublicPage')} &rarr;
             </a>
           )}
+          {user.email && (
+            <p className="px-3 py-1 text-[11px] text-muted-foreground truncate" title={user.email}>
+              {user.email}
+            </p>
+          )}
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"
@@ -174,6 +192,27 @@ export default async function DashboardLayout({
         <MobileNav professionalSlug={professional?.slug} failedNotificationsCount={failedCount} />
 
         <GuidedTour />
+
+        {/* Onboarding incomplete banner — persistent, prominent warning */}
+        {onboardingPending && (
+          <div data-testid="onboarding-pending-banner" className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3 max-w-5xl mx-auto">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xl shrink-0">⚠️</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-tight">{t('onboardingBannerTitle')}</p>
+                  <p className="text-xs text-white/80 leading-tight mt-0.5 hidden sm:block">{t('onboardingBannerDesc')}</p>
+                </div>
+              </div>
+              <Link
+                href="/onboarding"
+                className="shrink-0 bg-white text-orange-600 hover:bg-white/90 font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm"
+              >
+                {t('onboardingBannerAction')}
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Email verification banner — shown if email_verified=false (shouldn't reach here due to redirect, but safety net) */}
         {professional?.email_verified === false && user.email && (

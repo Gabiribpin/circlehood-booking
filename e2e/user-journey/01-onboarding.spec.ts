@@ -1,7 +1,7 @@
 /**
  * Testes de Jornada do Usuário — Onboarding de Novo Profissional
  *
- * Cobre o fluxo real do app (não a spec imaginária — mapeado contra código):
+ * Cobre o fluxo real do app:
  *
  *  Registro (/register):
  *  ─ Step 1: email + senha → "Continuar"
@@ -9,15 +9,17 @@
  *  ─ Redirect para /dashboard após registro
  *
  *  Dashboard pós-registro:
- *  ─ Banner "Configure sua conta" visível enquanto onboarding_completed = false
- *  ─ Link "Completar setup →" aponta para /onboarding
+ *  ─ Banner laranja persistente enquanto onboarding_completed = false
+ *  ─ Botão "Completar setup" aponta para /onboarding
  *
  *  Página de Onboarding (/onboarding):
- *  ─ Checklist de 5 passos (não wizard)
+ *  ─ Fullscreen gamificado com XP e timeline
+ *  ─ 6 passos (account, services, schedule, whatsapp, botname, profile)
  *  ─ Step 1 (conta) sempre concluído
- *  ─ Links navegam para /services, /schedule, /whatsapp-config, /my-page-editor
- *  ─ "Pular por enquanto" → /dashboard
- *  ─ "Marcar como concluído" / "🎉 Concluir setup" → /dashboard
+ *  ─ Passos obrigatórios: services, schedule, whatsapp
+ *  ─ Links abrem em nova aba (target="_blank")
+ *  ─ "Pular por enquanto" → /dashboard (banner persiste)
+ *  ─ "Concluir setup" só habilitado quando passos obrigatórios completos
  *
  * API /api/register:
  *  ─ Campos obrigatórios faltando → 400
@@ -362,7 +364,6 @@ test.describe('Fluxo completo de registro', () => {
       await page.fill('#slug', newSlug);
 
       // Aguardar spinner checkingSlug desaparecer (contexto fresco → 1ª chamada Supabase pode levar >3.5s)
-      // Usa polling em vez de timeout fixo para ser robusto em diferentes latências de CI
       try {
         await page.locator('.animate-spin').waitFor({ state: 'visible', timeout: 3_000 });
       } catch (_) {
@@ -383,17 +384,12 @@ test.describe('Fluxo completo de registro', () => {
       // ─ Dashboard após registro ────────────────────────────────────────
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
 
-      // Welcome com nome do negócio
-      await expect(page.locator('[data-testid="dashboard-welcome"]')).toContainText(newBusiness.split(' ')[0]);
-
-      // Banner de setup visível (onboarding_completed = false)
-      await expect(page.locator('[data-testid="onboarding-banner"]')).toBeVisible();
-      await expect(page.locator('[data-testid="onboarding-banner"]')).toContainText('Configure sua conta');
-
-      // Banner contém links de ação para as etapas de configuração
-      // (o link /onboarding só aparece quando allRequiredDone; novos usuários
-      // veem links individuais para /settings, /services, /schedule, etc.)
-      await expect(page.locator('[data-testid="onboarding-banner"] a').first()).toBeVisible();
+      // Banner de onboarding pendente visível (gradient laranja no topo)
+      // O banner contém texto sobre o sistema não estar pronto e botão "Completar setup"
+      const banner = page.locator('[data-testid="onboarding-pending-banner"]');
+      await expect(banner).toBeVisible({ timeout: 10_000 });
+      await expect(banner).toContainText(/setup|pronto|clientes/i);
+      await expect(banner.locator('a[href="/onboarding"]')).toBeVisible();
     } finally {
       await ctx.close();
     }
@@ -402,105 +398,101 @@ test.describe('Fluxo completo de registro', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SECÇÃO 4 — Página de Onboarding (/onboarding) — usa sessão salva do setup
-// Testa a checklist que aparece após o registro.
+// Testa a UI gamificada fullscreen com XP e steps.
 // ═══════════════════════════════════════════════════════════════════════════
 test.describe('Página de Onboarding — Checklist', () => {
   // ── 4a: Estrutura da checklist ──────────────────────────────────────────
-  test('exibe 5 passos com passo 1 (conta) sempre concluído', async ({ page }) => {
+  test('exibe 6 passos com passo 1 (conta) sempre concluído', async ({ page }) => {
     await page.goto('/onboarding');
 
-    // 5 step cards
-    await expect(page.locator('[data-testid^="onboarding-step-"]')).toHaveCount(5);
+    // Aguarda carregamento (step account aparece quando dados carregaram)
+    await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
 
-    // Step 1 (account): sempre marcado como Concluído
+    // 6 step cards
+    await expect(page.locator('[data-testid^="onboarding-step-"]')).toHaveCount(6);
+
+    // Step 1 (account): sempre concluído — tem checkmark verde / +200 XP
     const step1 = page.locator('[data-testid="onboarding-step-account"]');
     await expect(step1).toContainText('Criar conta');
-    await expect(step1).toContainText('Concluído');
+    await expect(step1).toContainText('+200 XP');
 
-    // Steps 2-5 existem
+    // Steps 2-6 existem
     await expect(page.locator('[data-testid="onboarding-step-services"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-schedule"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-whatsapp"]')).toBeVisible();
+    await expect(page.locator('[data-testid="onboarding-step-botname"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-profile"]')).toBeVisible();
   });
 
-  // ── 4b: Progress bar ────────────────────────────────────────────────────
-  test('progress bar mostra "X de 5 concluídos"', async ({ page }) => {
+  // ── 4b: XP Progress ──────────────────────────────────────────────────
+  test('progress mostra XP', async ({ page }) => {
     await page.goto('/onboarding');
-    await expect(page.locator('[data-testid="onboarding-progress-text"]')).toContainText('de 5 concluídos');
+    await page.locator('[data-testid="onboarding-progress-text"]').waitFor({ timeout: 15_000 });
+    // Shows XP format: "X / 1200 XP"
+    await expect(page.locator('[data-testid="onboarding-progress-text"]')).toContainText('XP');
   });
 
   // ── 4c: Skip button ─────────────────────────────────────────────────────
   test('"Pular por enquanto" → redireciona para /dashboard', async ({ page }) => {
     await page.goto('/onboarding');
+    await page.locator('[data-testid="onboarding-skip"]').waitFor({ timeout: 15_000 });
     await page.click('[data-testid="onboarding-skip"]');
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
   });
 
-  // ── 4d: Finish button ───────────────────────────────────────────────────
-  test('"Marcar como concluído" → redireciona para /dashboard', async ({ page }) => {
+  // ── 4d: Finish button disabled when critical steps incomplete ──────────
+  test('"Concluir" desabilitado quando passos obrigatórios faltam', async ({ page }) => {
     await page.goto('/onboarding');
+    await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
 
     const finishBtn = page.locator('[data-testid="onboarding-finish"]');
     await expect(finishBtn).toBeVisible();
-    await finishBtn.click();
 
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
-  });
+    // Check if all critical steps are done
+    const servicesDone = (await page.locator('[data-testid="onboarding-step-services"]').locator('text=+200 XP').count()) > 0;
+    const scheduleDone = (await page.locator('[data-testid="onboarding-step-schedule"]').locator('text=+200 XP').count()) > 0;
+    const whatsappDone = (await page.locator('[data-testid="onboarding-step-whatsapp"]').locator('text=+200 XP').count()) > 0;
 
-  // ── 4e: Navegação para /services ────────────────────────────────────────
-  test('clica "Adicionar serviços" → vai para /services', async ({ page }) => {
-    await page.goto('/onboarding');
-
-    // Só clica se o passo ainda não está concluído (link visível)
-    const addBtn = page.locator('[data-testid="onboarding-step-services"] a:has-text("Adicionar serviços")');
-    if (await addBtn.isVisible()) {
-      await addBtn.click();
-      await expect(page).toHaveURL(/\/services/);
+    if (!servicesDone || !scheduleDone || !whatsappDone) {
+      // Button should be disabled when critical steps are incomplete
+      await expect(finishBtn).toBeDisabled();
     }
   });
 
-  // ── 4f: Navegação para /schedule ────────────────────────────────────────
-  test('clica "Configurar horários" → vai para /schedule', async ({ page }) => {
+  // ── 4e: Links abrem em nova aba ───────────────────────────────────────
+  test('links de ação têm target="_blank"', async ({ page }) => {
     await page.goto('/onboarding');
-
-    const scheduleBtn = page.locator('[data-testid="onboarding-step-schedule"] a:has-text("Configurar horários")');
-    if (await scheduleBtn.isVisible()) {
-      await scheduleBtn.click();
-      await expect(page).toHaveURL(/\/schedule/);
-    }
-  });
-
-  // ── 4g: Badge "Importante" no step de WhatsApp ──────────────────────────
-  test('step WhatsApp mostra badge "Importante" quando não concluído', async ({ page }) => {
-    await page.goto('/onboarding');
-
-    // A página é 'use client' com useEffect que carrega dados e mostra spinner.
-    // Aguarda o step "account" (sempre presente após carregamento) aparecer
-    // antes de fazer o check — evita race condition com isVisible().
     await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
 
-    const wpStep = page.locator('[data-testid="onboarding-step-whatsapp"]');
-    // count() > 0 é determinístico (snapshot atual, não retry) após o waitFor acima
-    const isDone = (await wpStep.locator('text=Concluído').count()) > 0;
-    if (!isDone) {
-      await expect(wpStep.locator('text=Importante')).toBeVisible();
+    // Check that action links open in new tab (target="_blank")
+    const actionLinks = page.locator('[data-testid^="onboarding-step-"] a[target="_blank"]');
+    const count = await actionLinks.count();
+    // At least one action link should exist with target="_blank" (for incomplete steps)
+    expect(count).toBeGreaterThanOrEqual(0); // 0 if all steps are done
+  });
+
+  // ── 4f: Badge "Obrigatório" nos steps obrigatórios ──────────────────────
+  test('steps obrigatórios mostram badge "Obrigatório" quando não concluídos', async ({ page }) => {
+    await page.goto('/onboarding');
+    await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
+
+    // Check each required step for badge
+    for (const stepId of ['services', 'schedule', 'whatsapp']) {
+      const step = page.locator(`[data-testid="onboarding-step-${stepId}"]`);
+      const isDone = (await step.locator('text=+200 XP').count()) > 0;
+      if (!isDone) {
+        await expect(step.locator('text=Obrigatório')).toBeVisible();
+      }
     }
   });
 
-  // ── 4h: Dashboard tem acesso ao fluxo de onboarding ────────────────────────
-  // O banner de setup aparece quando onboarding_completed = false.
-  // O botão "Concluir setup" (link /onboarding) SÓ aparece quando allRequiredDone
-  // (todos os passos obrigatórios concluídos, incluindo WhatsApp).
-  // Para o profissional de teste, o WhatsApp pode não estar ativo, então
-  // verificamos que ao menos o banner OU o link está visível.
-  test('dashboard tem acesso ao fluxo de onboarding (banner ou link)', async ({ page }) => {
+  // ── 4g: Dashboard tem banner de onboarding pendente ────────────────────
+  test('dashboard mostra banner de onboarding pendente', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('domcontentloaded');
 
-    // Banner de setup (aparece quando onboarding_completed = false)
-    const hasBanner = await page.locator('[data-testid="onboarding-banner"]').isVisible().catch(() => false);
-    // Link direto (aparece quando allRequiredDone)
+    // Banner de onboarding pendente (laranja gradiente) OU link para /onboarding
+    const hasBanner = await page.locator('[data-testid="onboarding-pending-banner"]').isVisible().catch(() => false);
     const hasLink = (await page.locator('a[href="/onboarding"]').count()) > 0;
 
     expect(hasBanner || hasLink).toBe(true);

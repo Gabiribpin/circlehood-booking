@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -11,22 +12,27 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { BotConfigPanel } from '@/components/dashboard/bot-config-panel';
+import { QrCode, Smartphone } from 'lucide-react';
 
-type ConnectionStatus = 'idle' | 'loading' | 'qrcode' | 'connected' | 'error';
+type ConnectionStatus = 'idle' | 'loading' | 'qrcode' | 'pairing' | 'connected' | 'error';
 
 export default function WhatsAppConfigPage() {
   const t = useTranslations('whatsapp');
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'ai' ? 'ai' : 'setup';
 
   // Evolution state
   const [evolutionPhone, setEvolutionPhone] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
   const [instanceName, setInstanceName] = useState('');
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // AI / bot state
   const [greetingMessage, setGreetingMessage] = useState('');
+  const [greetingWasEmpty, setGreetingWasEmpty] = useState(false);
   const [aiSettings, setAiSettings] = useState({
     languages: ['pt', 'en'],
     instructions: '',
@@ -73,14 +79,31 @@ export default function WhatsAppConfigPage() {
         setAiSettings(prev => ({ ...prev, instructions: aiData.instructions ?? '' }));
       }
 
-      const { data: bcData } = await supabase
-        .from('bot_config')
-        .select('greeting_message')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data: bcData }, { data: profData }] = await Promise.all([
+        supabase
+          .from('bot_config')
+          .select('greeting_message')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('professionals')
+          .select('business_name')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
 
-      if (bcData) {
-        setGreetingMessage(bcData.greeting_message ?? '');
+      const savedGreeting = bcData?.greeting_message ?? '';
+      if (savedGreeting) {
+        setGreetingMessage(savedGreeting);
+      } else {
+        // Pre-fill with a sensible default using the business name
+        const name = profData?.business_name ?? '';
+        setGreetingMessage(
+          name
+            ? `Olá, seja bem-vindo(a) ao ${name}! Como posso ajudar?`
+            : ''
+        );
+        setGreetingWasEmpty(true);
       }
 
       setLoading(false);
@@ -89,7 +112,7 @@ export default function WhatsAppConfigPage() {
   }, []);
 
   // ── Conectar WhatsApp via Evolution API ──
-  async function handleConnect() {
+  async function handleConnect(method: 'qrcode' | 'pairing') {
     if (!evolutionPhone) {
       setEvoMessage(t('errorPhone'));
       setConnectionStatus('error');
@@ -98,13 +121,14 @@ export default function WhatsAppConfigPage() {
 
     setConnectionStatus('loading');
     setQrCode(null);
+    setPairingCode(null);
     setEvoMessage(null);
 
     try {
       const res = await fetch('/api/evolution/create-instance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: evolutionPhone }),
+        body: JSON.stringify({ phone: evolutionPhone, method }),
       });
 
       const data = await res.json();
@@ -117,7 +141,11 @@ export default function WhatsAppConfigPage() {
 
       setInstanceName(data.instanceName);
 
-      if (data.qrCode) {
+      if (method === 'pairing' && data.pairingCode) {
+        setPairingCode(data.pairingCode);
+        setConnectionStatus('pairing');
+        startPolling(data.instanceName);
+      } else if (data.qrCode) {
         setQrCode(data.qrCode);
         setConnectionStatus('qrcode');
         startPolling(data.instanceName);
@@ -135,12 +163,15 @@ export default function WhatsAppConfigPage() {
 
     pollingRef.current = setInterval(async () => {
       try {
-        const qrRes = await fetch(`/api/evolution/get-qrcode?instance=${instance}`);
-        if (qrRes.ok) {
-          const qrData = await qrRes.json();
-          if (qrData.qrCode && !qrCode) {
-            setQrCode(qrData.qrCode);
-            setConnectionStatus('qrcode');
+        // Only fetch QR if we're in qrcode mode
+        if (connectionStatus === 'qrcode') {
+          const qrRes = await fetch(`/api/evolution/get-qrcode?instance=${instance}`);
+          if (qrRes.ok) {
+            const qrData = await qrRes.json();
+            if (qrData.qrCode && !qrCode) {
+              setQrCode(qrData.qrCode);
+              setConnectionStatus('qrcode');
+            }
           }
         }
 
@@ -152,12 +183,20 @@ export default function WhatsAppConfigPage() {
             pollingRef.current = null;
             setConnectionStatus('connected');
             setQrCode(null);
+            setPairingCode(null);
           }
         }
       } catch {
         // Ignorar erros de polling
       }
     }, 3000);
+  }
+
+  function resetConnection() {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    setConnectionStatus('idle');
+    setQrCode(null);
+    setPairingCode(null);
   }
 
   // ── Salvar configurações de IA ──
@@ -214,7 +253,7 @@ export default function WhatsAppConfigPage() {
       <h1 className="text-3xl font-bold mb-2">{t('configTitle')}</h1>
       <p className="text-gray-500 mb-6">{t('configSubtitle')}</p>
 
-      <Tabs defaultValue="setup" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="setup">{t('tabConnection')}</TabsTrigger>
           <TabsTrigger value="ai">{t('tabAI')}</TabsTrigger>
@@ -257,17 +296,46 @@ export default function WhatsAppConfigPage() {
                   {t('waitingQR')}
                 </p>
                 <p className="text-xs text-gray-400">{t('qrInstructions')}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (pollingRef.current) clearInterval(pollingRef.current);
-                    setConnectionStatus('idle');
-                    setQrCode(null);
-                  }}
-                >
-                  {t('cancel')}
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" onClick={resetConnection}>
+                    {t('cancel')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleConnect('pairing')}>
+                    <Smartphone className="h-4 w-4 mr-1.5" />
+                    {t('switchToPairing')}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Pairing Code */}
+            {connectionStatus === 'pairing' && pairingCode && (
+              <div className="p-5 bg-blue-50 border-2 border-blue-200 rounded-xl text-center space-y-4">
+                <Smartphone className="h-8 w-8 text-blue-600 mx-auto" />
+                <p className="font-semibold text-gray-800">{t('pairingTitle')}</p>
+                <div className="bg-white border-2 border-blue-300 rounded-xl py-4 px-6 inline-block">
+                  <p className="text-3xl font-mono font-bold tracking-[0.3em] text-blue-700 select-all">
+                    {pairingCode}
+                  </p>
+                </div>
+                <div className="text-sm text-gray-600 space-y-1 max-w-sm mx-auto text-left">
+                  <p>{t('pairingStep1')}</p>
+                  <p>{t('pairingStep2')}</p>
+                  <p>{t('pairingStep3')}</p>
+                </div>
+                <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                  <span className="animate-spin inline-block">🔄</span>
+                  {t('waitingPairing')}
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" onClick={resetConnection}>
+                    {t('cancel')}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleConnect('qrcode')}>
+                    <QrCode className="h-4 w-4 mr-1.5" />
+                    {t('switchToQR')}
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -281,15 +349,7 @@ export default function WhatsAppConfigPage() {
             {/* Conectado — botão de reconectar */}
             {connectionStatus === 'connected' && (
               <div className="space-y-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (pollingRef.current) clearInterval(pollingRef.current);
-                    setConnectionStatus('idle');
-                    setQrCode(null);
-                  }}
-                >
+                <Button variant="outline" size="sm" onClick={resetConnection}>
                   {t('reconnect')}
                 </Button>
               </div>
@@ -304,7 +364,7 @@ export default function WhatsAppConfigPage() {
 
             {/* Formulário — número + conectar */}
             {(connectionStatus === 'idle' || connectionStatus === 'error') && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <Label htmlFor="evolutionPhone">{t('phoneLabel')}</Label>
                   <Input
@@ -315,12 +375,31 @@ export default function WhatsAppConfigPage() {
                   />
                   <p className="text-xs text-gray-500 mt-1">{t('phoneHint')}</p>
                 </div>
-                <Button
-                  onClick={handleConnect}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {t('connectBtn')}
-                </Button>
+
+                {/* Two connection options */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => handleConnect('qrcode')}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white h-auto py-3"
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <QrCode className="h-5 w-5" />
+                      <span className="text-sm font-semibold">{t('connectQR')}</span>
+                      <span className="text-[10px] text-green-200 font-normal">{t('connectQRHint')}</span>
+                    </div>
+                  </Button>
+                  <Button
+                    onClick={() => handleConnect('pairing')}
+                    variant="outline"
+                    className="w-full h-auto py-3 border-blue-200 hover:bg-blue-50"
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <Smartphone className="h-5 w-5 text-blue-600" />
+                      <span className="text-sm font-semibold">{t('connectPairing')}</span>
+                      <span className="text-[10px] text-muted-foreground font-normal">{t('connectPairingHint')}</span>
+                    </div>
+                  </Button>
+                </div>
               </div>
             )}
           </Card>
@@ -338,9 +417,14 @@ export default function WhatsAppConfigPage() {
                 rows={2}
                 placeholder={t('greetingPlaceholder')}
                 value={greetingMessage}
-                onChange={(e) => setGreetingMessage(e.target.value)}
+                onChange={(e) => {
+                  setGreetingMessage(e.target.value);
+                  setGreetingWasEmpty(false);
+                }}
               />
-              <p className="text-xs text-gray-500 mt-1">{t('greetingHint')}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {greetingWasEmpty ? t('greetingDefault') : t('greetingHint')}
+              </p>
             </div>
 
             <div>

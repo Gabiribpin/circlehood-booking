@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, HelpCircle, Map, Wrench, FileText, ArrowRight } from 'lucide-react';
+import { BookOpen, HelpCircle, Map, Wrench, FileText, FlaskConical, Globe, Network, ArrowRight, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 
 const sections = [
@@ -12,7 +12,7 @@ const sections = [
     iconColor: 'text-blue-500',
     previews: [
       'Como sei se é crítico?',
-      'Quantas horas trabalhar por dia?',
+      'Depoimentos: como funciona a aprovação?',
       'Cliente pediu reembolso. Dou?',
     ],
   },
@@ -53,6 +53,58 @@ const sections = [
       'Bug Crítico — resposta imediata',
       'Reembolso Aprovado',
       'Manutenção Programada',
+    ],
+  },
+  {
+    href: '/admin/handbook/dev',
+    icon: FlaskConical,
+    title: '🧪 Ambiente de Testes',
+    description: 'Conta de teste (Salão da Rita), telefones usados no CI e jobs do GitHub Actions.',
+    color: 'hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20',
+    iconColor: 'text-indigo-500',
+    previews: [
+      'rita@teste.com / Teste1234',
+      'Phones CI: 353800000001–099',
+      '22 jobs no GitHub Actions',
+    ],
+  },
+  {
+    href: '/admin/handbook/infra',
+    icon: Globe,
+    title: '🌐 URLs & Infraestrutura',
+    description: 'Todos os endpoints, serviços externos, webhooks e callbacks por ambiente.',
+    color: 'hover:border-cyan-300 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/20',
+    iconColor: 'text-cyan-500',
+    previews: [
+      'booking.circlehood-tech.com (prod)',
+      'Supabase, Redis, Stripe, Evolution',
+      'Webhooks e OAuth callbacks',
+    ],
+  },
+  {
+    href: '/admin/handbook/diagrama',
+    icon: Network,
+    title: '🏗️ Diagrama de Infraestrutura',
+    description: 'Mapa visual de todas as tecnologias, camadas e fluxos do sistema.',
+    color: 'hover:border-teal-300 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
+    iconColor: 'text-teal-500',
+    previews: [
+      'Diagrama em camadas (7 layers)',
+      'Fluxo de agendamento passo a passo',
+      'Fluxo do bot WhatsApp',
+    ],
+  },
+  {
+    href: '/admin/handbook/stripe-config',
+    icon: CreditCard,
+    title: '💳 Stripe Configuration',
+    description: 'Keys, webhooks, produto e links rápidos — test mode e live mode.',
+    color: 'hover:border-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-950/20',
+    iconColor: 'text-violet-500',
+    previews: [
+      'Test mode: pk_test_51T5XUK...',
+      'CircleHood Pro: €25/mês + 14 dias trial',
+      'Webhooks & Quick Links',
     ],
   },
 ];

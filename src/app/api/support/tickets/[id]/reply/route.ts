@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { generateSupportResponse } from '@/lib/ai/support-bot';
 
 export async function POST(
   request: NextRequest,
@@ -21,7 +23,7 @@ export async function POST(
   // Verify ticket ownership via RLS (only the owner can select it)
   const { data: ticket } = await supabase
     .from('support_tickets')
-    .select('id, status')
+    .select('id, status, subject, message, ai_escalated')
     .eq('id', id)
     .single();
 
@@ -42,6 +44,44 @@ export async function POST(
       .from('support_tickets')
       .update({ status: 'in_progress' })
       .eq('id', id);
+  }
+
+  // AI auto-response on follow-up (async — does not block response to user)
+  // Skip if ticket was already escalated to human support
+  if (!ticket.ai_escalated) {
+    const adminClient = createAdminClient();
+
+    ;(async () => {
+      try {
+        // Fetch full conversation history for context
+        const { data: allReplies } = await adminClient
+          .from('ticket_replies')
+          .select('author, message')
+          .eq('ticket_id', id)
+          .order('created_at', { ascending: true });
+
+        const botResponse = await generateSupportResponse(
+          ticket.subject,
+          ticket.message,
+          allReplies ?? []
+        );
+
+        await adminClient.from('ticket_replies').insert({
+          ticket_id: id,
+          author: 'bot',
+          message: botResponse.message,
+        });
+
+        if (botResponse.shouldEscalate) {
+          await adminClient
+            .from('support_tickets')
+            .update({ ai_escalated: true, status: 'in_progress' })
+            .eq('id', id);
+        }
+      } catch (err) {
+        console.error('[support/tickets/reply] bot response error:', err);
+      }
+    })();
   }
 
   return NextResponse.json({ success: true });

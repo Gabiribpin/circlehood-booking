@@ -401,7 +401,7 @@ function ManageView() {
 
   function handleEdit(contact: Contact) {
     setEditingContact(contact);
-    setName(contact.name); setPhone(contact.phone); setEmail(contact.email || '');
+    setName(contact.name); setPhone(contact.phone?.startsWith('+') ? contact.phone : `+${contact.phone}`); setEmail(contact.email || '');
     setCategory(contact.category || ''); setNotes(contact.notes || '');
     setBirthday(contact.birthday || ''); setRegions(contact.regions || []);
     setIsDialogOpen(true);
@@ -623,6 +623,7 @@ function ManageView() {
                   <TableHead>{t('colName')}</TableHead>
                   <TableHead>{t('colPhone')}</TableHead>
                   <TableHead>{t('colEmail')}</TableHead>
+                  <TableHead>{t('birthdayLabel')}</TableHead>
                   <TableHead>{t('colCategory')}</TableHead>
                   <TableHead className="text-center">{t('colBot')}</TableHead>
                   <TableHead className="text-right">{t('colActions')}</TableHead>
@@ -643,6 +644,14 @@ function ManageView() {
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell className="font-mono text-sm">{c.phone}</TableCell>
                     <TableCell>{c.email || '-'}</TableCell>
+                    <TableCell>
+                      {c.birthday ? (
+                        <span className="flex items-center gap-1 text-sm">
+                          {formatBirthdayDisplay(c.birthday)}
+                          {isBirthdayThisMonth(c.birthday) && <Cake className="h-3.5 w-3.5 text-pink-500" />}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell>{c.category || '-'}</TableCell>
                     <TableCell className="text-center">
                       <Switch

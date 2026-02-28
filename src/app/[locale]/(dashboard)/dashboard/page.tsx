@@ -155,7 +155,7 @@ export default async function DashboardPage() {
   const monthRevenueTotal = calculateRevenue(monthRevenue);
 
   const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$', BRL: 'R$' };
-  const currencySymbol = currencySymbols[professional.currency as string] ?? professional.currency ?? 'R$';
+  const currencySymbol = currencySymbols[(professional.currency as string)?.toUpperCase()] ?? professional.currency ?? 'R$';
 
   const trialDaysLeft = Math.max(
     0,

@@ -25,6 +25,13 @@ export default async function MarketingPage() {
     .eq('professional_id', professional.id)
     .order('created_at', { ascending: false });
 
+  // Fetch WhatsApp phone (for QR code)
+  const { data: waConfig } = await supabase
+    .from('whatsapp_config')
+    .select('business_phone')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   // Fetch QR scan stats
   const { count: totalScans } = await supabase
     .from('qr_scans')
@@ -44,6 +51,7 @@ export default async function MarketingPage() {
         professional={professional}
         savedQRCodes={savedQRCodes || []}
         totalScans={totalScans || 0}
+        whatsappPhone={waConfig?.business_phone ?? null}
       />
     </div>
   );

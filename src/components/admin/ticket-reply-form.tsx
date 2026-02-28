@@ -11,10 +11,9 @@ import { Send } from 'lucide-react';
 interface TicketReplyFormProps {
   ticketId: string;
   currentStatus: string;
-  onReplySent: () => void;
 }
 
-export function TicketReplyForm({ ticketId, currentStatus, onReplySent }: TicketReplyFormProps) {
+export function TicketReplyForm({ ticketId, currentStatus }: TicketReplyFormProps) {
   const [message, setMessage] = useState('');
   const [newStatus, setNewStatus] = useState(currentStatus);
   const [sending, setSending] = useState(false);

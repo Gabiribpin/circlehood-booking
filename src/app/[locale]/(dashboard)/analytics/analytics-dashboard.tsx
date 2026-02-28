@@ -55,7 +55,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
 
-  const currencySymbol = currencySymbols[currency] ?? currency;
+  const currencySymbol = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   // Fetch overview metrics
   const { data: overview, isLoading: overviewLoading } = useQuery({

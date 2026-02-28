@@ -45,7 +45,7 @@ const BENEFITS = [
   'Funciona no celular perfeitamente',
   'Receba agendamentos 24/7',
   'Sem necessidade de site proprio',
-  'Suporte em portugues',
+  'Suporte em PT, EN e ES',
   'Teste grátis por 14 dias',
 ];
 
@@ -91,7 +91,7 @@ export default function LandingPage() {
             </Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            14 dias grátis. Sem cartao de credito.
+            14 dias grátis.
           </p>
         </div>
       </section>
@@ -213,7 +213,7 @@ export default function LandingPage() {
                   <Link href="/register">Comecar 14 dias grátis</Link>
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Sem cartao para o teste. Cancele quando quiser.
+                  Cancele quando quiser.
                 </p>
               </CardContent>
             </Card>

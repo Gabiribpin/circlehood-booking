@@ -42,7 +42,7 @@ export function PaymentSettings({
     USD: '$',
     BRL: 'R$',
   };
-  const sym = currencySymbols[currency] ?? currency;
+  const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   async function handleSave() {
     setError(null);

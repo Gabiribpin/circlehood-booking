@@ -16,6 +16,8 @@ interface QRGeneratorProps {
   url: string;
   professionalId: string;
   businessName: string;
+  whatsappPhone?: string | null;
+  renderMode?: 'customize' | 'actions';
 }
 
 const QR_SIZES = [
@@ -34,7 +36,7 @@ const PRESET_COLORS = [
   { label: 'Rosa', value: '#DB2777' },
 ];
 
-export function QRGenerator({ url, professionalId, businessName }: QRGeneratorProps) {
+export function QRGenerator({ url, professionalId, businessName, renderMode }: QRGeneratorProps) {
   const [qrColor, setQrColor] = useState('#000000');
   const [qrSize, setQrSize] = useState(300);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -42,6 +44,10 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
   const [saveName, setSaveName] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  const ctaText = url.includes('wa.me')
+    ? 'Escaneie para falar no WhatsApp'
+    : 'Escaneie para agendar';
 
   // Generate QR code preview
   useEffect(() => {
@@ -70,7 +76,6 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
 
     setLoading(true);
     try {
-      // Create canvas with QR code and business name
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
@@ -80,28 +85,24 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
       canvas.width = qrSize + (padding * 2);
       canvas.height = qrSize + textHeight + (padding * 2);
 
-      // White background
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw QR code
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, padding, padding, qrSize, qrSize);
 
-        // Add business name
         ctx.fillStyle = '#000000';
         ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(businessName, canvas.width / 2, qrSize + padding + 40);
 
-        // Add instruction text
         ctx.font = '18px Arial';
         ctx.fillStyle = '#666666';
-        ctx.fillText('Escaneie para agendar', canvas.width / 2, qrSize + padding + 70);
+        ctx.fillText(ctaText, canvas.width / 2, qrSize + padding + 70);
 
-        // Download
-        canvasToPNG(canvas, `qrcode-${businessName.toLowerCase().replace(/\s+/g, '-')}`);
+        const isWhatsapp = url.includes('wa.me');
+        canvasToPNG(canvas, `qrcode-${isWhatsapp ? 'whatsapp-' : ''}${businessName.toLowerCase().replace(/\s+/g, '-')}`);
 
         toast({
           title: 'Sucesso!',
@@ -136,7 +137,8 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0);
-        canvasToSVG(canvas, `qrcode-${businessName.toLowerCase().replace(/\s+/g, '-')}`);
+        const isWhatsapp = url.includes('wa.me');
+        canvasToSVG(canvas, `qrcode-${isWhatsapp ? 'whatsapp-' : ''}${businessName.toLowerCase().replace(/\s+/g, '-')}`);
 
         toast({
           title: 'Sucesso!',
@@ -211,160 +213,319 @@ export function QRGenerator({ url, professionalId, businessName }: QRGeneratorPr
     }
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Preview */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Preview</h4>
-              <span className="text-xs text-muted-foreground">{qrSize}x{qrSize}px</span>
-            </div>
-
-            {/* QR Code Preview */}
-            <div className="flex items-center justify-center p-8 bg-muted rounded-lg min-h-[300px]">
-              {qrCodeUrl ? (
-                <div className="bg-white p-4 rounded-lg shadow-lg">
-                  <img
-                    src={qrCodeUrl}
-                    alt="QR Code Preview"
-                    className="w-full h-auto"
-                    style={{ maxWidth: '300px' }}
-                  />
-                </div>
-              ) : (
-                <p className="text-muted-foreground">Gerando preview...</p>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={handleDownloadPNG}
-                disabled={loading || !qrCodeUrl}
-                className="flex-1"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Baixar PNG
-              </Button>
-              <Button
-                onClick={handleDownloadSVG}
-                disabled={loading || !qrCodeUrl}
-                variant="outline"
-                className="flex-1"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Baixar SVG
-              </Button>
-              <ImageShareButtons
-                getBlob={getQRBlob}
-                filename={`qrcode-${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+  // Customize-only mode: just customization controls
+  if (renderMode === 'customize') {
+    return (
+      <div className="space-y-6">
+        {/* Preview (small) */}
+        <div className="flex items-center justify-center p-6 bg-muted rounded-lg">
+          {qrCodeUrl ? (
+            <div className="bg-white p-3 rounded-lg shadow-lg">
+              <img
+                src={qrCodeUrl}
+                alt="QR Code Preview"
+                className="w-full h-auto"
+                style={{ maxWidth: '200px' }}
               />
             </div>
+          ) : (
+            <p className="text-muted-foreground">Gerando preview...</p>
+          )}
+        </div>
+
+        {/* Size Selection */}
+        <div className="space-y-2">
+          <Label>Tamanho</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {QR_SIZES.map((size) => (
+              <Button
+                key={size.value}
+                variant={qrSize === size.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setQrSize(size.value)}
+                className="justify-start"
+              >
+                {size.label}
+              </Button>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Customization */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-4">Personalização</h4>
+        {/* Color Selection */}
+        <div className="space-y-2">
+          <Label>Cor</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {PRESET_COLORS.map((color) => (
+              <Button
+                key={color.value}
+                variant={qrColor === color.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setQrColor(color.value)}
+                className="justify-start gap-2"
+              >
+                <div
+                  className="w-4 h-4 rounded border"
+                  style={{ backgroundColor: color.value }}
+                />
+                {color.label}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-              {/* Size Selection */}
-              <div className="space-y-2 mb-4">
-                <Label>Tamanho</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {QR_SIZES.map((size) => (
-                    <Button
-                      key={size.value}
-                      variant={qrSize === size.value ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setQrSize(size.value)}
-                      className="justify-start"
-                    >
-                      {size.label}
-                    </Button>
-                  ))}
+        {/* Custom Color Picker */}
+        <div className="space-y-2">
+          <Label htmlFor="custom-color">Cor Personalizada</Label>
+          <div className="flex gap-2">
+            <Input
+              id="custom-color"
+              type="color"
+              value={qrColor}
+              onChange={(e) => setQrColor(e.target.value)}
+              className="w-20 h-10"
+            />
+            <Input
+              type="text"
+              value={qrColor}
+              onChange={(e) => setQrColor(e.target.value)}
+              placeholder="#000000"
+              className="flex-1 font-mono"
+            />
+          </div>
+        </div>
+
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
+    );
+  }
+
+  // Actions-only mode: preview + download/share/save
+  if (renderMode === 'actions') {
+    return (
+      <div className="space-y-4">
+        {/* Large Preview */}
+        <div className="flex items-center justify-center p-8 bg-muted rounded-lg min-h-[300px]">
+          {qrCodeUrl ? (
+            <div className="bg-white p-4 rounded-lg shadow-lg">
+              <img
+                src={qrCodeUrl}
+                alt="QR Code Preview"
+                className="w-full h-auto"
+                style={{ maxWidth: '300px' }}
+              />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Gerando preview...</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={handleDownloadPNG}
+            disabled={loading || !qrCodeUrl}
+            className="flex-1"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Baixar PNG
+          </Button>
+          <Button
+            onClick={handleDownloadSVG}
+            disabled={loading || !qrCodeUrl}
+            variant="outline"
+            className="flex-1"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Baixar SVG
+          </Button>
+          <ImageShareButtons
+            getBlob={getQRBlob}
+            filename={`qrcode-${url.includes('wa.me') ? 'whatsapp-' : ''}${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+          />
+        </div>
+
+        {/* Save Design */}
+        <div className="border-t pt-4">
+          <h4 className="font-medium mb-4">Salvar Design</h4>
+          <div className="space-y-2">
+            <Label htmlFor="save-name">Nome do design</Label>
+            <div className="flex gap-2">
+              <Input
+                id="save-name"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="Ex: QR Code Principal"
+              />
+              <Button
+                onClick={handleSaveDesign}
+                disabled={loading || !saveName.trim()}
+                size="icon"
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Salve seus designs favoritos para reutilizar depois
+            </p>
+          </div>
+        </div>
+
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
+    );
+  }
+
+  // Default mode: full layout (backward compat)
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Preview */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Preview</h4>
+                <span className="text-xs text-muted-foreground">{qrSize}x{qrSize}px</span>
+              </div>
+
+              <div className="flex items-center justify-center p-8 bg-muted rounded-lg min-h-[300px]">
+                {qrCodeUrl ? (
+                  <div className="bg-white p-4 rounded-lg shadow-lg">
+                    <img
+                      src={qrCodeUrl}
+                      alt="QR Code Preview"
+                      className="w-full h-auto"
+                      style={{ maxWidth: '300px' }}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Gerando preview...</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleDownloadPNG}
+                  disabled={loading || !qrCodeUrl}
+                  className="flex-1"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar PNG
+                </Button>
+                <Button
+                  onClick={handleDownloadSVG}
+                  disabled={loading || !qrCodeUrl}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar SVG
+                </Button>
+                <ImageShareButtons
+                  getBlob={getQRBlob}
+                  filename={`qrcode-${businessName.toLowerCase().replace(/\s+/g, '-')}`}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Customization */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium mb-4">Personalização</h4>
+
+                <div className="space-y-2 mb-4">
+                  <Label>Tamanho</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {QR_SIZES.map((size) => (
+                      <Button
+                        key={size.value}
+                        variant={qrSize === size.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setQrSize(size.value)}
+                        className="justify-start"
+                      >
+                        {size.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <Label>Cor</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PRESET_COLORS.map((color) => (
+                      <Button
+                        key={color.value}
+                        variant={qrColor === color.value ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setQrColor(color.value)}
+                        className="justify-start gap-2"
+                      >
+                        <div
+                          className="w-4 h-4 rounded border"
+                          style={{ backgroundColor: color.value }}
+                        />
+                        {color.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="custom-color-default">Cor Personalizada</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="custom-color-default"
+                      type="color"
+                      value={qrColor}
+                      onChange={(e) => setQrColor(e.target.value)}
+                      className="w-20 h-10"
+                    />
+                    <Input
+                      type="text"
+                      value={qrColor}
+                      onChange={(e) => setQrColor(e.target.value)}
+                      placeholder="#000000"
+                      className="flex-1 font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Color Selection */}
-              <div className="space-y-2 mb-4">
-                <Label>Cor</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {PRESET_COLORS.map((color) => (
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-4">Salvar Design</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="save-name-default">Nome do design</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="save-name-default"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      placeholder="Ex: QR Code Principal"
+                    />
                     <Button
-                      key={color.value}
-                      variant={qrColor === color.value ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setQrColor(color.value)}
-                      className="justify-start gap-2"
+                      onClick={handleSaveDesign}
+                      disabled={loading || !saveName.trim()}
+                      size="icon"
                     >
-                      <div
-                        className="w-4 h-4 rounded border"
-                        style={{ backgroundColor: color.value }}
-                      />
-                      {color.label}
+                      <Save className="h-4 w-4" />
                     </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Custom Color Picker */}
-              <div className="space-y-2 mb-4">
-                <Label htmlFor="custom-color">Cor Personalizada</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="custom-color"
-                    type="color"
-                    value={qrColor}
-                    onChange={(e) => setQrColor(e.target.value)}
-                    className="w-20 h-10"
-                  />
-                  <Input
-                    type="text"
-                    value={qrColor}
-                    onChange={(e) => setQrColor(e.target.value)}
-                    placeholder="#000000"
-                    className="flex-1 font-mono"
-                  />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Salve seus designs favoritos para reutilizar depois
+                  </p>
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Save Design */}
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-4">Salvar Design</h4>
-              <div className="space-y-2">
-                <Label htmlFor="save-name">Nome do design</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="save-name"
-                    value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    placeholder="Ex: QR Code Principal"
-                  />
-                  <Button
-                    onClick={handleSaveDesign}
-                    disabled={loading || !saveName.trim()}
-                    size="icon"
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Salve seus designs favoritos para reutilizar depois
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
     </div>
   );
 }

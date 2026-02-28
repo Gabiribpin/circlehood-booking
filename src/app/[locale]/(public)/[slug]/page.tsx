@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { BookingSection } from '@/components/booking/booking-section';
 import { TrialBanner } from '@/components/public-page/trial-banner';
 import { SectionRenderer } from '@/components/public-page/section-renderer';
+import { SectionTestimonials } from '@/components/public-page/section-testimonials';
 import { MapPin } from 'lucide-react';
 import type { Professional, Service } from '@/types/database';
 import type { PageSection } from '@/lib/page-sections/types';
@@ -207,6 +208,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
                 depositValue={professional.deposit_value ?? null}
                 stripeAccountId={(professional as any).stripe_account_id ?? null}
+              />
+              <SectionTestimonials
+                data={{ heading: 'Depoimentos', displayMode: 'grid', showRatings: true, showPhotos: true, maxToShow: 6 }}
+                professionalId={professional.id}
               />
             </>
           )}

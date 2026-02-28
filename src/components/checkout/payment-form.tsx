@@ -30,7 +30,7 @@ function InnerForm({ amount, currency, onSuccess, onError }: InnerFormProps) {
   const elements = useElements();
   const [loading, setLoading] = useState(false);
 
-  const sym = currencySymbols[currency] ?? currency;
+  const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

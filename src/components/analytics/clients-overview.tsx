@@ -25,7 +25,7 @@ const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$
 
 export function ClientsOverview({ currency }: ClientsOverviewProps) {
   const t = useTranslations('analytics');
-  const sym = currencySymbols[currency] ?? currency;
+  const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'clients'],

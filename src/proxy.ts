@@ -43,6 +43,9 @@ export async function proxy(request: NextRequest) {
     intlResponse.cookies.set(name, value, options as Parameters<typeof NextResponse.prototype.cookies.set>[2]);
   });
 
+  // 4. Forward pathname so server layouts can read it via headers()
+  intlResponse.headers.set('x-pathname', pathname);
+
   return intlResponse;
 }
 

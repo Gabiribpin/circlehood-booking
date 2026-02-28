@@ -81,6 +81,19 @@ const troubleshootingData = [
     ],
   },
   {
+    problem: '⭐ Depoimentos não aparecem na página pública',
+    severity: 'medium',
+    steps: [
+      'Dashboard → Depoimentos → aba "Pendentes": há depoimentos para aprovar?',
+      'Se sim: clica "Aprovar" — depoimento aparece imediatamente na página pública',
+      'Página pública usa layout fallback (sem seções)? → depoimentos aparecem abaixo do agendamento',
+      'Página pública usa seções customizadas? → precisa ter seção "Depoimentos" habilitada no Editor de Página',
+      'Verifica se a seção "Depoimentos" está visível (toggle verde) no Editor de Página',
+      'Se nada funcionar: Vercel Logs → busca "testimonials" nos erros',
+    ],
+    links: [],
+  },
+  {
     problem: '😰 Tô perdida, não sei o que fazer',
     severity: 'low',
     steps: [

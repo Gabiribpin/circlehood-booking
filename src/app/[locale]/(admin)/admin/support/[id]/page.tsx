@@ -36,14 +36,21 @@ export default async function AdminTicketDetailPage({
     .select(`
       id, ticket_number, subject, message, status, priority, ai_escalated, created_at, updated_at,
       professionals (
-        id, business_name, account_number, user_id,
-        users:user_id (email)
+        id, business_name, account_number, user_id
       )
     `)
     .eq('id', id)
     .single();
 
   if (!ticket) notFound();
+
+  // Fetch email separately — auth.users is not joinable via PostgREST
+  let profEmail: string | null = null;
+  const prof = ticket.professionals as any;
+  if (prof?.user_id) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(prof.user_id);
+    profEmail = userData?.user?.email ?? null;
+  }
 
   // Fetch replies
   const { data: replies } = await adminClient
@@ -52,8 +59,7 @@ export default async function AdminTicketDetailPage({
     .eq('ticket_id', id)
     .order('created_at', { ascending: true });
 
-  const prof = ticket.professionals as any;
-  const profEmail = prof?.users?.email ?? null;
+  // prof already set above
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -201,7 +207,6 @@ export default async function AdminTicketDetailPage({
             <TicketReplyForm
               ticketId={ticket.id}
               currentStatus={ticket.status}
-              onReplySent={() => {}}
             />
           </CardContent>
         </Card>

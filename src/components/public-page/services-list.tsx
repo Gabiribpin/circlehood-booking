@@ -9,7 +9,7 @@ interface ServicesListProps {
 
 function formatPrice(price: number, currency: string) {
   const symbols: Record<string, string> = { EUR: '\u20AC', GBP: '\u00A3', USD: '$', BRL: 'R$' };
-  const symbol = symbols[currency] || currency;
+  const symbol = symbols[currency?.toUpperCase()] || currency;
   return `${symbol}${Number(price).toFixed(0)}`;
 }
 

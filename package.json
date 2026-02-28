@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:fast": "vitest run && eslint",
     "test:e2e": "playwright test",
-    "test:e2e:no-bot": "playwright test --ignore-glob '**/bot/**' --ignore-glob '**/blocked-periods/02-bot*' --ignore-glob '**/consistency/01-bot*'",
+    "test:e2e:no-bot": "playwright test --project=auth-setup --project=api-tests --project=security --project=smoke-chromium --project=smoke-webkit --project=smoke-firefox --project=user-journey --project=dashboard --project=navigation --project=ux --project=notifications --project=critical-race --project=critical-idempotency --project=timezone-dst --project=blocked-periods-api --project=performance --project=failsafe --project=validation --project=payment --project=clients --project=i18n --project=legal --project=gdpr --project=mobile",
     "test:e2e:bot-only": "playwright test --project=bot-api --project=bot-reschedule --project=blocked-periods-bot --project=consistency-bot-page",
     "test:e2e:bot": "playwright test --project=bot-api",
     "test:e2e:dashboard": "playwright test --project=dashboard",

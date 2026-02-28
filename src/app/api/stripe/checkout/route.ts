@@ -52,8 +52,12 @@ export async function POST() {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/settings?success=true`,
-    cancel_url: `${baseUrl}/settings?cancelled=true`,
+    subscription_data: {
+      trial_period_days: 14,
+      metadata: { professional_id: professional.id },
+    },
+    success_url: `${baseUrl}/dashboard?subscription=success`,
+    cancel_url: `${baseUrl}/subscribe?cancelled=true`,
     metadata: { professional_id: professional.id },
   });
 

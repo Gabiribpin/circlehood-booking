@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone } from 'lucide-react';
 import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -26,6 +26,15 @@ export default async function AdminLayout({
     .not('deleted_at', 'is', null)
     .gt('deletion_scheduled_for', new Date().toISOString());
   const pendingDeletions = deletedCount ?? 0;
+
+  // Badge: WhatsApp vendas conectado
+  const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
+  const { data: salesWhatsapp } = await supabase
+    .from('whatsapp_config')
+    .select('is_active')
+    .eq('evolution_instance', SALES_INSTANCE)
+    .maybeSingle();
+  const salesConnected = salesWhatsapp?.is_active === true;
 
   // Badge: leads novos não contactados
   const { count: newLeadsCount } = await supabase
@@ -74,6 +83,14 @@ export default async function AdminLayout({
           >
             <BookOpen className="h-4 w-4" />
             Handbook
+          </Link>
+          <Link
+            href="/admin/whatsapp-config"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <Phone className="h-4 w-4" />
+            WhatsApp Vendas
+            <span className={`ml-auto h-2 w-2 rounded-full ${salesConnected ? 'bg-green-400' : 'bg-red-400'}`} />
           </Link>
           <Link
             href="/admin/leads"

@@ -28,7 +28,7 @@ const currencySymbols: Record<string, string> = { EUR: '€', GBP: '£', USD: '$
 
 export function ServicesRanking({ period, startDate, endDate, limit = 10, currency }: ServicesRankingProps) {
   const t = useTranslations('analytics');
-  const sym = currencySymbols[currency] ?? currency;
+  const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'services', 'ranking', period, limit, startDate, endDate],

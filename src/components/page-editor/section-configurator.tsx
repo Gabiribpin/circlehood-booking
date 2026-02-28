@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Save } from 'lucide-react';
+import { X, Save, Plus, Trash2 } from 'lucide-react';
 import { AutoTranslateButton } from './auto-translate-button';
 import { BeforeAfterSlider } from './before-after-slider';
 
@@ -21,7 +21,6 @@ interface SectionConfiguratorProps {
 export function SectionConfigurator({ section, onSave, onCancel }: SectionConfiguratorProps) {
   const [data, setData] = useState(section.data || {});
   const [isVisible, setIsVisible] = useState(section.is_visible);
-  const [theme, setTheme] = useState(section.theme || 'default');
 
   // Extrai o texto principal da seção para tradução
   const getTranslatableContent = (): string => {
@@ -41,7 +40,6 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
       ...section,
       data,
       is_visible: isVisible,
-      theme,
     });
   };
 
@@ -77,22 +75,6 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         <div className="flex items-center justify-between">
           <Label htmlFor="visible">Seção Visível</Label>
           <Switch id="visible" checked={isVisible} onCheckedChange={setIsVisible} />
-        </div>
-
-        {/* Tema */}
-        <div className="space-y-2">
-          <Label>Tema</Label>
-          <Select value={theme} onValueChange={setTheme}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Padrão</SelectItem>
-              <SelectItem value="modern">Moderno</SelectItem>
-              <SelectItem value="elegant">Elegante</SelectItem>
-              <SelectItem value="minimalist">Minimalista</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Campos específicos por tipo de seção */}
@@ -360,9 +342,74 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                 placeholder="Perguntas Frequentes"
               />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Para adicionar perguntas, use a aba "FAQ" no menu principal
-            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Perguntas e Respostas</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const items = [...(data.items || [])];
+                    items.push({ question: '', answer: '' });
+                    updateData('items', items);
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
+
+              {(!data.items || data.items.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
+                  Nenhuma pergunta adicionada. Clique em "Adicionar" para começar.
+                </p>
+              )}
+
+              {(data.items || []).map((item: { question: string; answer: string }, idx: number) => (
+                <div key={idx} className="space-y-2 p-3 border rounded-lg relative">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      const items = [...(data.items || [])];
+                      items.splice(idx, 1);
+                      updateData('items', items);
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <div className="space-y-1 pr-8">
+                    <Label className="text-xs">Pergunta {idx + 1}</Label>
+                    <Input
+                      value={item.question}
+                      onChange={(e) => {
+                        const items = [...(data.items || [])];
+                        items[idx] = { ...items[idx], question: e.target.value };
+                        updateData('items', items);
+                      }}
+                      placeholder="Ex: Preciso agendar com antecedência?"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Resposta</Label>
+                    <Textarea
+                      value={item.answer}
+                      onChange={(e) => {
+                        const items = [...(data.items || [])];
+                        items[idx] = { ...items[idx], answer: e.target.value };
+                        updateData('items', items);
+                      }}
+                      placeholder="Resposta para esta pergunta..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         )}
 

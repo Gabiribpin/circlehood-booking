@@ -91,13 +91,19 @@ export function AlertsWidget() {
       .eq('professional_id', professional.id)
       .eq('status', 'waitlist');
 
-    // 4. Notificações de aniversário pendentes
-    const { count: birthdayCount } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('type', 'birthday')
-      .eq('status', 'pending');
+    // 4. Aniversariantes do mês (contacts com birthday no mês atual)
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const { data: contactsWithBirthday } = await supabase
+      .from('contacts')
+      .select('birthday')
+      .eq('professional_id', professional.id)
+      .not('birthday', 'is', null);
+
+    const birthdayCount = (contactsWithBirthday || []).filter((c) => {
+      if (!c.birthday) return false;
+      const month = c.birthday.slice(5, 7); // "YYYY-MM-DD" → "MM"
+      return month === currentMonth;
+    }).length;
 
     const alertItems: AlertItem[] = [
       {

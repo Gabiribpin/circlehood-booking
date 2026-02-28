@@ -36,7 +36,7 @@ CircleHood Booking — FAQ para suporte pós-venda (SaaS):
    - Link da página pública: https://circlehood-booking.vercel.app/[seu-slug]
 
 7. PLANO E COBRANÇA:
-   - Período de teste: 14 dias gratuito, sem cartão de crédito
+   - Período de teste: 14 dias gratuito
    - Para assinar: Configurações → Pagamentos → Assinar Plano Pro
    - Pagamentos processados pelo Stripe (seguro e certificado PCI)
    - Cancelar a qualquer momento pelo portal do Stripe
@@ -68,12 +68,48 @@ export interface SupportBotResponse {
  */
 export async function generateSupportResponse(
   subject: string,
-  userMessage: string
+  userMessage: string,
+  conversationHistory?: { author: string; message: string }[]
 ): Promise<SupportBotResponse> {
   try {
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
     });
+
+    // Build messages array: initial message + conversation history
+    const messages: Anthropic.MessageParam[] = [];
+
+    if (conversationHistory && conversationHistory.length > 0) {
+      // First user message (ticket creation)
+      messages.push({
+        role: 'user',
+        content: `Assunto: ${subject}\n\nMensagem: ${userMessage}`,
+      });
+
+      // Add conversation history
+      for (const entry of conversationHistory) {
+        const role = entry.author === 'client' ? 'user' : 'assistant';
+        // Merge consecutive same-role messages
+        const last = messages[messages.length - 1];
+        if (last && last.role === role) {
+          last.content = `${last.content}\n\n${entry.message}`;
+        } else {
+          messages.push({ role, content: entry.message });
+        }
+      }
+
+      // Ensure last message is from user (required by Anthropic API)
+      if (messages[messages.length - 1]?.role !== 'user') {
+        // Should not happen since we call this after a client reply,
+        // but add a safety fallback
+        messages.push({ role: 'user', content: '(aguardando resposta)' });
+      }
+    } else {
+      messages.push({
+        role: 'user',
+        content: `Assunto: ${subject}\n\nMensagem: ${userMessage}`,
+      });
+    }
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -87,16 +123,12 @@ REGRAS:
 - Se puder responder com base na FAQ: dê a resposta completa e útil.
 - Se a pergunta requer acesso à conta específica do usuário (dados, faturamento, bugs técnicos específicos): responda ESCALAR.
 - Se o assunto for crítico/urgente/reclamação séria: responda ESCALAR.
+- Se o cliente agradecer ou disser que entendeu: responda de forma curta e simpática, sem repetir instruções.
 - Nunca invente informações. Seja conciso (máximo 3 parágrafos).
 - Não mencione "FAQ" ou "base de conhecimento" na resposta.
 
 ${CIRCLEHOOD_FAQ}`,
-      messages: [
-        {
-          role: 'user',
-          content: `Assunto: ${subject}\n\nMensagem: ${userMessage}`,
-        },
-      ],
+      messages,
     });
 
     const text =

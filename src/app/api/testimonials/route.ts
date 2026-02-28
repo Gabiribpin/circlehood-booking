@@ -1,16 +1,39 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET - Buscar todos os depoimentos
+// GET - Buscar depoimentos
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   const { searchParams } = new URL(request.url);
   const professionalId = searchParams.get('professionalId');
   const featuredOnly = searchParams.get('featuredOnly') === 'true';
+  const includeHidden = searchParams.get('includeHidden') === 'true';
 
   if (!professionalId) {
     return NextResponse.json({ error: 'Professional ID required' }, { status: 400 });
+  }
+
+  // includeHidden requer auth (dashboard)
+  if (includeHidden) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: professional } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!professional || professional.id !== professionalId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   try {
@@ -18,8 +41,11 @@ export async function GET(request: NextRequest) {
       .from('testimonials')
       .select('*')
       .eq('professional_id', professionalId)
-      .eq('is_visible', true)
       .order('order_index', { ascending: true });
+
+    if (!includeHidden) {
+      query = query.eq('is_visible', true);
+    }
 
     if (featuredOnly) {
       query = query.eq('is_featured', true);
@@ -40,61 +66,104 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
-  // Auth check
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const body = await request.json();
+  const {
+    client_name,
+    client_photo_url,
+    testimonial_text,
+    rating,
+    service_name,
+    testimonial_date,
+    is_visible,
+    is_featured,
+    professional_id: bodyProfessionalId,
+  } = body;
+
+  // Validar campos obrigatórios
+  if (!client_name || !testimonial_text || !rating) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Get professional_id
-  const { data: professional } = await supabase
-    .from('professionals')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+  // Validar rating
+  if (rating < 1 || rating > 5) {
+    return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
+  }
 
-  if (!professional) {
-    return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+  // Se body tem professional_id → submissão pública (mesmo se logado)
+  // Fluxo autenticado (profissional criando manualmente via dashboard)
+  if (user && !bodyProfessionalId) {
+    const { data: professional } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!professional) {
+      return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+    }
+
+    try {
+      const { data: testimonial, error } = await supabase
+        .from('testimonials')
+        .insert({
+          professional_id: professional.id,
+          client_name,
+          client_photo_url: client_photo_url || null,
+          testimonial_text,
+          rating,
+          service_name: service_name || null,
+          testimonial_date: testimonial_date || new Date().toISOString().split('T')[0],
+          is_visible: is_visible ?? true,
+          is_featured: is_featured ?? false,
+          order_index: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return NextResponse.json({ testimonial });
+    } catch (error) {
+      console.error('Error creating testimonial:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  }
+
+  // Fluxo público (visitante enviando depoimento)
+  if (!bodyProfessionalId) {
+    return NextResponse.json({ error: 'Professional ID required' }, { status: 400 });
   }
 
   try {
-    const body = await request.json();
-    const {
-      client_name,
-      client_photo_url,
-      testimonial_text,
-      rating,
-      service_name,
-      testimonial_date,
-      is_visible,
-      is_featured,
-    } = body;
+    const adminClient = createAdminClient();
 
-    // Validar campos obrigatórios
-    if (!client_name || !testimonial_text || !rating) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Verificar se o profissional existe
+    const { data: professional } = await adminClient
+      .from('professionals')
+      .select('id')
+      .eq('id', bodyProfessionalId)
+      .single();
+
+    if (!professional) {
+      return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
     }
 
-    // Validar rating
-    if (rating < 1 || rating > 5) {
-      return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
-    }
-
-    const { data: testimonial, error } = await supabase
+    const { data: testimonial, error } = await adminClient
       .from('testimonials')
       .insert({
-        professional_id: professional.id,
+        professional_id: bodyProfessionalId,
         client_name,
-        client_photo_url: client_photo_url || null,
+        client_photo_url: null,
         testimonial_text,
         rating,
         service_name: service_name || null,
-        testimonial_date: testimonial_date || new Date().toISOString().split('T')[0],
-        is_visible: is_visible ?? true,
-        is_featured: is_featured ?? false,
+        testimonial_date: new Date().toISOString().split('T')[0],
+        is_visible: false,
+        is_featured: false,
         order_index: 0,
       })
       .select()
@@ -102,9 +171,9 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ testimonial });
+    return NextResponse.json({ testimonial }, { status: 201 });
   } catch (error) {
-    console.error('Error creating testimonial:', error);
+    console.error('Error creating public testimonial:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

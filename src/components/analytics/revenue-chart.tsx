@@ -35,7 +35,7 @@ export function RevenueChart({ period, startDate, endDate, currency }: RevenueCh
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>('day');
 
-  const sym = currencySymbols[currency] ?? currency;
+  const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'revenue', period, granularity, startDate, endDate],

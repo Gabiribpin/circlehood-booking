@@ -1,17 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState, useId } from 'react';
 import { useTranslations } from 'next-intl';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Save, Eye, RefreshCw, LayoutTemplate } from 'lucide-react';
+import { Save, Eye, RefreshCw } from 'lucide-react';
 import { SortableSectionItem } from '@/components/page-editor/sortable-section-item';
 import { SectionConfigurator } from '@/components/page-editor/section-configurator';
 import { useToast } from '@/hooks/use-toast';
-import { TEMPLATES_LIST } from '@/lib/page-templates/templates';
 
 interface PageSection {
   id: string;
@@ -31,11 +29,10 @@ interface PageEditorProps {
 export function PageEditor({ professionalId, professionalSlug, initialSections }: PageEditorProps) {
   const t = useTranslations('pageEditor');
   const tc = useTranslations('common');
+  const dndId = useId();
   const [sections, setSections] = useState<PageSection[]>(initialSections);
   const [selectedSection, setSelectedSection] = useState<PageSection | null>(null);
   const [saving, setSaving] = useState(false);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  const sectionsEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const sectionLabels: Record<string, string> = {
@@ -46,32 +43,6 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
     testimonials: t('sectionTestimonials'),
     faq: t('sectionFaq'),
     contact: t('sectionContact'),
-  };
-
-  const handleAddFromTemplate = (templateKey: string) => {
-    const template = TEMPLATES_LIST.find((tmpl) => tmpl.key === templateKey);
-    if (!template) return;
-
-    const newSection: PageSection = {
-      id: `temp-${Date.now()}`,
-      section_type: template.section_type,
-      order_index: sections.length + 1,
-      data: template.data,
-      is_visible: template.is_visible,
-      theme: template.theme,
-    };
-
-    setSections((prev) => [...prev, newSection]);
-    setTemplatesOpen(false);
-
-    setTimeout(() => {
-      sectionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-
-    toast({
-      title: `${template.icon} ${template.name} ${t('sectionAdded')}`,
-      description: t('sectionAddedHint'),
-    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -179,7 +150,7 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
 
           <p className="text-sm text-muted-foreground mb-4">{t('dragHint')}</p>
 
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext id={dndId} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {sections.map((section) => (
@@ -195,17 +166,7 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
             </SortableContext>
           </DndContext>
 
-          <div ref={sectionsEndRef} />
-
-          <div className="mt-4 pt-4 border-t space-y-2">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setTemplatesOpen(true)}
-            >
-              <LayoutTemplate className="w-4 h-4 mr-2" />
-              {t('templates')}
-            </Button>
+          <div className="mt-4 pt-4 border-t">
             <Button
               variant="outline"
               className="w-full"
@@ -217,30 +178,6 @@ export function PageEditor({ professionalId, professionalSlug, initialSections }
           </div>
         </Card>
       </div>
-
-      {/* Dialog de Templates */}
-      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('addSectionTitle')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            {TEMPLATES_LIST.map((template) => (
-              <button
-                key={template.key}
-                onClick={() => handleAddFromTemplate(template.key)}
-                className="w-full flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
-              >
-                <span className="text-3xl">{template.icon}</span>
-                <div>
-                  <p className="font-medium">{template.name}</p>
-                  <p className="text-sm text-muted-foreground">{template.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Right Panel - Section Configurator */}
       <div className="lg:col-span-2">

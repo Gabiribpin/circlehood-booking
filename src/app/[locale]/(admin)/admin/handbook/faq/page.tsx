@@ -79,6 +79,29 @@ const faqData = [
     ],
   },
   {
+    category: '⭐ DEPOIMENTOS & PÁGINA PÚBLICA',
+    color: 'border-yellow-300 dark:border-yellow-800',
+    headerBg: 'bg-yellow-50 dark:bg-yellow-950/30',
+    items: [
+      {
+        q: 'Como funciona o sistema de depoimentos?',
+        a: 'Visitantes deixam depoimentos pela PÁGINA PÚBLICA (botão "Deixar um depoimento").\nO depoimento entra como PENDENTE (is_visible=false).\nVocê aprova ou rejeita em Dashboard → Depoimentos → aba "Pendentes".\nAprovados aparecem na página pública automaticamente.',
+      },
+      {
+        q: 'Onde aprovo depoimentos?',
+        a: 'Dashboard → menu lateral → Depoimentos (ícone 💬)\nAba "Pendentes" mostra contador vermelho com quantos esperam aprovação.\nBotão "Aprovar" → aparece na página pública\nBotão "Rejeitar" → deleta permanentemente',
+      },
+      {
+        q: 'O profissional pode adicionar depoimentos manualmente?',
+        a: '❌ NÃO. Removemos essa opção. Todos os depoimentos vêm dos clientes pela página pública.\nIsso garante autenticidade e confiança na prova social.',
+      },
+      {
+        q: 'Depoimento apareceu como aprovado sem eu aprovar?',
+        a: 'Isso acontece se você estava LOGADA no dashboard no mesmo browser ao enviar o depoimento de teste.\nO sistema detecta que há sessão ativa e trata como "profissional criando manualmente" (is_visible=true).\nFix aplicado: se o body tem professional_id, sempre trata como submissão pública (pendente).\nPara testar: use aba anônima ou outro browser.',
+      },
+    ],
+  },
+  {
     category: '💰 FINANCEIRO',
     color: 'border-green-300 dark:border-green-800',
     headerBg: 'bg-green-50 dark:bg-green-950/30',

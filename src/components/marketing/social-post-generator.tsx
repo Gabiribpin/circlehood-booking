@@ -16,6 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 interface SocialPostGeneratorProps {
   professional: any;
   bookingUrl: string;
+  qrUrl?: string;
+  qrCtaText?: string;
+  secondQrUrl?: string;
+  secondQrCtaText?: string;
+  renderMode?: 'customize' | 'actions';
 }
 
 type PostFormat = 'instagram-story' | 'facebook-post';
@@ -33,7 +38,7 @@ const GRADIENT_THEMES = [
   { label: 'Mint', color1: '#A8EDEA', color2: '#2AF598' },
 ];
 
-export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGeneratorProps) {
+export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText, secondQrUrl, secondQrCtaText, renderMode }: SocialPostGeneratorProps) {
   const [format, setFormat] = useState<PostFormat>('instagram-story');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -43,9 +48,13 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
+  const effectiveQrUrl = qrUrl || bookingUrl;
+  const effectiveCtaText = qrCtaText || 'Escaneie para agendar';
+  const hasDualQr = !!secondQrUrl;
+
   useEffect(() => {
     generatePreview();
-  }, [format, theme, customTitle, customMessage]);
+  }, [format, theme, customTitle, customMessage, effectiveQrUrl, effectiveCtaText, secondQrUrl, secondQrCtaText]);
 
   async function generatePreview() {
     const canvas = canvasRef.current;
@@ -59,40 +68,13 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
     canvas.height = dimensions.height;
 
     try {
-      // Background gradient
       drawGradientBackground(ctx, canvas.width, canvas.height, theme.color1, theme.color2, 'diagonal');
 
-      // QR Code
-      const qrSize = format === 'instagram-story' ? 300 : 250;
-      const qrDataUrl = await generateQRDataURL(bookingUrl, {
-        color: '#000000',
-        size: qrSize,
-      });
+      const centerX = canvas.width / 2;
 
-      const qrImg = new Image();
-      qrImg.onload = () => {
-        // Calculate positions
-        const centerX = canvas.width / 2;
-        const qrY = format === 'instagram-story'
-          ? canvas.height / 2 - qrSize / 2 + 100
-          : canvas.height / 2 - qrSize / 2 + 50;
-
-        // White rounded background for QR
-        const bgPadding = 30;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.roundRect(
-          centerX - qrSize / 2 - bgPadding,
-          qrY - bgPadding,
-          qrSize + bgPadding * 2,
-          qrSize + bgPadding * 2,
-          20
-        );
-        ctx.fill();
-
-        // Draw QR
-        ctx.drawImage(qrImg, centerX - qrSize / 2, qrY, qrSize, qrSize);
-
+      // Helper to draw text overlay after QR codes
+      function drawTextOverlay(qrY: number, qrSize: number, bgPadding: number) {
+        if (!ctx || !canvas) return;
         // Business name at top
         const topY = format === 'instagram-story' ? 200 : 150;
         ctx.fillStyle = '#FFFFFF';
@@ -111,7 +93,7 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
           ctx.fillText(line, centerX, titleY + (i * 55));
         });
 
-        // Custom message below QR
+        // Custom message below QR area
         const messageY = qrY + qrSize + bgPadding + 60;
         ctx.font = '32px Arial';
         ctx.fillStyle = '#FFFFFF';
@@ -127,14 +109,78 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
         const shortUrl = `circlehood.app/${professional.slug}`;
         ctx.fillText(shortUrl, centerX, bottomY);
 
-        // Call to action
-        ctx.font = '24px Arial';
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillText('👆 Toque para agendar', centerX, bottomY + 40);
-
         setPreviewUrl(canvas.toDataURL());
-      };
-      qrImg.src = qrDataUrl;
+      }
+
+      if (hasDualQr) {
+        // Two QR codes side by side
+        const qrSize = format === 'instagram-story' ? 220 : 200;
+        const gap = 40;
+        const bgPadding = 20;
+        const qrY = format === 'instagram-story'
+          ? canvas.height / 2 - qrSize / 2 + 100
+          : canvas.height / 2 - qrSize / 2 + 50;
+
+        const qr1X = centerX - qrSize - gap / 2;
+        const qr2X = centerX + gap / 2;
+
+        const [qr1DataUrl, qr2DataUrl] = await Promise.all([
+          generateQRDataURL(effectiveQrUrl, { color: '#000000', size: qrSize }),
+          generateQRDataURL(secondQrUrl!, { color: '#000000', size: qrSize }),
+        ]);
+
+        const qr1Img = new Image();
+        qr1Img.onload = () => {
+          // White bg + draw QR1
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.roundRect(qr1X - bgPadding, qrY - bgPadding, qrSize + bgPadding * 2, qrSize + bgPadding * 2 + 40, 15);
+          ctx.fill();
+          ctx.drawImage(qr1Img, qr1X, qrY, qrSize, qrSize);
+          ctx.fillStyle = '#666666';
+          ctx.font = 'bold 18px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('📅 Agendar', qr1X + qrSize / 2, qrY + qrSize + bgPadding + 25);
+
+          const qr2Img = new Image();
+          qr2Img.onload = () => {
+            // White bg + draw QR2
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.roundRect(qr2X - bgPadding, qrY - bgPadding, qrSize + bgPadding * 2, qrSize + bgPadding * 2 + 40, 15);
+            ctx.fill();
+            ctx.drawImage(qr2Img, qr2X, qrY, qrSize, qrSize);
+            ctx.fillStyle = '#666666';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('💬 WhatsApp', qr2X + qrSize / 2, qrY + qrSize + bgPadding + 25);
+
+            drawTextOverlay(qrY, qrSize + 40, bgPadding);
+          };
+          qr2Img.src = qr2DataUrl;
+        };
+        qr1Img.src = qr1DataUrl;
+      } else {
+        // Single QR code
+        const qrSize = format === 'instagram-story' ? 300 : 250;
+        const bgPadding = 30;
+        const qrY = format === 'instagram-story'
+          ? canvas.height / 2 - qrSize / 2 + 100
+          : canvas.height / 2 - qrSize / 2 + 50;
+
+        const qrDataUrl = await generateQRDataURL(effectiveQrUrl, { color: '#000000', size: qrSize });
+        const qrImg = new Image();
+        qrImg.onload = () => {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.roundRect(centerX - qrSize / 2 - bgPadding, qrY - bgPadding, qrSize + bgPadding * 2, qrSize + bgPadding * 2, 20);
+          ctx.fill();
+          ctx.drawImage(qrImg, centerX - qrSize / 2, qrY, qrSize, qrSize);
+
+          drawTextOverlay(qrY, qrSize, bgPadding);
+        };
+        qrImg.src = qrDataUrl;
+      }
 
     } catch (error) {
       console.error('Error generating social post:', error);
@@ -177,6 +223,140 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   }
 
+  // Customize mode: only customization controls + small preview
+  if (renderMode === 'customize') {
+    return (
+      <div className="space-y-6">
+        {/* Small Preview */}
+        <div className="bg-muted rounded-lg p-4 flex items-center justify-center min-h-[250px]">
+          {previewUrl ? (
+            <div className={`shadow-xl rounded-lg overflow-hidden ${
+              format === 'instagram-story' ? 'max-w-[180px]' : 'max-w-[220px]'
+            }`}>
+              <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Gerando preview...</p>
+          )}
+        </div>
+
+        {/* Format Selector */}
+        <div className="space-y-2">
+          <Label>Formato</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={format === 'instagram-story' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFormat('instagram-story')}
+              className="gap-2"
+            >
+              <Instagram className="h-4 w-4" />
+              Stories
+            </Button>
+            <Button
+              variant={format === 'facebook-post' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFormat('facebook-post')}
+              className="gap-2"
+            >
+              <Facebook className="h-4 w-4" />
+              Facebook
+            </Button>
+          </div>
+        </div>
+
+        {/* Theme Selection */}
+        <div className="space-y-2">
+          <Label>Tema de Cores</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {GRADIENT_THEMES.map((t) => (
+              <Button
+                key={t.label}
+                variant={theme === t ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTheme(t)}
+                className="justify-start gap-2"
+              >
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{
+                    background: `linear-gradient(135deg, ${t.color1}, ${t.color2})`,
+                  }}
+                />
+                {t.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Title */}
+        <div className="space-y-2">
+          <Label htmlFor="title">Título Principal</Label>
+          <Input
+            id="title"
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            placeholder="Agende Comigo!"
+            maxLength={50}
+          />
+        </div>
+
+        {/* Custom Message */}
+        <div className="space-y-2">
+          <Label htmlFor="message">Mensagem</Label>
+          <Textarea
+            id="message"
+            value={customMessage}
+            onChange={(e) => setCustomMessage(e.target.value)}
+            placeholder="Acesse o link e escolha o melhor horário..."
+            rows={3}
+            maxLength={120}
+          />
+          <p className="text-xs text-muted-foreground">
+            {customMessage.length}/120 caracteres
+          </p>
+        </div>
+
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
+    );
+  }
+
+  // Actions mode: large preview + download/share
+  if (renderMode === 'actions') {
+    return (
+      <div className="space-y-4">
+        {/* Large Preview */}
+        <div className="bg-muted rounded-lg p-4 flex items-center justify-center min-h-[400px]">
+          {previewUrl ? (
+            <div className={`shadow-2xl rounded-lg overflow-hidden ${
+              format === 'instagram-story' ? 'max-w-[250px]' : 'max-w-[300px]'
+            }`}>
+              <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Gerando preview...</p>
+          )}
+        </div>
+
+        {/* Download + Share */}
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
+            <Download className="mr-2 h-4 w-4" />
+            Baixar {POST_FORMATS[format].label}
+          </Button>
+          <ImageShareButtons
+            getBlob={getPostBlob}
+            filename={`${format}-${professional.slug}`}
+          />
+        </div>
+
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
+    );
+  }
+
+  // Default mode: full layout (backward compat)
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Preview */}
@@ -190,7 +370,6 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
               </span>
             </div>
 
-            {/* Format Selector */}
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant={format === 'instagram-story' ? 'default' : 'outline'}
@@ -212,7 +391,6 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
               </Button>
             </div>
 
-            {/* Post Preview */}
             <div className="bg-muted rounded-lg p-4 flex items-center justify-center min-h-[400px]">
               {previewUrl ? (
                 <div
@@ -220,24 +398,15 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
                     format === 'instagram-story' ? 'max-w-[250px]' : 'max-w-[300px]'
                   }`}
                 >
-                  <img
-                    src={previewUrl}
-                    alt="Social Post Preview"
-                    className="w-full h-auto"
-                  />
+                  <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
                 </div>
               ) : (
                 <p className="text-muted-foreground">Gerando preview...</p>
               )}
             </div>
 
-            {/* Download + Share */}
             <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={handleDownload}
-                disabled={loading || !previewUrl}
-                className="flex-1"
-              >
+              <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
                 Baixar {POST_FORMATS[format].label}
               </Button>
@@ -257,7 +426,6 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
             <div>
               <h4 className="font-medium mb-4">Personalização</h4>
 
-              {/* Theme Selection */}
               <div className="space-y-2 mb-4">
                 <Label>Tema de Cores</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -281,11 +449,10 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
                 </div>
               </div>
 
-              {/* Custom Title */}
               <div className="space-y-2 mb-4">
-                <Label htmlFor="title">Título Principal</Label>
+                <Label htmlFor="title-default">Título Principal</Label>
                 <Input
-                  id="title"
+                  id="title-default"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   placeholder="Agende Comigo!"
@@ -293,11 +460,10 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
                 />
               </div>
 
-              {/* Custom Message */}
               <div className="space-y-2 mb-4">
-                <Label htmlFor="message">Mensagem</Label>
+                <Label htmlFor="message-default">Mensagem</Label>
                 <Textarea
-                  id="message"
+                  id="message-default"
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
                   placeholder="Acesse o link e escolha o melhor horário..."
@@ -310,14 +476,13 @@ export function SocialPostGenerator({ professional, bookingUrl }: SocialPostGene
               </div>
             </div>
 
-            {/* Tips */}
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-2 text-sm">💡 Dicas</h4>
+              <h4 className="font-medium mb-2 text-sm">Dicas</h4>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Instagram Stories: ideal para engajamento rápido</li>
-                <li>• Facebook Post: melhor para feeds e compartilhamentos</li>
-                <li>• Poste regularmente para manter audiência engajada</li>
-                <li>• Use hashtags relevantes ao seu negócio</li>
+                <li>Instagram Stories: ideal para engajamento rápido</li>
+                <li>Facebook Post: melhor para feeds e compartilhamentos</li>
+                <li>Poste regularmente para manter audiência engajada</li>
+                <li>Use hashtags relevantes ao seu negócio</li>
               </ul>
             </div>
           </div>
