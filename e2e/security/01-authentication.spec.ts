@@ -68,12 +68,12 @@ test.describe('Autenticação — APIs do Dashboard', () => {
     await expectUnauthorized(res);
   });
 
-  test('POST /api/testimonials sem auth e sem professional_id → 400', async ({ request }) => {
-    // POST público requer professional_id; sem ele retorna 400
+  test('POST /api/testimonials sem auth e sem professional_id → 401', async ({ request }) => {
+    // Sem professional_id cai no fluxo autenticado → sem auth → 401
     const res = await request.post(`${BASE}/api/testimonials`, {
       data: { client_name: 'Hacker', testimonial_text: 'Ótimo serviço', rating: 5 },
     });
-    expect(res.status()).toBe(400);
+    await expectUnauthorized(res);
   });
 
   test('PUT /api/testimonials sem auth → 401/403', async ({ request }) => {

@@ -64,22 +64,12 @@ export async function GET(request: NextRequest) {
 
 // POST - Criar um novo depoimento
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const body = await request.json();
   const {
     client_name,
-    client_photo_url,
     testimonial_text,
     rating,
     service_name,
-    testimonial_date,
-    is_visible,
-    is_featured,
     professional_id: bodyProfessionalId,
   } = body;
 
@@ -93,32 +83,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
   }
 
-  // Se body tem professional_id → submissão pública (mesmo se logado)
-  // Fluxo autenticado (profissional criando manualmente via dashboard)
-  if (user && !bodyProfessionalId) {
-    const { data: professional } = await supabase
-      .from('professionals')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!professional) {
-      return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
-    }
-
+  // ── Fluxo público (professional_id no body → visitante enviando depoimento) ──
+  if (bodyProfessionalId) {
     try {
-      const { data: testimonial, error } = await supabase
+      const adminClient = createAdminClient();
+
+      const { data: professional } = await adminClient
+        .from('professionals')
+        .select('id')
+        .eq('id', bodyProfessionalId)
+        .single();
+
+      if (!professional) {
+        return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+      }
+
+      const { data: testimonial, error } = await adminClient
         .from('testimonials')
         .insert({
-          professional_id: professional.id,
+          professional_id: bodyProfessionalId,
           client_name,
-          client_photo_url: client_photo_url || null,
+          client_photo_url: null,
           testimonial_text,
           rating,
           service_name: service_name || null,
-          testimonial_date: testimonial_date || new Date().toISOString().split('T')[0],
-          is_visible: is_visible ?? true,
-          is_featured: is_featured ?? false,
+          testimonial_date: new Date().toISOString().split('T')[0],
+          is_visible: false,
+          is_featured: false,
           order_index: 0,
         })
         .select()
@@ -126,43 +117,45 @@ export async function POST(request: NextRequest) {
 
       if (error) throw error;
 
-      return NextResponse.json({ testimonial });
+      return NextResponse.json({ testimonial }, { status: 201 });
     } catch (error) {
-      console.error('Error creating testimonial:', error);
+      console.error('Error creating public testimonial:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
 
-  // Fluxo público (visitante enviando depoimento)
-  if (!bodyProfessionalId) {
-    return NextResponse.json({ error: 'Professional ID required' }, { status: 400 });
+  // ── Fluxo autenticado (sem professional_id → profissional via dashboard) ──
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
   }
 
   try {
-    const adminClient = createAdminClient();
-
-    // Verificar se o profissional existe
-    const { data: professional } = await adminClient
-      .from('professionals')
-      .select('id')
-      .eq('id', bodyProfessionalId)
-      .single();
-
-    if (!professional) {
-      return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
-    }
-
-    const { data: testimonial, error } = await adminClient
+    const { data: testimonial, error } = await supabase
       .from('testimonials')
       .insert({
-        professional_id: bodyProfessionalId,
+        professional_id: professional.id,
         client_name,
         client_photo_url: null,
         testimonial_text,
         rating,
         service_name: service_name || null,
         testimonial_date: new Date().toISOString().split('T')[0],
-        is_visible: false,
+        is_visible: true,
         is_featured: false,
         order_index: 0,
       })
@@ -171,9 +164,9 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ testimonial }, { status: 201 });
+    return NextResponse.json({ testimonial });
   } catch (error) {
-    console.error('Error creating public testimonial:', error);
+    console.error('Error creating testimonial:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

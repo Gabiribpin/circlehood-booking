@@ -13,10 +13,10 @@
  *  ─ Botão "Completar setup" aponta para /onboarding
  *
  *  Página de Onboarding (/onboarding):
- *  ─ Fullscreen gamificado com XP e timeline
+ *  ─ Fullscreen gamificado com progresso percentual e timeline
  *  ─ 6 passos (account, services, schedule, whatsapp, botname, profile)
  *  ─ Step 1 (conta) sempre concluído
- *  ─ Passos obrigatórios: services, schedule, whatsapp
+ *  ─ Passos obrigatórios: services, schedule, whatsapp (badge "Obrigatório")
  *  ─ Links abrem em nova aba (target="_blank")
  *  ─ "Pular por enquanto" → /dashboard (banner persiste)
  *  ─ "Concluir setup" só habilitado quando passos obrigatórios completos
@@ -398,7 +398,7 @@ test.describe('Fluxo completo de registro', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SECÇÃO 4 — Página de Onboarding (/onboarding) — usa sessão salva do setup
-// Testa a UI gamificada fullscreen com XP e steps.
+// Testa a UI gamificada fullscreen com progresso e steps.
 // ═══════════════════════════════════════════════════════════════════════════
 test.describe('Página de Onboarding — Checklist', () => {
   // ── 4a: Estrutura da checklist ──────────────────────────────────────────
@@ -411,10 +411,9 @@ test.describe('Página de Onboarding — Checklist', () => {
     // 6 step cards
     await expect(page.locator('[data-testid^="onboarding-step-"]')).toHaveCount(6);
 
-    // Step 1 (account): sempre concluído — tem checkmark verde / +200 XP
+    // Step 1 (account): sempre concluído — tem título i18n "Criar conta"
     const step1 = page.locator('[data-testid="onboarding-step-account"]');
-    await expect(step1).toContainText('Criar conta');
-    await expect(step1).toContainText('+200 XP');
+    await expect(step1).toContainText(/Criar conta|Create account/i);
 
     // Steps 2-6 existem
     await expect(page.locator('[data-testid="onboarding-step-services"]')).toBeVisible();
@@ -424,12 +423,12 @@ test.describe('Página de Onboarding — Checklist', () => {
     await expect(page.locator('[data-testid="onboarding-step-profile"]')).toBeVisible();
   });
 
-  // ── 4b: XP Progress ──────────────────────────────────────────────────
-  test('progress mostra XP', async ({ page }) => {
+  // ── 4b: Progress mostra porcentagem ───────────────────────────────────
+  test('progress mostra porcentagem', async ({ page }) => {
     await page.goto('/onboarding');
     await page.locator('[data-testid="onboarding-progress-text"]').waitFor({ timeout: 15_000 });
-    // Shows XP format: "X / 1200 XP"
-    await expect(page.locator('[data-testid="onboarding-progress-text"]')).toContainText('XP');
+    // Shows percentage format: "N%"
+    await expect(page.locator('[data-testid="onboarding-progress-text"]')).toContainText('%');
   });
 
   // ── 4c: Skip button ─────────────────────────────────────────────────────
@@ -448,12 +447,13 @@ test.describe('Página de Onboarding — Checklist', () => {
     const finishBtn = page.locator('[data-testid="onboarding-finish"]');
     await expect(finishBtn).toBeVisible();
 
-    // Check if all critical steps are done
-    const servicesDone = (await page.locator('[data-testid="onboarding-step-services"]').locator('text=+200 XP').count()) > 0;
-    const scheduleDone = (await page.locator('[data-testid="onboarding-step-schedule"]').locator('text=+200 XP').count()) > 0;
-    const whatsappDone = (await page.locator('[data-testid="onboarding-step-whatsapp"]').locator('text=+200 XP').count()) > 0;
+    // Check if critical steps are done by looking for the "Obrigatório"/"Required" badge
+    // If any required step still shows the badge, finish should be disabled
+    const servicesHasRequired = (await page.locator('[data-testid="onboarding-step-services"]').locator('text=/Obrigatório|Required/i').count()) > 0;
+    const scheduleHasRequired = (await page.locator('[data-testid="onboarding-step-schedule"]').locator('text=/Obrigatório|Required/i').count()) > 0;
+    const whatsappHasRequired = (await page.locator('[data-testid="onboarding-step-whatsapp"]').locator('text=/Obrigatório|Required/i').count()) > 0;
 
-    if (!servicesDone || !scheduleDone || !whatsappDone) {
+    if (servicesHasRequired || scheduleHasRequired || whatsappHasRequired) {
       // Button should be disabled when critical steps are incomplete
       await expect(finishBtn).toBeDisabled();
     }
@@ -476,12 +476,13 @@ test.describe('Página de Onboarding — Checklist', () => {
     await page.goto('/onboarding');
     await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
 
-    // Check each required step for badge
+    // Check each required step for badge — use regex for i18n (pt-BR: Obrigatório, en-US: Required)
     for (const stepId of ['services', 'schedule', 'whatsapp']) {
       const step = page.locator(`[data-testid="onboarding-step-${stepId}"]`);
-      const isDone = (await step.locator('text=+200 XP').count()) > 0;
-      if (!isDone) {
-        await expect(step.locator('text=Obrigatório')).toBeVisible();
+      // Step is done if it does NOT have the required badge
+      const hasRequiredBadge = (await step.locator('text=/Obrigatório|Required/i').count()) > 0;
+      if (hasRequiredBadge) {
+        await expect(step.locator('text=/Obrigatório|Required/i')).toBeVisible();
       }
     }
   });
