@@ -95,19 +95,58 @@ async function getRecentMessages(supabase: ReturnType<typeof createSupabase>, co
   return (data ?? []).reverse();
 }
 
-/** Envia mensagem via Evolution API */
-async function sendWhatsApp(phone: string, text: string) {
-  const apiUrl = process.env.EVOLUTION_API_URL;
-  const apiKey = process.env.EVOLUTION_API_KEY;
-  const instance = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
+/**
+ * Busca configuração Evolution API do banco de dados.
+ * Estratégia:
+ *  1. Tenta match exato pela instância de vendas (EVOLUTION_INSTANCE_SALES)
+ *  2. Fallback: qualquer whatsapp_config ativa (mesmo servidor Evolution, instância diferente)
+ *     — usa essa URL/key mas substitui o nome da instância pela de vendas.
+ */
+async function getEvolutionConfig(supabase: ReturnType<typeof createSupabase>) {
+  const salesInstance = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 
-  if (!apiUrl || !apiKey) return;
+  // 1. Match exato pela instância de vendas
+  const { data: exact } = await supabase
+    .from('whatsapp_config')
+    .select('evolution_api_url, evolution_api_key')
+    .eq('evolution_instance', salesInstance)
+    .maybeSingle();
 
-  await fetch(`${apiUrl}/message/sendText/${instance}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: apiKey },
-    body: JSON.stringify({ number: phone, text }),
-  });
+  if (exact?.evolution_api_url && exact?.evolution_api_key) {
+    return { apiUrl: exact.evolution_api_url, apiKey: exact.evolution_api_key, instance: salesInstance };
+  }
+
+  // 2. Fallback: qualquer config válida no mesmo servidor
+  const { data: fallback } = await supabase
+    .from('whatsapp_config')
+    .select('evolution_api_url, evolution_api_key')
+    .not('evolution_api_url', 'is', null)
+    .not('evolution_api_key', 'is', null)
+    .limit(1)
+    .maybeSingle();
+
+  if (!fallback?.evolution_api_url || !fallback?.evolution_api_key) return null;
+
+  return { apiUrl: fallback.evolution_api_url, apiKey: fallback.evolution_api_key, instance: salesInstance };
+}
+
+/** Envia mensagem via Evolution API (configuração lida do banco) */
+async function sendWhatsApp(supabase: ReturnType<typeof createSupabase>, phone: string, text: string) {
+  const config = await getEvolutionConfig(supabase);
+  if (!config) {
+    console.warn('[sales-bot] No Evolution API config found in database');
+    return;
+  }
+
+  try {
+    await fetch(`${config.apiUrl}/message/sendText/${config.instance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: config.apiKey },
+      body: JSON.stringify({ number: phone, text }),
+    });
+  } catch (err) {
+    console.error('[sales-bot] Failed to send WhatsApp:', err);
+  }
 }
 
 async function processSalesMessage(phone: string, userText: string) {
@@ -176,8 +215,8 @@ async function processSalesMessage(phone: string, userText: string) {
     content: botReply,
   });
 
-  // Enviar via WhatsApp
-  await sendWhatsApp(phone, botReply);
+  // Enviar via WhatsApp (config lida do banco)
+  await sendWhatsApp(supabase, phone, botReply);
 
   // Se lead ainda era "new", marcar como "contacted"
   if (lead.status === 'new') {

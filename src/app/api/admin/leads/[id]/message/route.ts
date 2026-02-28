@@ -59,18 +59,32 @@ export async function POST(
     .update({ updated_at: new Date().toISOString() })
     .eq('id', conversationId);
 
-  // Enviar via WhatsApp (Evolution API) usando a instância de vendas
-  const evolutionApiUrl = process.env.EVOLUTION_API_URL;
-  const evolutionApiKey = process.env.EVOLUTION_API_KEY;
-  const instance = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
+  // Enviar via WhatsApp — busca credenciais Evolution API do banco
+  const salesInstance = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 
-  if (evolutionApiUrl && evolutionApiKey) {
+  // Tenta match exato pela instância de vendas; fallback para qualquer config ativa
+  const { data: evoExact } = await adminClient
+    .from('whatsapp_config')
+    .select('evolution_api_url, evolution_api_key')
+    .eq('evolution_instance', salesInstance)
+    .maybeSingle();
+
+  const evoConfig = evoExact ?? (await adminClient
+    .from('whatsapp_config')
+    .select('evolution_api_url, evolution_api_key')
+    .not('evolution_api_url', 'is', null)
+    .not('evolution_api_key', 'is', null)
+    .limit(1)
+    .maybeSingle()
+  ).data;
+
+  if (evoConfig?.evolution_api_url && evoConfig?.evolution_api_key) {
     try {
-      await fetch(`${evolutionApiUrl}/message/sendText/${instance}`, {
+      await fetch(`${evoConfig.evolution_api_url}/message/sendText/${salesInstance}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: evolutionApiKey,
+          apikey: evoConfig.evolution_api_key,
         },
         body: JSON.stringify({ number: lead.phone, text: message.trim() }),
       });
@@ -78,6 +92,8 @@ export async function POST(
       console.error('[admin/leads/message] Failed to send WhatsApp:', err);
       // Não falha o request — mensagem já foi salva no DB
     }
+  } else {
+    console.warn('[admin/leads/message] No Evolution API config found in database');
   }
 
   return NextResponse.json({ success: true });
