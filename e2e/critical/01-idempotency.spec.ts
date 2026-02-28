@@ -185,6 +185,9 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * Verifica que apenas 1 agendamento é criado, mesmo com cliques rápidos.
    */
   test('duplo-clique no confirmar → apenas 1 agendamento criado', async ({ page, request }) => {
+    // 90s: public page cold start + 4 form steps + booking API + confirmation render
+    test.setTimeout(90_000);
+
     // Reatualizar require_deposit=false imediatamente antes do page.goto() para minimizar
     // a janela de race condition com o job de pagamentos que roda em paralelo no CI.
     await supabase
@@ -214,7 +217,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await confirmBtn.click();
     await confirmBtn.click({ force: true });
 
-    // Aguardar sucesso (30s: inclui cold start Vercel + latência de rede no CI)
+    // Aguardar sucesso (45s: inclui cold start Vercel + latência de rede no CI)
     await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 45_000 });
 
     // Apenas 1 chamada à API deve ter sido feita
@@ -232,6 +235,8 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * React para step 1 — não deve criar um segundo agendamento.
    */
   test('reload após sucesso → não cria duplicado', async ({ page, request }) => {
+    test.setTimeout(90_000);
+
     await supabase
       .from('professionals')
       .update({ require_deposit: false })
@@ -268,6 +273,7 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
    * re-submeter o formulário (estado React não persiste na history).
    */
   test('back/forward após sucesso → não cria duplicado', async ({ page, request }) => {
+    test.setTimeout(90_000);
     // Garantir que há uma página anterior na history para o back funcionar.
     // Usamos a própria página de booking (sempre existe e é pública) para criar
     // a primeira entrada na history. Evita depender de "/" que pode redirecionar
