@@ -252,7 +252,8 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await expect(page.locator('text=Agendamento confirmado')).toBeVisible({ timeout: 45_000 });
 
     // 1 agendamento após o sucesso
-    expect(await countActiveIdempotencyBookings()).toBe(1);
+    const countBefore = await countActiveIdempotencyBookings();
+    expect(countBefore).toBe(1);
 
     // Recarregar a página
     await page.reload({ waitUntil: 'networkidle' });
@@ -262,8 +263,10 @@ test.describe('Idempotência — Não duplicar agendamentos', () => {
     await expect(page.locator('text=Agendamento confirmado')).not.toBeVisible();
 
     // Ainda apenas 1 agendamento no banco (reload não cria novo)
-    const count = await countActiveIdempotencyBookings();
-    expect(count).toBe(1);
+    // Aguardar breve — supabase read-replica lag pode causar inconsistência
+    await page.waitForTimeout(1_000);
+    const countAfter = await countActiveIdempotencyBookings();
+    expect(countAfter).toBe(countBefore);
   });
 
   /**
