@@ -47,8 +47,8 @@ test.describe('Sidebar — Desktop', () => {
       await page.locator(`aside nav a[href$="${route.href}"]`).click();
       await expect(page).toHaveURL(new RegExp(route.href + '$'));
       await expect(page.locator('h1').first()).toContainText(route.heading, { timeout: 15_000 });
-      // Sem erro de servidor
-      await expect(page.locator('body')).not.toContainText(/500|erro interno do servidor/i);
+      // Sem erro de servidor (regex avoids matching prices like €500)
+      await expect(page.locator('body')).not.toContainText(/erro interno do servidor|Internal Server Error/i);
     }
   });
 
@@ -98,7 +98,7 @@ test.describe('Deep Links — Acesso Direto', () => {
     await page.goto(`${BASE}/dashboard`);
     // data-testid="dashboard-welcome" (dashboard/page.tsx linha 158)
     await expect(page.locator('[data-testid="dashboard-welcome"]')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('body')).not.toContainText(/500/);
+    await expect(page.locator('body')).not.toContainText(/Internal Server Error/i);
   });
 });
 

@@ -49,7 +49,7 @@ test.describe('Dashboard — Ações de Agendamentos', () => {
     await canceladosTab.first().click();
 
     // Página não deve mostrar erro 500
-    await expect(page.locator('body')).not.toContainText(/erro interno|500/i, { timeout: 8_000 });
+    await expect(page.locator('body')).not.toContainText(/erro interno|Internal Server Error/i, { timeout: 8_000 });
   });
 
   test('clicar em aba Concluídos não quebra a página', async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('Dashboard — Ações de Agendamentos', () => {
       .or(page.getByRole('button', { name: /conclu/i }));
     await concluidosTab.first().click();
 
-    await expect(page.locator('body')).not.toContainText(/erro interno|500/i, { timeout: 8_000 });
+    await expect(page.locator('body')).not.toContainText(/erro interno|Internal Server Error/i, { timeout: 8_000 });
   });
 
   test('campo de busca de cliente está presente', async ({ page }) => {
@@ -91,7 +91,7 @@ test.describe('Dashboard — Ações de Agendamentos', () => {
       .first();
 
     // Verifica que ao menos a lista carregou (com ou sem agendamentos)
-    await expect(page.locator('body')).not.toContainText(/erro interno|500/i, { timeout: 8_000 });
+    await expect(page.locator('body')).not.toContainText(/erro interno|Internal Server Error/i, { timeout: 8_000 });
 
     // Se há botão de ação, não deve estar desabilitado
     if (await actionButtons.isVisible().catch(() => false)) {
