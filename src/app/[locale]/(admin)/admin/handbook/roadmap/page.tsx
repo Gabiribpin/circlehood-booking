@@ -49,7 +49,7 @@ const roadmapData = [
       { done: false, text: '15-20 clientes ativos' },
       { done: false, text: '€300-400/mês receita' },
       { done: false, text: 'Ambiente staging' },
-      { done: false, text: 'Testes E2E básicos' },
+      { done: true,  text: 'Testes E2E completos (22 jobs CI)' },
       { done: false, text: 'Changelog automático' },
     ],
   },
@@ -63,7 +63,7 @@ const roadmapData = [
     items: [
       { done: false, text: '30-40 clientes' },
       { done: false, text: '€600-800/mês' },
-      { done: false, text: 'CI/CD completo' },
+      { done: true,  text: 'CI/CD completo (branch protection + 13 checks)' },
       { done: false, text: 'Monitoring + alertas' },
       { done: false, text: 'Reduzir HDI part-time?' },
     ],

@@ -102,6 +102,7 @@ const services = [
     items: [
       { name: 'Vercel Dashboard',    url: 'https://vercel.com/circlehoodtech-projects/circlehood-booking',      env: 'admin',  note: 'Deploy, logs, env vars' },
       { name: 'Vercel Logs',         url: 'https://vercel.com/circlehoodtech-projects/circlehood-booking/logs', env: 'admin',  note: 'Runtime errors em produção' },
+      { name: 'GitHub Actions (CI)', url: 'https://github.com/Gabiribpin/circlehood-booking/actions',           env: 'admin',  note: '13 checks obrigatórios antes do merge' },
     ],
   },
 ];

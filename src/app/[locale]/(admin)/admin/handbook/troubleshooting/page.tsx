@@ -81,6 +81,23 @@ const troubleshootingData = [
     ],
   },
   {
+    problem: '🚀 Deploy quebrou produção (build error no Vercel)',
+    severity: 'critical',
+    steps: [
+      'Vercel Dashboard → ver erro de build (geralmente TypeScript)',
+      'Branch protection agora IMPEDE isso — mas se aconteceu via bypass:',
+      'Rollback imediato: Vercel Dashboard → Deployments → último deploy verde → "Promote to Production"',
+      'Ou via CLI: git revert HEAD && git push',
+      'Corrigir o erro localmente: npm run tsc --noEmit (verificar TypeScript)',
+      'Criar PR com fix → esperar CI verde → merge',
+      'NUNCA fazer push direto em main — sempre via PR!',
+    ],
+    links: [
+      { label: 'Vercel Deployments', url: 'https://vercel.com/circlehoodtech-projects/circlehood-booking' },
+      { label: 'GitHub Actions', url: 'https://github.com/Gabiribpin/circlehood-booking/actions' },
+    ],
+  },
+  {
     problem: '⭐ Depoimentos não aparecem na página pública',
     severity: 'medium',
     steps: [
