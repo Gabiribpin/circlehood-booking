@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +15,7 @@ interface TicketReplyFormProps {
 }
 
 export function TicketReplyForm({ ticketId, currentStatus }: TicketReplyFormProps) {
+  const router = useRouter();
   const [message, setMessage] = useState('');
   const [newStatus, setNewStatus] = useState(currentStatus);
   const [sending, setSending] = useState(false);
@@ -32,7 +34,7 @@ export function TicketReplyForm({ ticketId, currentStatus }: TicketReplyFormProp
       if (!res.ok) throw new Error('Falha ao enviar');
       setMessage('');
       toast({ title: '✅ Resposta enviada!', description: 'O cliente foi notificado por email.' });
-      onReplySent();
+      router.refresh();
     } catch {
       toast({ title: 'Erro ao enviar resposta', variant: 'destructive' });
     } finally {
