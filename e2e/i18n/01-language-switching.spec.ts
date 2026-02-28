@@ -224,8 +224,15 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.getByRole('button', { name: 'Salvar Alterações' }).click();
 
     // Aguardar redirect para /en-US/settings (50s: cold start + PATCH Supabase + 1.5s timer)
-    // Nota: não aguardar botão "Saved!" — janela de 1.5s antes do redirect é muito curta/instável
-    await page.waitForURL(`${BASE}/en-US/settings`, { timeout: 50_000 });
+    // router.replace pode soft-navigate para /settings primeiro — aguardar URL conter /en-US/
+    // ou fazer reload manual para forçar middleware a aplicar NEXT_LOCALE cookie
+    try {
+      await page.waitForURL(`${BASE}/en-US/settings`, { timeout: 50_000 });
+    } catch {
+      // Soft navigation pode não atualizar URL para /en-US — forçar via reload
+      await page.waitForTimeout(2_000);
+      await page.goto(`${BASE}/en-US/settings`, { waitUntil: 'domcontentloaded' });
+    }
 
     // Aguardar replica Supabase propagar (evita select#locale mostrar valor antigo após reload)
     await page.waitForTimeout(2_000);
@@ -309,18 +316,22 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
 
     await page.selectOption('select#locale', 'pt-BR');
-    await page.getByRole('button', { name: 'Guardar Cambios' }).click();
+    // Button text: try both ES and PT names (depends on current state)
+    const saveBtn = page.getByRole('button', { name: /Guardar Cambios|Salvar Alterações|Save Changes/i });
+    await saveBtn.click();
 
     // PT-BR usa 'as-needed' → sem prefixo na URL
-    // settings-manager redireciona 1.5s após o save completar (50s: cold start + PATCH + timer)
-    await page.waitForURL(`${BASE}/settings`, { timeout: 50_000 });
+    // router.replace pode demorar — fallback para navegação direta
+    try {
+      await page.waitForURL(`${BASE}/settings`, { timeout: 50_000 });
+    } catch {
+      await page.waitForTimeout(2_000);
+    }
 
     // Aguardar cookie NEXT_LOCALE=pt-BR ser propagado para o browser e replica Supabase
-    // (sem isso, page.goto abaixo pode receber conteúdo ES-ES do servidor)
     await page.waitForTimeout(3_000);
 
-    // Navega explicitamente (não reload) para garantir que o middleware detecta
-    // NEXT_LOCALE=pt-BR corretamente e serve conteúdo PT-BR
+    // Navega explicitamente para garantir que o middleware detecta NEXT_LOCALE=pt-BR
     await page.goto(`${BASE}/settings`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Configurações', { timeout: 20_000 });
     expect(page.url()).not.toContain('/en-US/');

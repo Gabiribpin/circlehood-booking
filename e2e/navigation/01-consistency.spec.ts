@@ -43,7 +43,8 @@ test.describe('Sidebar — Desktop', () => {
     for (const route of routes) {
       await page.goto(`${BASE}/dashboard`);
       // Sidebar: aside → nav → Link (único aside no layout)
-      await page.locator(`aside nav a[href="${route.href}"]`).click();
+      // href pode ter locale prefix (e.g. /pt-BR/services)
+      await page.locator(`aside nav a[href$="${route.href}"]`).click();
       await expect(page).toHaveURL(new RegExp(route.href + '$'));
       await expect(page.locator('h1').first()).toContainText(route.heading, { timeout: 15_000 });
       // Sem erro de servidor
@@ -54,9 +55,9 @@ test.describe('Sidebar — Desktop', () => {
   test('logo CircleHood retorna para /dashboard a partir de qualquer página', async ({ page }) => {
     for (const url of ['/services', '/bookings', '/settings', '/whatsapp-config']) {
       await page.goto(`${BASE}${url}`);
-      // aside > Link href="/dashboard" com texto "CircleHood" (layout.tsx linha 74)
-      await page.locator('aside a[href="/dashboard"]').first().click();
-      await expect(page).toHaveURL(`${BASE}/dashboard`);
+      // aside > Link href pode ter locale prefix (e.g. /pt-BR/dashboard)
+      await page.locator('aside a[href$="/dashboard"]').first().click();
+      await expect(page).toHaveURL(/\/dashboard$/);
     }
   });
 
@@ -106,7 +107,7 @@ test.describe('Deep Links — Acesso Direto', () => {
 test.describe('Botão Voltar do Browser', () => {
   test('goBack após navegar pelo sidebar retorna à página anterior', async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await page.locator('aside nav a[href="/services"]').click();
+    await page.locator('aside nav a[href$="/services"]').click();
     await expect(page).toHaveURL(/\/services$/);
 
     await page.goBack();
@@ -115,10 +116,10 @@ test.describe('Botão Voltar do Browser', () => {
 
   test('goBack após dois saltos funciona corretamente', async ({ page }) => {
     await page.goto(`${BASE}/dashboard`);
-    await page.locator('aside nav a[href="/services"]').click();
+    await page.locator('aside nav a[href$="/services"]').click();
     await expect(page).toHaveURL(/\/services$/);
 
-    await page.locator('aside nav a[href="/bookings"]').click();
+    await page.locator('aside nav a[href$="/bookings"]').click();
     await expect(page).toHaveURL(/\/bookings$/);
 
     await page.goBack();
@@ -169,8 +170,8 @@ test.describe('Mobile Menu (bottom nav + Sheet)', () => {
     await page.goto(`${BASE}/dashboard`);
 
     // nav.md:hidden (MobileNav.tsx) — visible em 375px (md: não ativo)
-    // Selector: nav com classe md:hidden — em CSS, colon requer escape
-    const bottomNavLink = page.locator('nav.md\\:hidden a[href="/bookings"]');
+    // href pode ter locale prefix (e.g. /pt-BR/bookings)
+    const bottomNavLink = page.locator('nav.md\\:hidden a[href$="/bookings"]');
     await expect(bottomNavLink).toBeVisible({ timeout: 15_000 });
 
     // aside.hidden.md:flex — hidden por display:none em mobile
@@ -189,10 +190,10 @@ test.describe('Mobile Menu (bottom nav + Sheet)', () => {
     const sheet = page.getByRole('dialog');
     await expect(sheet).toBeVisible({ timeout: 5_000 });
 
-    // MENU_ITEMS em MobileNav.tsx incluem estes links
-    await expect(sheet.locator('a[href="/settings"]')).toBeVisible();
-    await expect(sheet.locator('a[href="/whatsapp-config"]')).toBeVisible();
-    await expect(sheet.locator('a[href="/analytics"]')).toBeVisible();
+    // MENU_ITEMS em MobileNav.tsx — href pode ter locale prefix
+    await expect(sheet.locator('a[href$="/settings"]')).toBeVisible();
+    await expect(sheet.locator('a[href$="/whatsapp-config"]')).toBeVisible();
+    await expect(sheet.locator('a[href$="/analytics"]')).toBeVisible();
   });
 
   test('clicar link no Sheet navega e fecha o menu', async ({ page }) => {
@@ -202,8 +203,8 @@ test.describe('Mobile Menu (bottom nav + Sheet)', () => {
     const sheet = page.getByRole('dialog');
     await expect(sheet).toBeVisible({ timeout: 5_000 });
 
-    // Clicar em Configurações → Sheet fecha e URL muda
-    await sheet.locator('a[href="/settings"]').click();
+    // Clicar em Configurações → Sheet fecha e URL muda (href pode ter locale prefix)
+    await sheet.locator('a[href$="/settings"]').click();
 
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 });
     await expect(page).toHaveURL(/\/settings$/);
@@ -215,14 +216,14 @@ test.describe('Mobile Menu (bottom nav + Sheet)', () => {
     // MobileNav.tsx: isActive = pathname === item.href → 'text-primary' : 'text-muted-foreground'
     await page.goto(`${BASE}/services`);
 
-    // Bottom nav tem spans com text-[10px] — discrimina do sidebar (texto direto, sem span)
-    const activeLink = page.locator('nav.md\\:hidden a[href="/services"]');
+    // Bottom nav — href pode ter locale prefix (e.g. /pt-BR/services)
+    const activeLink = page.locator('nav.md\\:hidden a[href$="/services"]');
     await expect(activeLink).toBeVisible({ timeout: 15_000 });
     const activeCls = await activeLink.getAttribute('class');
     expect(activeCls).toContain('text-primary');
     console.log(`✅ Link ativo classes: ${activeCls}`);
 
-    const inactiveLink = page.locator('nav.md\\:hidden a[href="/bookings"]');
+    const inactiveLink = page.locator('nav.md\\:hidden a[href$="/bookings"]');
     const inactiveCls = await inactiveLink.getAttribute('class');
     expect(inactiveCls).not.toContain('text-primary');
     expect(inactiveCls).toContain('text-muted-foreground');
@@ -250,6 +251,6 @@ test.describe('Formulários e Modais', () => {
     // Fechar com Escape — URL não deve mudar
     await page.keyboard.press('Escape');
     await expect(page.getByRole('heading', { name: /novo servi/i })).not.toBeVisible({ timeout: 5_000 });
-    await expect(page).toHaveURL(`${BASE}/services`);
+    await expect(page).toHaveURL(/\/services$/);
   });
 });
