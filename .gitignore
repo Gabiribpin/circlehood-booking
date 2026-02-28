@@ -55,3 +55,4 @@ EXECUTAR_*.md
 EXECUTE_*.md
 MIGRATION_RAPIDA.sql
 execute-migration.js
+.env*.local
