@@ -7,6 +7,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Cancel previous runs on the same branch/PR to avoid cleanup job
+# from one run deleting test data needed by a concurrent run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ─────────────────────────────────────────────────────────────
   # Job 1: Testes unitários (Vitest) — rápido, sem deps externas

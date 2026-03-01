@@ -217,14 +217,14 @@ test.describe('Race Condition — Prevenção de overbooking', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const wednesday = nextWeekday(3);
-    const slot = await getFirstAvailableSlot(request, service!.id, wednesday);
-    if (!slot) test.skip(true, 'Sem slots disponíveis na quarta');
+    const thursday = nextWeekday(4);
+    const slot = await getFirstAvailableSlot(request, service!.id, thursday);
+    if (!slot) test.skip(true, 'Sem slots disponíveis na quinta');
 
     const baseBooking = {
       professional_id: TEST.PROFESSIONAL_ID,
       service_id: service!.id,
-      booking_date: wednesday,
+      booking_date: thursday,
       start_time: slot,
     };
 
@@ -254,7 +254,7 @@ test.describe('Race Condition — Prevenção de overbooking', () => {
 
     // c) Slot não deve aparecer mais em available-slots
     const slotsRes = await request.get(
-      `${BASE}/api/available-slots?professional_id=${TEST.PROFESSIONAL_ID}&date=${wednesday}&service_id=${service!.id}`,
+      `${BASE}/api/available-slots?professional_id=${TEST.PROFESSIONAL_ID}&date=${thursday}&service_id=${service!.id}`,
     );
     expect(slotsRes.status()).toBe(200);
     const slotsBody = await slotsRes.json();
@@ -264,7 +264,7 @@ test.describe('Race Condition — Prevenção de overbooking', () => {
     expect(availableSlots).not.toContain(slot!);
 
     // d) Apenas 1 booking no banco (não duplicou)
-    const dbCount = await countConfirmedRaceBookings(wednesday, slot!);
+    const dbCount = await countConfirmedRaceBookings(thursday, slot!);
     expect(dbCount).toBe(1);
   });
 });

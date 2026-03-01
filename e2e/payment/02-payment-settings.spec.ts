@@ -27,6 +27,10 @@ async function resetPaymentSettings() {
 
 async function goToPaymentSettings(page: any) {
   await page.goto(`${BASE}/settings/payment`);
+  // Dashboard layout may redirect to /subscribe if subscription inactive
+  if (page.url().includes('/subscribe')) {
+    throw new Error('Redirect to /subscribe — subscription inactive. Auth setup should set subscription_status=active.');
+  }
   await expect(page.locator('h1, [data-testid="page-title"]').first()).toBeVisible({ timeout: 15000 });
 }
 

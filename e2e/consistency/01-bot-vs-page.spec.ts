@@ -78,13 +78,14 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const slots = await getAvailableSlots(request, service!.id, monday);
-    if (slots.length === 0) test.skip(true, 'Sem slots disponíveis na segunda');
+    // Usar quarta para evitar conflitos com agendamentos reais de segunda
+    const targetDay = nextWeekday(3);
+    const slots = await getAvailableSlots(request, service!.id, targetDay);
+    if (slots.length === 0) test.skip(true, 'Sem slots disponíveis na quarta');
 
     const slot = slots[0]; // ex: "10:00"
     const [hours] = slot.split(':');
-    const [day, month] = monday.split('-').slice(1).reverse().map(Number);
+    const [day, month] = targetDay.split('-').slice(1).reverse().map(Number);
 
     // PÁGINA: slot aparece na lista de disponíveis (fonte de verdade = DB vazio)
     expect(slots).toContain(slot);
@@ -121,9 +122,9 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const slotsBefore = await getAvailableSlots(request, service!.id, monday);
-    if (slotsBefore.length === 0) test.skip(true, 'Sem slots disponíveis na segunda');
+    const targetDay = nextWeekday(3);
+    const slotsBefore = await getAvailableSlots(request, service!.id, targetDay);
+    if (slotsBefore.length === 0) test.skip(true, 'Sem slots disponíveis na quarta');
 
     const slot = slotsBefore[0]; // ex: "10:00"
     const endMinutes =
@@ -139,7 +140,7 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
       service_id: service!.id,
       client_name: 'Cliente Consistência E2E',
       client_phone: TEST.PHONE,
-      booking_date: monday,
+      booking_date: targetDay,
       start_time: `${slot}:00`,
       end_time: `${endH}:${endM}:00`,
       status: 'confirmed',
@@ -148,12 +149,12 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     if (error) throw new Error(`Falha ao criar booking: ${error.message}`);
 
     // PÁGINA: slot deve ter sumido de available-slots imediatamente
-    const slotsAfter = await getAvailableSlots(request, service!.id, monday);
+    const slotsAfter = await getAvailableSlots(request, service!.id, targetDay);
     expect(slotsAfter).not.toContain(slot);
 
     // BOT: perguntar disponibilidade → deve dizer que está ocupado
     const [hours] = slot.split(':');
-    const [day, month] = monday.split('-').slice(1).reverse().map(Number);
+    const [day, month] = targetDay.split('-').slice(1).reverse().map(Number);
 
     await sendBotMessage(request, 'oi');
     const greeting = await getLastBotMessage();
@@ -188,9 +189,9 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const slots = await getAvailableSlots(request, service!.id, monday);
-    if (slots.length === 0) test.skip(true, 'Sem slots disponíveis na segunda');
+    const targetDay = nextWeekday(3);
+    const slots = await getAvailableSlots(request, service!.id, targetDay);
+    if (slots.length === 0) test.skip(true, 'Sem slots disponíveis na quarta');
 
     const slot = slots[0];
     const [hours] = slot.split(':');
@@ -202,7 +203,7 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
         service_id: service!.id,
         client_name: 'Cliente Consistência E2E',
         client_phone: TEST.PHONE,
-        booking_date: monday,
+        booking_date: targetDay,
         start_time: slot,
       },
     });
@@ -218,10 +219,10 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     expect(botResponse).not.toBeNull();
 
     // Bot deve mencionar a data ou horário do agendamento
-    const [day, month] = monday.split('-').slice(1).reverse().map(Number);
+    const [day, month] = targetDay.split('-').slice(1).reverse().map(Number);
     const mentionsBooking =
       botResponse!.includes(String(day)) ||
-      botResponse!.toLowerCase().includes('segunda') ||
+      botResponse!.toLowerCase().includes('quarta') ||
       botResponse!.includes(hours);
 
     expect(mentionsBooking).toBe(true);
@@ -245,13 +246,13 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const monday = nextWeekday(1);
-    const slotsBefore = await getAvailableSlots(request, service!.id, monday);
-    if (slotsBefore.length === 0) test.skip(true, 'Sem slots disponíveis na segunda');
+    const targetDay = nextWeekday(3);
+    const slotsBefore = await getAvailableSlots(request, service!.id, targetDay);
+    if (slotsBefore.length === 0) test.skip(true, 'Sem slots disponíveis na quarta');
 
     const slot = slotsBefore[0]; // ex: "10:00"
     const [hours] = slot.split(':');
-    const [day, month] = monday.split('-').slice(1).reverse().map(Number);
+    const [day, month] = targetDay.split('-').slice(1).reverse().map(Number);
 
     // BOT: criar booking via webhook (simula fluxo real do WhatsApp)
     await sendBotMessage(request, 'oi');
@@ -269,7 +270,7 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
     expect(botResponse!.toLowerCase()).toMatch(/confirmado|agendado|marcado|reservado/i);
 
     // PÁGINA: slot deve ter sumido de available-slots imediatamente
-    const slotsAfter = await getAvailableSlots(request, service!.id, monday);
+    const slotsAfter = await getAvailableSlots(request, service!.id, targetDay);
     expect(slotsAfter).not.toContain(slot);
 
     // DB: booking confirmado deve existir
@@ -278,7 +279,7 @@ test.describe('Consistência Bot ↔ Página Pública', () => {
       .select('id, status')
       .eq('professional_id', TEST.PROFESSIONAL_ID)
       .eq('client_phone', TEST.PHONE)
-      .eq('booking_date', monday)
+      .eq('booking_date', targetDay)
       .eq('status', 'confirmed');
 
     expect(bookings).not.toBeNull();

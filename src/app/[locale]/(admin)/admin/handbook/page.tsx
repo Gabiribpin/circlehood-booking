@@ -63,9 +63,9 @@ const sections = [
     color: 'hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20',
     iconColor: 'text-indigo-500',
     previews: [
-      'rita@teste.com / Teste1234',
-      'Phones CI: 353800000001–099',
-      '22 jobs no GitHub Actions',
+      'Branch protection: PR obrigatória',
+      '13 checks CI bloqueiam merge',
+      'Fluxo: branch → PR → CI verde → deploy',
     ],
   },
   {

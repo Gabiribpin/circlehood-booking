@@ -49,16 +49,26 @@ const testPhones = [
 ];
 
 const ciJobs = [
-  { name: 'auth-setup',              desc: 'Login + salva sessão em .auth/user.json' },
-  { name: 'bot-e2e',                 desc: 'Fluxo completo bot (saudação → agendamento)' },
-  { name: 'reagendamento-bot',       desc: 'Reagendamento via bot' },
-  { name: 'blocked-periods-bot',     desc: 'Bot rejeita períodos bloqueados' },
-  { name: 'consistencia-bot-page',   desc: 'Consistência bot ↔ painel de agendamentos' },
-  { name: 'critical-idempotency',    desc: 'Back-button não cria booking duplicado' },
-  { name: 'critical-race',           desc: 'Double booking simultâneo bloqueado' },
-  { name: 'notifications-email',     desc: 'Emails de confirmação/cancelamento' },
-  { name: 'payment-e2e',             desc: 'Fluxo Stripe (sinal de reserva)' },
-  { name: 'gdpr-legal-e2e',          desc: 'GDPR: exclusão de conta + dados' },
+  { name: 'Vitest (unit)',                       desc: 'Testes unitários — roda primeiro, bloqueia tudo se falhar', required: true },
+  { name: 'Playwright (smoke público)',          desc: 'Cross-browser (Chromium, WebKit, Firefox)', required: true },
+  { name: 'Playwright (dashboard autenticado)',  desc: 'Testes com sessão logada', required: true },
+  { name: 'Playwright (API pública + ciclo)',    desc: 'APIs públicas e ciclo profissional', required: true },
+  { name: 'Playwright (segurança)',              desc: 'Endpoints protegidos retornam 401/403', required: true },
+  { name: 'Playwright (jornada do usuário)',     desc: 'Registro → onboarding → dashboard', required: true },
+  { name: 'Playwright (navegação)',              desc: 'Links, menu, rotas', required: true },
+  { name: 'Playwright (UX consistency)',         desc: 'Consistência visual', required: true },
+  { name: 'Playwright (i18n)',                   desc: 'Troca de idiomas pt-BR/en-US/es-ES', required: true },
+  { name: 'Playwright (notificações)',           desc: 'Emails de confirmação/cancelamento', required: true },
+  { name: 'Playwright (mobile)',                 desc: 'Responsividade e mobile nav', required: true },
+  { name: 'Playwright (race condition)',         desc: 'Double booking simultâneo bloqueado', required: true },
+  { name: 'Playwright (idempotência)',           desc: 'Back-button não cria booking duplicado', required: true },
+  { name: 'Playwright (bot E2E) 💰',            desc: 'Fluxo completo bot — roda após os 13 acima', required: false },
+  { name: 'Playwright (reagendamento bot)',      desc: 'Reagendamento via bot', required: false },
+  { name: 'Playwright (bloqueio bot)',           desc: 'Bot rejeita períodos bloqueados', required: false },
+  { name: 'Playwright (consistência bot)',       desc: 'Consistência bot ↔ painel', required: false },
+  { name: 'Playwright (pagamentos)',             desc: 'Fluxo Stripe (sinal de reserva)', required: false },
+  { name: 'Playwright (GDPR)',                   desc: 'Exclusão de conta + dados', required: false },
+  { name: 'Cleanup test database',               desc: 'Limpa dados de teste do banco', required: false },
 ];
 
 export default function HandbookDevPage() {
@@ -129,25 +139,60 @@ export default function HandbookDevPage() {
         </CardContent>
       </Card>
 
+      {/* Branch Protection */}
+      <Card className="border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">🔒 Branch Protection (main)</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Configurada para impedir código quebrado em produção
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm space-y-2">
+            <p className="font-medium text-green-800 dark:text-green-300">Regras ativas:</p>
+            <ul className="space-y-1.5 text-green-700 dark:text-green-400 text-xs">
+              <li>• <strong>Push direto em main: BLOQUEADO</strong> — toda mudança precisa de PR</li>
+              <li>• <strong>13 checks CI obrigatórios</strong> — merge só com todos verdes</li>
+              <li>• <strong>strict: true</strong> — branch deve estar atualizada com main</li>
+              <li>• <strong>Aprovações: 0</strong> — sem friction extra (equipe de 1 pessoa)</li>
+              <li>• <strong>Force push: desabilitado</strong> — previne perda de histórico</li>
+            </ul>
+          </div>
+          <div className="text-sm space-y-2">
+            <p className="font-medium text-green-800 dark:text-green-300">Fluxo de deploy:</p>
+            <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-3 font-mono text-xs text-green-800 dark:text-green-300 space-y-1">
+              <p>1. git checkout -b fix/nome-do-fix</p>
+              <p>2. git commit → git push -u origin fix/nome-do-fix</p>
+              <p>3. gh pr create --title &quot;Fix: descrição&quot;</p>
+              <p>4. CI roda (13 checks) → tudo verde → merge</p>
+              <p>5. main atualizada → Vercel deploya automaticamente</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Jobs CI */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">⚙️ Jobs do CI (GitHub Actions)</CardTitle>
           <p className="text-xs text-muted-foreground">
-            22 jobs no total — rodam contra produção (<code className="bg-muted px-1 rounded">booking.circlehood-tech.com</code>)
+            22 jobs no total — rodam contra produção (<code className="bg-muted px-1 rounded">booking.circlehood-tech.com</code>).
+            Os 13 marcados como <span className="text-green-600 font-bold">obrigatório</span> bloqueiam o merge se falharem.
           </p>
         </CardHeader>
         <CardContent>
           <div className="divide-y rounded-lg border overflow-hidden">
             {ciJobs.map((job) => (
-              <div key={job.name} className="flex items-center px-4 py-3 gap-4 bg-background hover:bg-muted/30 transition-colors">
-                <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 w-52 shrink-0">{job.name}</code>
-                <span className="text-sm text-muted-foreground">{job.desc}</span>
+              <div key={job.name} className="flex items-center px-4 py-3 gap-3 bg-background hover:bg-muted/30 transition-colors flex-wrap">
+                {job.required ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 shrink-0">obrigatório</span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 shrink-0">opcional</span>
+                )}
+                <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400 flex-1 min-w-0">{job.name}</code>
+                <span className="text-xs text-muted-foreground w-full sm:w-auto">{job.desc}</span>
               </div>
             ))}
-            <div className="px-4 py-3 bg-muted/20">
-              <p className="text-xs text-muted-foreground">+ 12 outros jobs (analytics, settings, services, bookings-manager, etc.)</p>
-            </div>
           </div>
         </CardContent>
       </Card>

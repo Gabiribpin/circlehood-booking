@@ -37,7 +37,7 @@ test.describe('Dashboard — Agendamentos', () => {
   test('aba Cancelados filtra a lista', async ({ page }) => {
     await page.goto(`${BASE}/bookings`);
     await page.getByRole('tab', { name: /cancelados/i }).click();
-    await expect(page.locator('body')).not.toContainText(/erro interno|500/i);
+    await expect(page.locator('body')).not.toContainText(/erro interno|Internal Server Error/i);
   });
 });
 
@@ -45,6 +45,6 @@ test.describe('Dashboard — Analytics', () => {
   test('carrega heading e painel de insights', async ({ page }) => {
     await page.goto(`${BASE}/analytics`);
     await expect(page.getByRole('heading', { name: /análises/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('body')).not.toContainText(/erro interno|500/i);
+    await expect(page.locator('body')).not.toContainText(/erro interno|Internal Server Error/i);
   });
 });

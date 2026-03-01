@@ -173,6 +173,7 @@ export default defineConfig({
     {
       name: 'critical-idempotency',
       testMatch: '**/critical/**/*.spec.ts',
+      testIgnore: '**/critical/02-race-condition.spec.ts',
       // retries: 0 — falha real de race condition não deve ser mascarada por retry
       retries: 0,
       // workers: 1 — testes sequenciais para evitar race conditions entre os próprios testes

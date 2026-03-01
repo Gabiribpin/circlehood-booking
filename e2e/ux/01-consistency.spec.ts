@@ -506,8 +506,8 @@ test.describe('Feedback Visual de Interação', () => {
     await expect(dialog).not.toBeVisible({ timeout: 3_000 });
     console.log('✅ Dialog fecha com Escape (UX padrão)');
 
-    // URL não deve ter mudado
-    await expect(page).toHaveURL(`${BASE}/services`);
+    // URL não deve ter mudado (pode ter locale prefix /pt-BR/)
+    await expect(page).toHaveURL(/\/services$/);
     console.log('✅ URL não muda ao abrir/fechar dialog');
   });
 });

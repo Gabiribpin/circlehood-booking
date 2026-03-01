@@ -4,10 +4,18 @@
  * Os testes de dashboard carregam esse arquivo via storageState.
  */
 import { test as setup, expect } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { TEST } from '../helpers/config';
 
 const authFile = path.join(__dirname, '../.auth/user.json');
+
+// Ensure test account has active subscription so dashboard layout doesn't redirect to /subscribe
+setup.beforeAll(async () => {
+  if (!TEST.SUPABASE_URL || !TEST.SUPABASE_SERVICE_KEY) return;
+  const sb = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
+  await sb.from('professionals').update({ subscription_status: 'active' }).eq('id', TEST.PROFESSIONAL_ID);
+});
 
 setup('autenticar Salão da Rita', async ({ page }) => {
   await page.goto(`${TEST.BASE_URL}/login`);
