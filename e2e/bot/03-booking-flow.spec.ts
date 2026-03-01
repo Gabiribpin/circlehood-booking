@@ -28,10 +28,10 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     expect(greeting!.toLowerCase()).toMatch(/salao|salão|gabriela|bem[- ]?vindo|olá|oi/i);
 
     // Turno 2: Pedido completo (serviço + dia + horário)
-    // 10h para evitar conflito com timezone-dst que usa 15h (serviço dura 2h → 15-17h)
+    // 10:30 para evitar conflito com timezone-dst (15h) e test 2 (11h)
     await sendBotMessage(
       request,
-      `quero cortar cabelo na segunda dia ${day}/${month} às 10h`
+      `quero cortar cabelo na segunda dia ${day}/${month} às 10:30`
     );
     const askName = await getLastBotMessage(greeting!);
     expect(askName).not.toBeNull();
@@ -53,7 +53,7 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     const booking = bookings[0];
     expect(booking.booking_date).toBe(monday);
     expect(booking.client_name.toLowerCase()).toContain('ana');
-    expect(booking.start_time).toMatch(/^10:/);
+    expect(booking.start_time).toMatch(/^10:30/);
   });
 
   test('bot rejeita domingo mas aceita segunda na mesma conversa', async ({
@@ -79,9 +79,10 @@ test.describe('Bot — Fluxo de Agendamento', () => {
     expect(bookingsDurante).toHaveLength(0);
 
     // Corrige para segunda — bot deve engajar sem rejeitar o dia
+    // Usar 11h para evitar conflito com o slot 10h usado pelo test anterior
     await sendBotMessage(
       request,
-      `tudo bem, então quero marcar na segunda dia ${day}/${month} às 10h`
+      `tudo bem, então quero marcar na segunda dia ${day}/${month} às 11h`
     );
     const response = await getLastBotMessage(rejection!);
     expect(response).not.toBeNull();
