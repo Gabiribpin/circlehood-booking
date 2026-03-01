@@ -24,52 +24,13 @@ import {
 } from '@/components/ui/select';
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
-
-const COUNTRIES: { code: string; label: string }[] = [
-  { code: 'IE', label: 'Irlanda' },
-  { code: 'PT', label: 'Portugal' },
-  { code: 'BR', label: 'Brasil' },
-  { code: 'GB', label: 'Reino Unido' },
-  { code: 'US', label: 'Estados Unidos' },
-  { code: 'ES', label: 'Espanha' },
-  { code: 'FR', label: 'França' },
-  { code: 'DE', label: 'Alemanha' },
-  { code: 'IT', label: 'Itália' },
-  { code: 'AU', label: 'Austrália' },
-  { code: 'CA', label: 'Canadá' },
-  { code: 'MX', label: 'México' },
-  { code: 'AR', label: 'Argentina' },
-  { code: 'CO', label: 'Colômbia' },
-];
-
-const CURRENCY_BY_COUNTRY: Record<string, string> = {
-  IE: 'eur', PT: 'eur', ES: 'eur', FR: 'eur', DE: 'eur', IT: 'eur',
-  BR: 'brl', GB: 'gbp', US: 'usd', AU: 'aud', CA: 'cad', MX: 'mxn',
-  AR: 'ars', CO: 'cop',
-};
-
-const CATEGORIES = [
-  'Barbeiro',
-  'Cabeleireiro(a)',
-  'Coach / Consultor',
-  'Cleaner',
-  'Dog Groomer / Pet',
-  'Esteticista',
-  'Fisioterapeuta',
-  'Fotógrafo',
-  'Instrutor de Yoga/Pilates',
-  'Makeup Artist',
-  'Massagista',
-  'Nail Tech',
-  'Nutricionista',
-  'Personal Trainer',
-  'Professor / Tutor',
-  'Psicólogo / Terapeuta',
-  'Outro',
-];
+import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
+import { COUNTRIES, CATEGORIES, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
+import { useTranslations } from 'next-intl';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const [step, setStep] = useState(1);
 
   useEffect(() => {
@@ -278,6 +239,20 @@ export default function RegisterPage() {
               <Button type="submit" className="w-full">
                 Continuar
               </Button>
+
+              <div className="relative w-full">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">
+                    {t('orRegisterWith')}
+                  </span>
+                </div>
+              </div>
+
+              <SocialLoginButtons mode="register" />
+
               <p className="text-sm text-muted-foreground text-center">
                 Já tem conta?{' '}
                 <Link href="/login" className="text-primary underline hover:no-underline">

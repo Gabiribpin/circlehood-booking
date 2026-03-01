@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
+import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -129,6 +130,20 @@ export default function LoginPage() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Entrar
             </Button>
+
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  {t('orContinueWith')}
+                </span>
+              </div>
+            </div>
+
+            <SocialLoginButtons mode="login" />
+
             <p className="text-sm text-muted-foreground text-center">
               Ainda não tem conta?{' '}
               <Link href={registerHref} className="text-primary underline hover:no-underline">

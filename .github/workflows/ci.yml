@@ -150,6 +150,38 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
+  # Job 5b: Social Login (OAuth buttons, complete-profile, callback)
+  # ─────────────────────────────────────────────────────────────
+  social-login-e2e:
+    name: Playwright (social login)
+    runs-on: ubuntu-latest
+    environment: test
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+      - name: Run social login tests
+        run: npx playwright test --project=social-login
+        env:
+          TEST_BASE_URL: https://booking.circlehood-tech.com
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-social-login
+          path: e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
   # Job 6: Jornada do usuário (registro + onboarding) — todo push e PR
   # ─────────────────────────────────────────────────────────────
   user-journey-e2e:
@@ -635,6 +667,7 @@ jobs:
       - dashboard-e2e
       - api-e2e
       - security-e2e
+      - social-login-e2e
       - user-journey-e2e
       - navigation-e2e
       - ux-e2e
@@ -685,6 +718,7 @@ jobs:
       - dashboard-e2e
       - api-e2e
       - security-e2e
+      - social-login-e2e
       - user-journey-e2e
       - navigation-e2e
       - ux-e2e

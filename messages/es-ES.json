@@ -64,7 +64,18 @@
     "subscribeSecure": "Pago seguro con Stripe. Tus datos estan protegidos con encriptacion bancaria.",
     "subscribeCancelled": "Checkout cancelado. Necesitas activar tu plan para acceder al sistema.",
     "subscribeButton": "Activar plan — 14 dias gratis",
-    "subscribeNote": "Cancela en cualquier momento. Sin compromiso."
+    "subscribeNote": "Cancela en cualquier momento. Sin compromiso.",
+    "orContinueWith": "o continúa con",
+    "orRegisterWith": "o regístrate con",
+    "signInWithGoogle": "Iniciar con Google",
+    "signInWithApple": "Iniciar con Apple",
+    "signInWithFacebook": "Iniciar con Facebook",
+    "registerWithGoogle": "Registrarse con Google",
+    "registerWithApple": "Registrarse con Apple",
+    "registerWithFacebook": "Registrarse con Facebook",
+    "completeProfile": "Completa tu perfil",
+    "completeProfileDesc": "Necesitamos información sobre tu negocio",
+    "socialLoginError": "Error al conectar con {provider}. Inténtalo de nuevo."
   },
   "dashboard": {
     "welcome": "¡Bienvenido, {name}!",

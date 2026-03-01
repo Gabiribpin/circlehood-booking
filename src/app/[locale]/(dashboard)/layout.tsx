@@ -78,6 +78,11 @@ export default async function DashboardLayout({
     .eq('user_id', user.id)
     .single();
 
+  // OAuth user without professional record → complete profile
+  if (!professional) {
+    redirect('/complete-profile');
+  }
+
   // Block dashboard access if email not verified yet
   if (professional && professional.email_verified === false) {
     redirect('/verify-email-pending');

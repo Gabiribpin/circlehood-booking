@@ -97,6 +97,17 @@ export default defineConfig({
       use: { browserName: 'firefox', headless: true },
     },
 
+    // ─── Social Login: OAuth buttons, complete-profile, callback ────────
+    {
+      name: 'social-login',
+      testMatch: '**/social-login/**/*.spec.ts',
+      retries: 1, // 1 retry: protege contra timing de redirect e cold start
+      use: {
+        browserName: 'chromium',
+        headless: true,
+      },
+    },
+
     // ─── Jornada do usuário: registro + onboarding (usa sessão salva) ──
     {
       name: 'user-journey',
