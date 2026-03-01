@@ -5,13 +5,7 @@
  *  - User COM professional → redirect /dashboard (comportamento existente)
  *  - User SEM professional → redirect /complete-profile (novo)
  *
- * Não podemos testar OAuth real (depende de redirect externo).
- * Testamos a lógica de redirect via:
- *  1. Dashboard layout null guard (user sem professional → /complete-profile)
- *  2. Callback sem code → /login?error=auth (regressão)
- *
- * Também validamos que o fluxo email existente não foi quebrado:
- *  3. Login normal (email/senha) → dashboard funciona normalmente
+ * Também valida que o fluxo email existente não foi quebrado.
  */
 import { test, expect } from '@playwright/test';
 import { TEST } from '../helpers/config';
@@ -52,12 +46,10 @@ test.describe('Callback Route — Regressão', () => {
     // Deve ir para dashboard normalmente (não para /complete-profile)
     await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 
-    // Dashboard deve mostrar conteúdo (não redirecionou para outro lugar)
-    await expect(page.locator('body')).not.toContainText('Complete seu perfil', { timeout: 5_000 });
+    // Dashboard deve mostrar conteúdo (não redirecionou para complete-profile)
+    await expect(page.getByText(/complete.*(seu perfil|your profile)/i)).not.toBeVisible({ timeout: 5_000 });
   });
-});
 
-test.describe('Dashboard Layout — Null Guard', () => {
   // ── 4. i18n: botões sociais em inglês ─────────────────────────────────
   test('login em en-US exibe "or continue with"', async ({ page }) => {
     await page.goto(`${BASE}/en-US/login`);

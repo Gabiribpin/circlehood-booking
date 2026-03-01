@@ -2,15 +2,12 @@
  * Testes E2E — Página /complete-profile (UI)
  *
  * Cobre:
+ *  - Botões sociais visíveis em /login e /register
  *  - Redirect para /login se não autenticado
  *  - Redirect para /dashboard se já tem professional
- *  - Formulário renderiza campos obrigatórios
- *  - Slug auto-gerado a partir do business name
- *  - Checkbox de termos obrigatório
- *  - Botões sociais visíveis em /login e /register
  *
  * Nota: Não testa OAuth real (depende de provider externo).
- * Testa a UI dos botões sociais e o fluxo de complete-profile.
+ * Usa regex i18n-agnostic para localizar elementos (pt-BR ou en-US).
  */
 import { test, expect } from '@playwright/test';
 import { TEST } from '../helpers/config';
@@ -26,10 +23,10 @@ test.describe('Social Login Buttons — UI', () => {
     await page.goto(`${BASE}/login`);
     await expect(page.locator('#email')).toBeVisible({ timeout: 15_000 });
 
-    // Divisor "ou continue com"
-    await expect(page.getByText(/ou continue com/i)).toBeVisible();
+    // Divisor — pode ser pt-BR ou en-US
+    await expect(page.getByText(/ou continue com|or continue with/i)).toBeVisible();
 
-    // Botões
+    // Botões — o texto contém o nome do provider independente do idioma
     await expect(page.getByRole('button', { name: /google/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /apple/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /facebook/i })).toBeVisible();
@@ -39,8 +36,8 @@ test.describe('Social Login Buttons — UI', () => {
     await page.goto(`${BASE}/register`);
     await expect(page.locator('#email')).toBeVisible({ timeout: 15_000 });
 
-    // Divisor "ou cadastre-se com"
-    await expect(page.getByText(/ou cadastre-se com/i)).toBeVisible();
+    // Divisor — pode ser pt-BR ou en-US
+    await expect(page.getByText(/ou cadastre-se com|or sign up with/i)).toBeVisible();
 
     // Botões
     await expect(page.getByRole('button', { name: /google/i })).toBeVisible();
@@ -61,7 +58,7 @@ test.describe('Social Login Buttons — UI', () => {
     await expect(page.locator('#businessName')).toBeVisible({ timeout: 10_000 });
 
     // Botões sociais NÃO devem aparecer no step 2
-    await expect(page.getByText(/ou cadastre-se com/i)).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /google/i })).not.toBeVisible();
   });
 });
 
@@ -80,12 +77,8 @@ test.describe('Complete Profile Page — Guards', () => {
 });
 
 test.describe('Complete Profile Page — Form (autenticado)', () => {
-  // Estes testes usam storageState da conta de teste (Salão da Rita).
-  // Como ela JÁ tem professional, o page deve redirecionar para /dashboard.
-  // Isso testa o guard de "já tem professional".
-
   test('redireciona para /dashboard se já tem professional', async ({ page }) => {
-    // Login manual com conta que já tem professional
+    // Login com conta que já tem professional
     await page.goto(`${BASE}/login`);
     await expect(page.locator('#email')).toBeVisible({ timeout: 15_000 });
     await page.fill('#email', TEST.USER_EMAIL);
