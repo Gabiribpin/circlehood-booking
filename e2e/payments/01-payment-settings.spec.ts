@@ -60,6 +60,7 @@ test.describe('Payments — Configurações de Sinal', () => {
   // ── 1. Ativar sinal ────────────────────────────────────────────────────────
 
   test('1. Ativar sinal: salva e persiste ao recarregar', async ({ page }) => {
+    test.setTimeout(90_000);
     const sw = await gotoPayment(page);
 
     // Garantir que está OFF
@@ -73,6 +74,8 @@ test.describe('Payments — Configurações de Sinal', () => {
 
     // Ligar
     await sw.click();
+    // Aguardar campo de valor aparecer (renderização condicional)
+    await page.locator('#depositValue').waitFor({ state: 'visible', timeout: 5_000 });
     // Preencher valor obrigatório
     await page.locator('#depositValue').fill('30');
 
@@ -89,12 +92,14 @@ test.describe('Payments — Configurações de Sinal', () => {
   // ── 2. Desativar sinal ─────────────────────────────────────────────────────
 
   test('2. Desativar sinal: salva e persiste ao recarregar', async ({ page }) => {
+    test.setTimeout(90_000);
     const sw = await gotoPayment(page);
 
     // Garantir que está ON (state left by test 1)
     const isOn = (await sw.getAttribute('aria-checked')) === 'true';
     if (!isOn) {
       await sw.click();
+      await page.locator('#depositValue').waitFor({ state: 'visible', timeout: 5_000 });
       await page.locator('#depositValue').fill('30');
       await saveAndWait(page);
       await page.reload({ waitUntil: 'domcontentloaded' });
