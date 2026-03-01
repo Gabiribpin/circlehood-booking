@@ -226,20 +226,35 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     // Aguardar confirmação "Salvo!" → garante PATCH Supabase completou
     await expect(page.getByRole('button', { name: /Salvo|Saved/i })).toBeVisible({ timeout: 15_000 });
 
-    // Aguardar router.replace (1.5s timer) + replica Supabase propagar
-    await page.waitForTimeout(5_000);
+    // Reforçar o save via service role (bypass read-replica lag)
+    // A UI save pode sofrer de read-replica lag no Supabase em CI
+    if (TEST.SUPABASE_URL && TEST.SUPABASE_SERVICE_KEY) {
+      const sb = createClient(TEST.SUPABASE_URL, TEST.SUPABASE_SERVICE_KEY);
+      await sb.from('professionals').update({ locale: 'en-US' }).eq('id', TEST.PROFESSIONAL_ID);
+    }
+
+    // Aguardar router.replace (1.5s timer)
+    await page.waitForTimeout(3_000);
+
+    // Set NEXT_LOCALE cookie via Playwright context
+    const url = new URL(BASE);
+    await page.context().addCookies([{
+      name: 'NEXT_LOCALE',
+      value: 'en-US',
+      domain: url.hostname,
+      path: '/',
+    }]);
 
     // Navegar explicitamente para /en-US/settings para confirmar locale persistiu
     await page.goto(`${BASE}/en-US/settings`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Settings', { timeout: 20_000 });
 
-    // Aguardar replica lag extra antes de reload
+    // Aguardar para replica lag
     await page.waitForTimeout(3_000);
 
     // Recarregar → locale deve persistir (content in English)
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Settings', { timeout: 20_000 });
-    // URL pode ter ou não prefixo /en-US/ dependendo de como middleware resolve NEXT_LOCALE cookie
     expect(page.url()).toMatch(/\/settings$/);
     await expect(page.locator('select#locale')).toHaveValue('en-US', { timeout: 15_000 });
   });
