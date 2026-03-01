@@ -56,11 +56,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Create professional record
+  // Nota: professionals não tem coluna 'email' — email fica em auth.users
+  // trial_ends_at e subscription_status têm defaults no DB, mas setamos explicitamente
   const { error: insertError } = await admin
     .from('professionals')
     .insert({
       user_id: user.id,
-      email: user.email,
       business_name: body.business_name,
       slug: body.slug,
       city: body.city,
@@ -69,8 +70,6 @@ export async function POST(req: NextRequest) {
       currency: body.currency,
       locale: body.locale,
       email_verified: true, // OAuth confirms email
-      subscription_status: 'trial',
-      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     } as never);
 
   if (insertError) {

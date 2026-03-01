@@ -236,13 +236,11 @@ test.describe('Complete Profile API — /api/auth/complete-profile', () => {
       // Criar professional manualmente (simular que já completou perfil)
       await sb.from('professionals').insert({
         user_id: userId,
-        email,
         business_name: 'Já Existe',
         slug,
         city: 'Dublin',
         country: 'IE',
         email_verified: true,
-        subscription_status: 'trial',
       } as never);
 
       await loginInBrowser(page, email, password);
