@@ -217,14 +217,14 @@ test.describe('Race Condition — Prevenção de overbooking', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    const wednesday = nextWeekday(3);
-    const slot = await getFirstAvailableSlot(request, service!.id, wednesday);
-    if (!slot) test.skip(true, 'Sem slots disponíveis na quarta');
+    const thursday = nextWeekday(4);
+    const slot = await getFirstAvailableSlot(request, service!.id, thursday);
+    if (!slot) test.skip(true, 'Sem slots disponíveis na quinta');
 
     const baseBooking = {
       professional_id: TEST.PROFESSIONAL_ID,
       service_id: service!.id,
-      booking_date: wednesday,
+      booking_date: thursday,
       start_time: slot,
     };
 
