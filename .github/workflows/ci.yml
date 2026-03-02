@@ -434,6 +434,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   bot-reschedule:
     name: Playwright (reagendamento bot)
+    if: vars.BOT_E2E_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: test
     needs: [unit, bot-e2e]
@@ -523,6 +524,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   blocked-periods-bot:
     name: Playwright (bloqueio de período — bot)
+    if: vars.BOT_E2E_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: test
     needs: [unit, bot-reschedule]
@@ -553,6 +555,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   consistency-bot-page:
     name: Playwright (consistência bot ↔ página)
+    if: vars.BOT_E2E_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: test
     needs: [unit, blocked-periods-bot]
@@ -659,6 +662,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   bot-e2e:
     name: Playwright (bot E2E) 💰
+    if: vars.BOT_E2E_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: test
     needs:

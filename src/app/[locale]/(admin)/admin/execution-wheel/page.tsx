@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { FlaskConical } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -124,6 +126,11 @@ export default function ExecutionWheelPage() {
 
   const [validated, setValidated] = useState(false);
 
+  // Bot E2E toggle
+  const [botE2eEnabled, setBotE2eEnabled] = useState(false);
+  const [botE2eLoading, setBotE2eLoading] = useState(true);
+  const [botE2eError, setBotE2eError] = useState('');
+
   // Capture form
   const [newType, setNewType] = useState('enhancement');
   const [newSev, setNewSev] = useState('');
@@ -160,6 +167,42 @@ export default function ExecutionWheelPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load Bot E2E toggle state
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/bot-e2e-toggle');
+        if (!res.ok) { setBotE2eError('Falha ao carregar'); return; }
+        const data = await res.json();
+        setBotE2eEnabled(data.enabled);
+        if (data.error) setBotE2eError(data.error);
+      } catch {
+        setBotE2eError('Falha ao carregar');
+      } finally {
+        setBotE2eLoading(false);
+      }
+    })();
+  }, []);
+
+  async function handleBotE2eToggle(checked: boolean) {
+    setBotE2eLoading(true);
+    try {
+      const res = await fetch('/api/admin/bot-e2e-toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: checked }),
+      });
+      const data = await res.json();
+      if (!res.ok) { log(`ERRO Bot E2E: ${data.error}`); return; }
+      setBotE2eEnabled(data.enabled);
+      log(`Bot E2E ${data.enabled ? 'LIGADO' : 'DESLIGADO'}`);
+    } catch (e) {
+      log(`ERRO Bot E2E: ${(e as Error).message}`);
+    } finally {
+      setBotE2eLoading(false);
+    }
+  }
 
   // Save checkpoint
   useEffect(() => {
@@ -436,6 +479,37 @@ export default function ExecutionWheelPage() {
         >
           {connected ? `Conectado — ${openCount} issues` : 'Desconectado'}
         </span>
+      </div>
+
+      {/* Bot E2E toggle */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FlaskConical className="h-5 w-5 text-indigo-500" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900 dark:text-white">Bot E2E (Anthropic)</span>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  botE2eEnabled
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                }`}>
+                  {botE2eEnabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                {botE2eError
+                  ? botE2eError
+                  : 'Deixe OFF no dia-a-dia. Ligue apenas antes de release.'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={botE2eEnabled}
+            onCheckedChange={handleBotE2eToggle}
+            disabled={botE2eLoading || !!botE2eError}
+          />
+        </div>
       </div>
 
       {/* Connect bar */}
