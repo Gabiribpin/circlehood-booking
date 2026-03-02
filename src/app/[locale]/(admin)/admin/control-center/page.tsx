@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,17 @@ interface ChecklistItem {
   label: string;
   value: string;
   severity: 'green' | 'yellow' | 'red';
+}
+
+interface Entry {
+  id: string;
+  type: 'idea' | 'error';
+  title: string;
+  form_data: IdeaForm | ErrorForm;
+  checklist: ChecklistItem[];
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
 }
 
 // ─── Analysis logic (pure, no API) ──────────────────────────────────────────
@@ -215,7 +226,13 @@ function analyzeError(form: ErrorForm): ChecklistItem[] {
   return items;
 }
 
-// ─── Severity badge ─────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function maxSeverity(checklist: ChecklistItem[]): 'green' | 'yellow' | 'red' {
+  if (checklist.some((c) => c.severity === 'red')) return 'red';
+  if (checklist.some((c) => c.severity === 'yellow')) return 'yellow';
+  return 'green';
+}
 
 function SeverityDot({ severity }: { severity: 'green' | 'yellow' | 'red' }) {
   const colors = {
@@ -224,6 +241,18 @@ function SeverityDot({ severity }: { severity: 'green' | 'yellow' | 'red' }) {
     red: 'bg-red-500',
   };
   return <span className={`inline-block h-2.5 w-2.5 rounded-full ${colors[severity]} flex-shrink-0 mt-1`} />;
+}
+
+function TypeBadge({ type }: { type: 'idea' | 'error' }) {
+  return type === 'idea' ? (
+    <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase px-2 py-0.5">
+      Ideia
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-[10px] font-bold uppercase px-2 py-0.5">
+      Erro
+    </span>
+  );
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -248,6 +277,76 @@ export default function ControlCenterPage() {
     reproducible: false,
   });
   const [errorResult, setErrorResult] = useState<ChecklistItem[] | null>(null);
+
+  // Persisted entries
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [showResolved, setShowResolved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [resolving, setResolving] = useState<string | null>(null);
+
+  const fetchEntries = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/control-center');
+      if (res.ok) {
+        setEntries(await res.json());
+      }
+    } catch {
+      // silent — admin page, non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
+
+  async function saveEntry(type: 'idea' | 'error', title: string, formData: IdeaForm | ErrorForm, checklist: ChecklistItem[]) {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/control-center', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, title, form_data: formData, checklist }),
+      });
+      if (res.ok) {
+        const entry = await res.json();
+        setEntries((prev) => [entry, ...prev]);
+      }
+    } catch {
+      // silent
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resolveEntry(id: string) {
+    setResolving(id);
+    try {
+      const res = await fetch(`/api/admin/control-center/${id}/resolve`, { method: 'PATCH' });
+      if (res.ok) {
+        const updated = await res.json();
+        setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      }
+    } catch {
+      // silent
+    } finally {
+      setResolving(null);
+    }
+  }
+
+  function handleAnalyzeIdea() {
+    const checklist = analyzeIdea(idea);
+    setIdeaResult(checklist);
+    saveEntry('idea', idea.title, idea, checklist);
+  }
+
+  function handleAnalyzeError() {
+    const checklist = analyzeError(error);
+    setErrorResult(checklist);
+    saveEntry('error', error.where, error, checklist);
+  }
+
+  const pendingEntries = entries.filter((e) => !e.resolved);
+  const resolvedEntries = entries.filter((e) => e.resolved);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -318,11 +417,11 @@ export default function ControlCenterPage() {
           </div>
 
           <button
-            onClick={() => setIdeaResult(analyzeIdea(idea))}
-            disabled={!idea.title.trim()}
+            onClick={handleAnalyzeIdea}
+            disabled={!idea.title.trim() || saving}
             className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 transition-colors"
           >
-            ANALISAR IDEIA
+            {saving ? 'SALVANDO...' : 'ANALISAR IDEIA'}
           </button>
 
           {/* Result */}
@@ -396,11 +495,11 @@ export default function ControlCenterPage() {
           </div>
 
           <button
-            onClick={() => setErrorResult(analyzeError(error))}
-            disabled={!error.where.trim() || !error.message.trim()}
+            onClick={handleAnalyzeError}
+            disabled={!error.where.trim() || !error.message.trim() || saving}
             className="w-full rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 transition-colors"
           >
-            ANALISAR ERRO
+            {saving ? 'SALVANDO...' : 'ANALISAR ERRO'}
           </button>
 
           {/* Result */}
@@ -419,6 +518,133 @@ export default function ControlCenterPage() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── SECAO 3: ITENS PENDENTES ──────────────────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-300">
+            Itens Pendentes ({pendingEntries.length})
+          </h2>
+          <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showResolved}
+              onChange={(e) => setShowResolved(e.target.checked)}
+              className="rounded border-slate-300 dark:border-slate-600 text-slate-600 focus:ring-slate-500"
+            />
+            Mostrar resolvidos ({resolvedEntries.length})
+          </label>
+        </div>
+
+        {pendingEntries.length === 0 && !showResolved && (
+          <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+            Nenhum item pendente. Analise uma ideia ou erro acima.
+          </p>
+        )}
+
+        <div className="space-y-3">
+          {pendingEntries.map((entry) => (
+            <EntryCard
+              key={entry.id}
+              entry={entry}
+              onResolve={() => resolveEntry(entry.id)}
+              resolving={resolving === entry.id}
+            />
+          ))}
+
+          {showResolved && resolvedEntries.length > 0 && (
+            <>
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600 mb-2">
+                  Resolvidos
+                </p>
+              </div>
+              {resolvedEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} resolved />
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Entry card ──────────────────────────────────────────────────────────────
+
+function EntryCard({
+  entry,
+  onResolve,
+  resolving,
+  resolved,
+}: {
+  entry: Entry;
+  onResolve?: () => void;
+  resolving?: boolean;
+  resolved?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const severity = maxSeverity(entry.checklist);
+
+  return (
+    <div
+      className={`rounded-lg border p-3 text-xs transition-colors ${
+        resolved
+          ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 opacity-60'
+          : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <SeverityDot severity={severity} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <TypeBadge type={entry.type} />
+            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+              {entry.title}
+            </span>
+            <span className="text-slate-400 dark:text-slate-600 text-[10px]">
+              {new Date(entry.created_at).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+
+          {expanded && (
+            <div className="mt-2 space-y-1.5 pl-1">
+              {entry.checklist.map((item, i) => (
+                <div key={i} className="flex gap-2">
+                  <SeverityDot severity={item.severity} />
+                  <div>
+                    <span className="font-bold text-slate-600 dark:text-slate-400">{item.label}: </span>
+                    <span className="text-slate-500 dark:text-slate-500">{item.value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="rounded px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+          >
+            {expanded ? 'Fechar' : 'Detalhes'}
+          </button>
+          {!resolved && onResolve && (
+            <button
+              onClick={onResolve}
+              disabled={resolving}
+              className="rounded px-2 py-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 disabled:opacity-40 transition-colors"
+            >
+              {resolving ? '...' : 'Resolver'}
+            </button>
           )}
         </div>
       </div>
