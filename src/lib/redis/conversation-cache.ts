@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { redisKey } from './prefix';
 
 export interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -46,7 +47,7 @@ export class ConversationCache {
     }
 
     try {
-      const key = `conversation:${cacheKey}`;
+      const key = redisKey(`conversation:${cacheKey}`);
       const dataStr = await client.get(key);
       if (!dataStr) return [];
 
@@ -67,7 +68,7 @@ export class ConversationCache {
     if (!client) return;
 
     try {
-      const key = `conversation:${cacheKey}`;
+      const key = redisKey(`conversation:${cacheKey}`);
       const current = await this.getHistory(cacheKey);
       const limited = [...current, ...messages].slice(-MAX_MESSAGES);
       await client.setex(key, TTL, JSON.stringify(limited));
@@ -82,7 +83,7 @@ export class ConversationCache {
     if (!client) return;
 
     try {
-      await client.del(`conversation:${cacheKey}`);
+      await client.del(redisKey(`conversation:${cacheKey}`));
     } catch (error) {
       console.error('❌ Redis del error:', (error as Error).message);
     }
@@ -98,7 +99,7 @@ export class ConversationCache {
     if (!client) return true; // sem Redis: permite (risco baixo)
     try {
       // TTL de 300s (5 min) para cobrir toda a janela de retry da Evolution/Meta
-      const result = await client.set(`greeting_lock:${cacheKey}`, '1', 'EX', 300, 'NX');
+      const result = await client.set(redisKey(`greeting_lock:${cacheKey}`), '1', 'EX', 300, 'NX');
       return result === 'OK';
     } catch {
       return true; // em erro: permite

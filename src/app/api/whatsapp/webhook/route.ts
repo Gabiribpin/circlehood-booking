@@ -42,9 +42,27 @@ export async function GET(request: NextRequest) {
   return new NextResponse('OK', { status: 200 });
 }
 
+const isNonProduction =
+  process.env.VERCEL_ENV &&
+  process.env.VERCEL_ENV !== 'production' &&
+  process.env.NODE_ENV !== 'test';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // ── Safety: não processar mensagens reais em staging/preview ──
+    if (isNonProduction) {
+      console.log(
+        `[webhook] Ambiente ${process.env.VERCEL_ENV} — mensagem recebida mas NÃO processada`,
+        JSON.stringify(body).slice(0, 200)
+      );
+      return NextResponse.json({
+        status: 'ok',
+        environment: process.env.VERCEL_ENV,
+        sent: false,
+      });
+    }
 
     // ── Formato Evolution API ──────────────────────────────────
     if (isEvolutionPayload(body)) {

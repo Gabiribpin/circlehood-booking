@@ -44,6 +44,20 @@
 - ~250+ testes E2E automatizados
 - CI com 18+ jobs organizados em camadas
 
+## Ambientes
+
+| Ambiente | VERCEL_ENV | Supabase | Redis prefix | WhatsApp |
+|----------|-----------|----------|-------------|----------|
+| **Production** | `production` | `circlehood-booking` (prod) | `production:` | Envia mensagens reais |
+| **Staging/Preview** | `preview` | `cuwhyixgkfhioubejtaw` (staging) | `preview:` | Loga mas **não envia** |
+| **Local** | — | `.env.local` | `development:` | Depende de config local |
+
+**Isolamento Redis:** todas as keys são prefixadas com `{env}:` (ex: `production:conversation:abc`), permitindo que ambientes compartilhem a mesma instância Redis sem conflito.
+
+**Guardrails:**
+- `src/lib/env-validation.ts` — bloqueia preview apontando para DB de produção (requer `SUPABASE_PRODUCTION_REF`)
+- `src/app/api/whatsapp/webhook/route.ts` — em `preview`, loga webhooks mas não processa mensagens reais
+
 ## Configuração
 
 ### Variáveis de ambiente
