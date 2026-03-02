@@ -2,17 +2,22 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
 import { parseEvolutionPhone, sendEvolutionMessage } from '@/lib/whatsapp/evolution';
+import { validateEvolutionWebhook } from '@/lib/evolution/webhook-auth';
+import { maskSensitiveHeaders } from '@/lib/evolution/mask-headers';
 import { createClient } from '@supabase/supabase-js';
 
 const AUDIO_REPLY =
   'Desculpe, ainda não consigo ouvir áudios 🎙️ Por favor, envie sua mensagem por texto e ficarei feliz em ajudar! 😊';
 
-async function getEvolutionConfig(instance: string) {
-  const supabase = createClient(
+function getSupabase() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-  const { data } = await supabase
+}
+
+async function getEvolutionConfig(instance: string) {
+  const { data } = await getSupabase()
     .from('whatsapp_config')
     .select('evolution_api_url, evolution_api_key, evolution_instance')
     .eq('evolution_instance', instance)
@@ -23,6 +28,28 @@ async function getEvolutionConfig(instance: string) {
     apiKey: data.evolution_api_key,
     instance: data.evolution_instance,
   };
+}
+
+/** Fire-and-forget webhook log insert (never blocks response). */
+function logWebhook(
+  instanceName: string,
+  status: number,
+  processingTimeMs: number,
+  opts?: { error?: string; rateLimited?: boolean; metadata?: Record<string, unknown> }
+) {
+  getSupabase()
+    .from('webhook_logs')
+    .insert({
+      instance_name: instanceName,
+      status,
+      processing_time_ms: processingTimeMs,
+      error: opts?.error ?? null,
+      rate_limited: opts?.rateLimited ?? false,
+      metadata: opts?.metadata ?? null,
+    } as never)
+    .then(({ error }) => {
+      if (error) console.error('[webhook-log] insert failed:', error.message);
+    });
 }
 
 export const maxDuration = 60;
@@ -43,11 +70,27 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body = await request.json();
 
     // ── Formato Evolution API ──────────────────────────────────
     if (isEvolutionPayload(body)) {
+      // TODO: Remove after confirming exact Evolution header names (temporary debug logging)
+      if (process.env.WEBHOOK_DEBUG_HEADERS === 'true') {
+        const safeHeaders = maskSensitiveHeaders(request.headers);
+        console.log(`[webhook-debug] Instance: ${body.instance} | Headers:`, safeHeaders);
+      }
+
+      // Validate webhook authenticity
+      const isValid = await validateEvolutionWebhook(request.headers, body.instance);
+      if (!isValid) {
+        console.warn('[webhook] Invalid Evolution webhook request for instance:', body.instance);
+        logWebhook(body.instance, 401, Date.now() - startTime, { error: 'Unauthorized' });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
       // Ignorar mensagens enviadas pelo próprio bot
       if (body.data.key.fromMe) {
         return NextResponse.json({ status: 'ok' });
@@ -90,6 +133,9 @@ export async function POST(request: NextRequest) {
 
       // Retornar 200 ANTES de processar — evita retries da Evolution API
       // que causam loop de mensagens duplicadas quando o bot demora > 5s
+      logWebhook(body.instance, 200, Date.now() - startTime, {
+        metadata: { event: body.event, type: 'text' },
+      });
       after(async () => {
         await processWhatsAppMessage(from, text, messageId, 'evolution', body.instance);
       });
@@ -97,6 +143,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Formato Meta Business ──────────────────────────────────
+    // Meta payloads are verified via the GET hub.verify_token handshake at setup time.
+    // For additional security in production, validate X-Hub-Signature-256 header.
     if (isMetaPayload(body)) {
       if (body.entry?.[0]?.changes?.[0]?.value?.messages) {
         const message = body.entry[0].changes[0].value.messages[0];
@@ -123,6 +171,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
     console.error('WhatsApp webhook error:', error);
+    logWebhook('unknown', 500, Date.now() - startTime, {
+      error: (error as Error).message,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

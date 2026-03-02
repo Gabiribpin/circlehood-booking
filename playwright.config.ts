@@ -47,6 +47,14 @@ export default defineConfig({
       retries: 1,
     },
 
+    // ─── Bot Toggle: testes do toggle global bot_enabled ──────────────
+    {
+      name: 'bot-toggle',
+      testMatch: '**/bot/07-bot-toggle.spec.ts',
+      retries: 1,
+      timeout: 60_000,
+    },
+
     // ─── Bot Reagendamento (usa Claude — rodar só localmente) ─────────
     {
       name: 'bot-reschedule',

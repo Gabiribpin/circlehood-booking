@@ -3,6 +3,8 @@ import { WhatsAppClient } from './client';
 import { sendEvolutionMessage } from './evolution';
 import { createClient } from '@supabase/supabase-js';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
+import { WhatsAppRateLimiter } from './rate-limiter';
+import { phoneVariants } from '@/lib/phone-normalization';
 import type { WhatsAppProvider } from './types';
 
 export async function processWhatsAppMessage(
@@ -17,7 +19,7 @@ export async function processWhatsAppMessage(
     if (messageId) {
       const isDuplicate = !(await ConversationCache.acquireGreetingLock(`msg:${messageId}`));
       if (isDuplicate) {
-        console.log(`⚡ Mensagem duplicada ignorada: ${messageId}`);
+        if (process.env.NODE_ENV !== 'test') console.log(`⚡ Mensagem duplicada ignorada: ${messageId}`);
         return;
       }
     }
@@ -41,7 +43,13 @@ export async function processWhatsAppMessage(
     const { data: config } = await query.single();
 
     if (!config) {
-      console.error('No active WhatsApp config found');
+      if (process.env.NODE_ENV !== 'test') console.error('No active WhatsApp config found');
+      return;
+    }
+
+    // Check global bot toggle — professional pode desativar bot sem desconectar WhatsApp
+    if (config.bot_enabled === false) {
+      if (process.env.NODE_ENV !== 'test') console.log('🤖 Bot desativado globalmente para config:', config.id);
       return;
     }
 
@@ -55,16 +63,25 @@ export async function processWhatsAppMessage(
       .single();
 
     if (professional) {
-      const normalizedPhone = from.replace(/[^0-9]/g, '');
+      // Build OR filter with all phone format variants for robust matching
+      const variants = phoneVariants(from);
+      const orFilter = variants.map(v => `phone.eq.${v}`).join(',');
       const { data: contact } = await supabase
         .from('contacts')
         .select('use_bot')
         .eq('professional_id', professional.id)
-        .or(`phone.eq.${from},phone.eq.+${normalizedPhone},phone.eq.${normalizedPhone}`)
+        .or(orFilter)
         .maybeSingle();
 
       if (contact && contact.use_bot === false) {
-        console.log('🚫 Bot desativado para contato:', from);
+        if (process.env.NODE_ENV !== 'test') console.log('🚫 Bot desativado para contato:', from);
+        return;
+      }
+
+      // Rate limiting — protege contra ban do WhatsApp (Redis-backed)
+      const rateCheck = await WhatsAppRateLimiter.checkAndIncrement(professional.id);
+      if (!rateCheck.allowed) {
+        if (process.env.NODE_ENV !== 'test') console.warn(`⚠️ Rate limit atingido para profissional ${professional.id}: ${rateCheck.reason}`);
         return;
       }
     }

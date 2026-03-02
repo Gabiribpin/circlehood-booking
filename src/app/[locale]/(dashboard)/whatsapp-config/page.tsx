@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
+import { Switch } from '@/components/ui/switch';
 import { BotConfigPanel } from '@/components/dashboard/bot-config-panel';
 import { QrCode, Smartphone } from 'lucide-react';
 
@@ -38,6 +39,9 @@ export default function WhatsAppConfigPage() {
     instructions: '',
   });
 
+  const [botEnabled, setBotEnabled] = useState(true);
+  const [togglingBot, setTogglingBot] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [savingAi, setSavingAi] = useState(false);
   const [evoMessage, setEvoMessage] = useState<string | null>(null);
@@ -64,6 +68,7 @@ export default function WhatsAppConfigPage() {
       if (data) {
         setEvolutionPhone(data.business_phone ?? '');
         setInstanceName(data.evolution_instance ?? '');
+        setBotEnabled(data.bot_enabled !== false);
         if (data.is_active) setConnectionStatus('connected');
       }
 
@@ -240,6 +245,28 @@ export default function WhatsAppConfigPage() {
     setSavingAi(false);
   }
 
+  async function handleToggleBot(enabled: boolean) {
+    setTogglingBot(true);
+    try {
+      const res = await fetch('/api/whatsapp/bot-toggle', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (!res.ok) {
+        setEvoMessage(t('botToggleError'));
+      } else {
+        const data = await res.json();
+        setBotEnabled(data.enabled);
+      }
+    } catch {
+      setEvoMessage(t('botToggleError'));
+    } finally {
+      setTogglingBot(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="container max-w-4xl mx-auto p-6">
@@ -274,6 +301,31 @@ export default function WhatsAppConfigPage() {
                       <p className="text-sm text-green-700">{t('connectedNumber', { phone: evolutionPhone })}</p>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bot toggle — visível quando conectado */}
+            {connectionStatus === 'connected' && (
+              <div className={`p-3 rounded-lg border-2 ${botEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-300'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{botEnabled ? '🤖' : '🔇'}</span>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {botEnabled ? t('botEnabledLabel') : t('botDisabledBadge')}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {botEnabled ? t('botEnabledHint') : t('botDisabledHint')}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="bot-enabled"
+                    checked={botEnabled}
+                    onCheckedChange={handleToggleBot}
+                    disabled={togglingBot}
+                  />
                 </div>
               </div>
             )}

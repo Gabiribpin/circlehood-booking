@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SubscriberChart, type ChartDataPoint } from '@/components/admin/subscriber-chart';
+import { SystemHealthMetrics } from '@/components/admin/system-health-metrics';
 import { Badge } from '@/components/ui/badge';
 import {
   Users,
@@ -137,7 +138,7 @@ export default async function AdminDashboardPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard de Vendas</h1>
@@ -282,6 +283,9 @@ export default async function AdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* System Health — auto-refreshes every 30s */}
+      <SystemHealthMetrics />
     </div>
   );
 }

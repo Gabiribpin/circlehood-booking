@@ -1,22 +1,16 @@
 /**
- * WhatsApp Rate Limiter
+ * WhatsApp Rate Limiter — Redis-backed
  *
  * Limites por profissional para proteção contra ban:
  *   - 30 mensagens/hora
  *   - 50 mensagens/dia
  *   - 200 mensagens/semana
  *
- * NOTA: Respostas conversacionais do bot (cliente inicia → bot responde)
- * NÃO contam neste limite — apenas mensagens proativas (confirmações, etc.).
- *
- * Implementação in-memory com chave por profissional.
- * Em produção com múltiplas instâncias, migrar para Redis.
+ * Uses Redis INCR + EXPIRE for atomic, distributed rate limiting.
+ * Gracefully falls back to allowing messages if Redis is unavailable.
  */
 
-interface BucketEntry {
-  count: number;
-  resetAt: number; // Unix timestamp ms
-}
+import Redis from 'ioredis';
 
 const LIMITS = {
   PER_HOUR: 30,
@@ -24,39 +18,38 @@ const LIMITS = {
   PER_WEEK: 200,
 } as const;
 
-// In-memory store: chave = `{professionalId}:{bucket}:{period}`
-const store = new Map<string, BucketEntry>();
+const TTL = {
+  HOUR: 3600,
+  DAY: 86400,
+  WEEK: 604800,
+} as const;
 
-function getOrCreate(key: string, ttlMs: number): BucketEntry {
-  const now = Date.now();
-  const entry = store.get(key);
-  if (entry && entry.resetAt > now) return entry;
-  const fresh: BucketEntry = { count: 0, resetAt: now + ttlMs };
-  store.set(key, fresh);
-  return fresh;
-}
+// Reuse the same Redis connection strategy as ConversationCache
+const REDIS_CONNECTION_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
+const isConfigured = !!REDIS_CONNECTION_URL;
 
-function periodKeys(professionalId: string) {
-  const now = new Date();
+let redis: Redis | null = null;
 
-  // Hora: bucket por hora do dia
-  const hourBucket = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}-${now.getUTCHours()}`;
-  // Dia: bucket por dia UTC
-  const dayBucket = `${now.getUTCFullYear()}-${now.getUTCMonth()}-${now.getUTCDate()}`;
-  // Semana: bucket por semana ISO
-  const weekStart = new Date(now);
-  weekStart.setUTCDate(now.getUTCDate() - now.getUTCDay());
-  const weekBucket = weekStart.toISOString().split('T')[0];
+function getRedis(): Redis | null {
+  if (!isConfigured) return null;
+  if (redis) return redis;
 
-  const msInHour = 60 * 60 * 1_000;
-  const msInDay = 24 * msInHour;
-  const msInWeek = 7 * msInDay;
+  redis = new Redis(REDIS_CONNECTION_URL!, {
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3000,
+    commandTimeout: 3000,
+    enableReadyCheck: false,
+    lazyConnect: true,
+    retryStrategy: (times) => {
+      if (times > 1) return null;
+      return 500;
+    },
+  });
 
-  return {
-    hour: { key: `${professionalId}:hour:${hourBucket}`, ttl: msInHour },
-    day:  { key: `${professionalId}:day:${dayBucket}`,   ttl: msInDay  },
-    week: { key: `${professionalId}:week:${weekBucket}`, ttl: msInWeek },
-  };
+  redis.on('error', (err) => {
+    if (process.env.NODE_ENV !== 'test') console.error('❌ Redis rate-limiter error:', err.message);
+  });
+  return redis;
 }
 
 export interface RateLimitResult {
@@ -69,88 +62,179 @@ export interface RateLimitResult {
   };
 }
 
+function bucketKeys(professionalId: string) {
+  return {
+    hour: `ratelimit:hour:${professionalId}`,
+    day: `ratelimit:day:${professionalId}`,
+    week: `ratelimit:week:${professionalId}`,
+  };
+}
+
 export const WhatsAppRateLimiter = {
-  check(professionalId: string): RateLimitResult {
-    const periods = periodKeys(professionalId);
+  /**
+   * Check if a message is allowed and increment counters atomically.
+   * Uses Redis INCR — each call counts as one message.
+   */
+  async checkAndIncrement(professionalId: string): Promise<RateLimitResult> {
+    const client = getRedis();
+    if (!client) {
+      // Redis not available — allow (fail-open for availability)
+      return { allowed: true, remaining: { hour: -1, day: -1, week: -1 } };
+    }
 
-    const hourEntry = getOrCreate(periods.hour.key, periods.hour.ttl);
-    const dayEntry  = getOrCreate(periods.day.key,  periods.day.ttl);
-    const weekEntry = getOrCreate(periods.week.key, periods.week.ttl);
+    const keys = bucketKeys(professionalId);
 
-    const remaining = {
-      hour: Math.max(0, LIMITS.PER_HOUR - hourEntry.count),
-      day:  Math.max(0, LIMITS.PER_DAY  - dayEntry.count),
-      week: Math.max(0, LIMITS.PER_WEEK - weekEntry.count),
-    };
+    try {
+      // Atomic pipeline: INCR all counters + set TTL if new
+      const pipeline = client.pipeline();
+      pipeline.incr(keys.hour);
+      pipeline.incr(keys.day);
+      pipeline.incr(keys.week);
+      // TTL only sets if key doesn't have one yet (NX-like via pttl check below)
+      pipeline.ttl(keys.hour);
+      pipeline.ttl(keys.day);
+      pipeline.ttl(keys.week);
 
-    if (hourEntry.count >= LIMITS.PER_HOUR) {
+      const results = await pipeline.exec();
+      if (!results) {
+        return { allowed: true, remaining: { hour: -1, day: -1, week: -1 } };
+      }
+
+      const hourCount = (results[0]?.[1] as number) ?? 0;
+      const dayCount = (results[1]?.[1] as number) ?? 0;
+      const weekCount = (results[2]?.[1] as number) ?? 0;
+      const hourTTL = (results[3]?.[1] as number) ?? -1;
+      const dayTTL = (results[4]?.[1] as number) ?? -1;
+      const weekTTL = (results[5]?.[1] as number) ?? -1;
+
+      // Set TTL on first increment (when TTL is -1 = no expiry set)
+      const ttlPipeline = client.pipeline();
+      if (hourTTL === -1) ttlPipeline.expire(keys.hour, TTL.HOUR);
+      if (dayTTL === -1) ttlPipeline.expire(keys.day, TTL.DAY);
+      if (weekTTL === -1) ttlPipeline.expire(keys.week, TTL.WEEK);
+      await ttlPipeline.exec();
+
+      const remaining = {
+        hour: Math.max(0, LIMITS.PER_HOUR - hourCount),
+        day: Math.max(0, LIMITS.PER_DAY - dayCount),
+        week: Math.max(0, LIMITS.PER_WEEK - weekCount),
+      };
+
+      // Check limits (already incremented, so check against limit)
+      if (hourCount > LIMITS.PER_HOUR) {
+        return {
+          allowed: false,
+          reason: `Limite de ${LIMITS.PER_HOUR} mensagens por hora atingido. Aguarde antes de enviar mais.`,
+          remaining,
+        };
+      }
+
+      if (dayCount > LIMITS.PER_DAY) {
+        return {
+          allowed: false,
+          reason: `Limite de ${LIMITS.PER_DAY} mensagens por dia atingido. Este limite protege o seu número contra bloqueio.`,
+          remaining,
+        };
+      }
+
+      if (weekCount > LIMITS.PER_WEEK) {
+        return {
+          allowed: false,
+          reason: `Limite de ${LIMITS.PER_WEEK} mensagens por semana atingido.`,
+          remaining,
+        };
+      }
+
+      return { allowed: true, remaining };
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') console.error('❌ Rate limiter Redis error:', (error as Error).message);
+      // Fail-open: allow message if Redis has issues
+      return { allowed: true, remaining: { hour: -1, day: -1, week: -1 } };
+    }
+  },
+
+  /**
+   * Check rate limit WITHOUT incrementing (for read-only checks / stats).
+   */
+  async check(professionalId: string): Promise<RateLimitResult> {
+    const client = getRedis();
+    if (!client) {
+      return { allowed: true, remaining: { hour: -1, day: -1, week: -1 } };
+    }
+
+    const keys = bucketKeys(professionalId);
+
+    try {
+      const [hourStr, dayStr, weekStr] = await Promise.all([
+        client.get(keys.hour),
+        client.get(keys.day),
+        client.get(keys.week),
+      ]);
+
+      const hourCount = parseInt(hourStr || '0', 10);
+      const dayCount = parseInt(dayStr || '0', 10);
+      const weekCount = parseInt(weekStr || '0', 10);
+
+      const remaining = {
+        hour: Math.max(0, LIMITS.PER_HOUR - hourCount),
+        day: Math.max(0, LIMITS.PER_DAY - dayCount),
+        week: Math.max(0, LIMITS.PER_WEEK - weekCount),
+      };
+
+      if (hourCount >= LIMITS.PER_HOUR) {
+        return { allowed: false, reason: `Limite de ${LIMITS.PER_HOUR} mensagens por hora atingido.`, remaining };
+      }
+      if (dayCount >= LIMITS.PER_DAY) {
+        return { allowed: false, reason: `Limite de ${LIMITS.PER_DAY} mensagens por dia atingido.`, remaining };
+      }
+      if (weekCount >= LIMITS.PER_WEEK) {
+        return { allowed: false, reason: `Limite de ${LIMITS.PER_WEEK} mensagens por semana atingido.`, remaining };
+      }
+
+      return { allowed: true, remaining };
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') console.error('❌ Rate limiter check error:', (error as Error).message);
+      return { allowed: true, remaining: { hour: -1, day: -1, week: -1 } };
+    }
+  },
+
+  /**
+   * Get rate limit stats for a professional (for UI display).
+   */
+  async getStats(professionalId: string) {
+    const client = getRedis();
+    if (!client) {
       return {
-        allowed: false,
-        reason: `Limite de ${LIMITS.PER_HOUR} mensagens por hora atingido. Aguarde antes de enviar mais.`,
-        remaining,
+        hour: { count: 0, limit: LIMITS.PER_HOUR, remaining: LIMITS.PER_HOUR },
+        day: { count: 0, limit: LIMITS.PER_DAY, remaining: LIMITS.PER_DAY },
+        week: { count: 0, limit: LIMITS.PER_WEEK, remaining: LIMITS.PER_WEEK },
       };
     }
 
-    if (dayEntry.count >= LIMITS.PER_DAY) {
+    const keys = bucketKeys(professionalId);
+
+    try {
+      const [hourStr, dayStr, weekStr] = await Promise.all([
+        client.get(keys.hour),
+        client.get(keys.day),
+        client.get(keys.week),
+      ]);
+
+      const hourCount = parseInt(hourStr || '0', 10);
+      const dayCount = parseInt(dayStr || '0', 10);
+      const weekCount = parseInt(weekStr || '0', 10);
+
       return {
-        allowed: false,
-        reason: `Limite de ${LIMITS.PER_DAY} mensagens por dia atingido. Este limite protege o seu número contra bloqueio.`,
-        remaining,
+        hour: { count: hourCount, limit: LIMITS.PER_HOUR, remaining: Math.max(0, LIMITS.PER_HOUR - hourCount) },
+        day: { count: dayCount, limit: LIMITS.PER_DAY, remaining: Math.max(0, LIMITS.PER_DAY - dayCount) },
+        week: { count: weekCount, limit: LIMITS.PER_WEEK, remaining: Math.max(0, LIMITS.PER_WEEK - weekCount) },
       };
-    }
-
-    if (weekEntry.count >= LIMITS.PER_WEEK) {
+    } catch {
       return {
-        allowed: false,
-        reason: `Limite de ${LIMITS.PER_WEEK} mensagens por semana atingido.`,
-        remaining,
+        hour: { count: 0, limit: LIMITS.PER_HOUR, remaining: LIMITS.PER_HOUR },
+        day: { count: 0, limit: LIMITS.PER_DAY, remaining: LIMITS.PER_DAY },
+        week: { count: 0, limit: LIMITS.PER_WEEK, remaining: LIMITS.PER_WEEK },
       };
-    }
-
-    return { allowed: true, remaining };
-  },
-
-  increment(professionalId: string): void {
-    const periods = periodKeys(professionalId);
-    for (const { key, ttl } of Object.values(periods)) {
-      const entry = getOrCreate(key, ttl);
-      entry.count++;
-      store.set(key, entry);
-    }
-    // Limpeza de entradas expiradas (lazy)
-    this._cleanup();
-  },
-
-  getStats(professionalId: string) {
-    const periods = periodKeys(professionalId);
-
-    const hourEntry = getOrCreate(periods.hour.key, periods.hour.ttl);
-    const dayEntry  = getOrCreate(periods.day.key,  periods.day.ttl);
-    const weekEntry = getOrCreate(periods.week.key, periods.week.ttl);
-
-    return {
-      hour: {
-        count:     hourEntry.count,
-        limit:     LIMITS.PER_HOUR,
-        remaining: Math.max(0, LIMITS.PER_HOUR - hourEntry.count),
-      },
-      day: {
-        count:     dayEntry.count,
-        limit:     LIMITS.PER_DAY,
-        remaining: Math.max(0, LIMITS.PER_DAY - dayEntry.count),
-      },
-      week: {
-        count:     weekEntry.count,
-        limit:     LIMITS.PER_WEEK,
-        remaining: Math.max(0, LIMITS.PER_WEEK - weekEntry.count),
-      },
-    };
-  },
-
-  _cleanup(): void {
-    const now = Date.now();
-    for (const [key, entry] of store.entries()) {
-      if (entry.resetAt <= now) store.delete(key);
     }
   },
 };

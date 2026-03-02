@@ -46,7 +46,7 @@ export default async function DeletedAccountsPage() {
   const now = new Date();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center gap-3">
         <Trash2 className="h-5 w-5 text-destructive" />
         <div>
@@ -93,7 +93,7 @@ export default async function DeletedAccountsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-500 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-500 mb-3">
                     <div>
                       <span className="font-medium text-slate-700">Solicitou exclusão: </span>
                       {new Date(p.deleted_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

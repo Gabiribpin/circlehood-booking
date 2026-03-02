@@ -47,7 +47,7 @@ function LayerLabel({ children }: { children: string }) {
 
 export default function HandbookDiagramaPage() {
   return (
-    <div className="p-6 lg:p-8 space-y-8 max-w-5xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-5xl">
       <Link
         href="/admin/handbook"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

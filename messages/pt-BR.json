@@ -258,7 +258,13 @@
     "saveAiError": "Erro: {message}",
     "saveAiSuccess": "✅ Configurações de IA salvas!",
     "saving": "A salvar...",
-    "saveAiBtn": "Salvar Configurações de IA"
+    "saveAiBtn": "Salvar Configurações de IA",
+    "botEnabledLabel": "Bot ativo",
+    "botEnabledHint": "Quando desativado, o bot não responderá mensagens. O WhatsApp continua conectado.",
+    "botDisabledBadge": "Bot Desativado",
+    "botDisabledHint": "O bot não está respondendo mensagens. Ative-o para retomar o atendimento automático.",
+    "botToggleSaving": "Atualizando...",
+    "botToggleError": "Erro ao atualizar status do bot."
   },
   "settings": {
     "title": "Configurações",

@@ -38,6 +38,51 @@ const testAccount = [
   { label: 'Evolution Instance',value: 'prof-4aa855dd5c8d',                       note: 'instância no Evolution API' },
 ];
 
+const marketingAccounts = [
+  {
+    locale: 'PT-BR 🇧🇷',
+    name: 'Ana Martins Beauty Studio',
+    category: 'Cabeleireira & Esteticista',
+    email: 'profissional@circlehoodtech.com',
+    password: 'Marketing2026Abc',
+    slug: 'ana-martins-beauty',
+    account: 'ACC-2026-00243',
+    userId: '191a7eda-bcad-4611-b014-2be699c5a666',
+    profId: '4784ed7a-02e2-4daa-b81c-dda2c5967cf9',
+    deposit: '20% (percentual)',
+    services: 'Corte Feminino (€35), Coloração Completa (€85), Mechas/Balayage (€120), Escova Progressiva (€150), Limpeza de Pele (€55), Corte+Escova (€50)',
+    data: '6 serviços, 12 contatos, 19 agendamentos',
+  },
+  {
+    locale: 'EN-US 🇮🇪',
+    name: 'Sophie Clarke Wellness',
+    category: 'Massage Therapist',
+    email: 'professional@circlehoodtech.com',
+    password: 'Marketing2026Eng',
+    slug: 'sophie-clarke-wellness',
+    account: 'ACC-2026-00244',
+    userId: 'de6870f7-70eb-442a-b976-569f653ca105',
+    profId: 'cd326e66-e4d9-4a78-a920-c394c31669a2',
+    deposit: '€15 (fixo)',
+    services: 'Swedish Massage (€70), Deep Tissue (€80), Sports Recovery (€65), Hot Stone (€90), Prenatal (€75), Home Visit (€110)',
+    data: '6 services, 12 contacts, 19 bookings',
+  },
+  {
+    locale: 'ES-ES 🇪🇸',
+    name: 'Laura Garcia Estética',
+    category: 'Esteticista & Masajista',
+    email: 'profesional@circlehoodtech.com',
+    password: 'Marketing2026Esp',
+    slug: 'laura-garcia-estetica',
+    account: 'ACC-2026-00245',
+    userId: '515e490b-8e97-4bc2-9a2d-2e9f13d30ab9',
+    profId: '53b79dbc-4b67-47fd-ad7a-0ee3b7a760fc',
+    deposit: 'Desativado',
+    services: 'Limpieza Facial (€55), Masaje Relajante (€65), Antiedad (€95), Drenaje Linfático (€70), Manicura (€35), Masaje a Domicilio (€100)',
+    data: '6 servicios, 12 contactos, 19 citas',
+  },
+];
+
 const testPhones = [
   { phone: '353800000001', use: 'API tests — agendamento público (01-public-booking)' },
   { phone: '353800000002', use: 'API tests — cliente 2 (double booking)' },
@@ -73,7 +118,7 @@ const ciJobs = [
 
 export default function HandbookDevPage() {
   return (
-    <div className="p-6 lg:p-8 space-y-8 max-w-4xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-4xl">
       <Link
         href="/admin/handbook"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -103,14 +148,60 @@ export default function HandbookDevPage() {
         <CardContent>
           <div className="divide-y rounded-lg border overflow-hidden">
             {testAccount.map((row) => (
-              <div key={row.label} className="flex items-center px-4 py-3 gap-4 bg-background hover:bg-muted/30 transition-colors">
-                <span className="text-xs font-medium text-muted-foreground w-40 shrink-0">{row.label}</span>
-                <code className="text-sm font-mono flex-1 break-all">{row.value}</code>
+              <div key={row.label} className="flex flex-wrap sm:flex-nowrap items-center px-3 sm:px-4 py-3 gap-2 sm:gap-4 bg-background hover:bg-muted/30 transition-colors">
+                <span className="text-xs font-medium text-muted-foreground w-full sm:w-40 shrink-0">{row.label}</span>
+                <code className="text-xs sm:text-sm font-mono flex-1 break-all min-w-0">{row.value}</code>
                 <CopyButton value={row.value} />
-                <span className="text-xs text-muted-foreground hidden sm:block w-56 text-right shrink-0">{row.note}</span>
+                <span className="text-xs text-muted-foreground hidden lg:block w-56 text-right shrink-0">{row.note}</span>
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Contas de Marketing */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📸</span>
+            <CardTitle className="text-base">Contas de Marketing — Screenshots</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Perfis completos com dados fake para prints de marketing. Cada um em um idioma diferente.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {marketingAccounts.map((acc) => (
+            <div key={acc.email} className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400">
+                  {acc.locale}
+                </span>
+                <span className="text-sm font-semibold">{acc.name}</span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">— {acc.category}</span>
+              </div>
+              <div className="divide-y rounded-lg border overflow-hidden">
+                {[
+                  { label: 'Email', value: acc.email },
+                  { label: 'Senha', value: acc.password },
+                  { label: 'Página pública', value: `/${acc.slug}` },
+                  { label: 'Account', value: acc.account },
+                  { label: 'Depósito', value: acc.deposit },
+                  { label: 'User ID', value: acc.userId },
+                  { label: 'Professional ID', value: acc.profId },
+                ].map((row) => (
+                  <div key={row.label} className="flex flex-wrap sm:flex-nowrap items-center px-3 sm:px-4 py-2 gap-1 sm:gap-4 bg-background hover:bg-muted/30 transition-colors">
+                    <span className="text-xs font-medium text-muted-foreground w-full sm:w-32 shrink-0">{row.label}</span>
+                    <code className="text-xs font-mono flex-1 break-all min-w-0">{row.value}</code>
+                    <CopyButton value={row.value} />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground pl-1">
+                📦 {acc.data} — Serviços: {acc.services}
+              </p>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -126,10 +217,12 @@ export default function HandbookDevPage() {
         <CardContent>
           <div className="divide-y rounded-lg border overflow-hidden">
             {testPhones.map((row) => (
-              <div key={row.phone} className="flex items-center px-4 py-3 gap-4 bg-background hover:bg-muted/30 transition-colors">
-                <code className="text-sm font-mono w-36 shrink-0">{row.phone}</code>
-                <CopyButton value={row.phone} />
-                <span className="text-sm text-muted-foreground">{row.use}</span>
+              <div key={row.phone} className="flex flex-wrap sm:flex-nowrap items-center px-3 sm:px-4 py-3 gap-2 sm:gap-4 bg-background hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <code className="text-xs sm:text-sm font-mono shrink-0">{row.phone}</code>
+                  <CopyButton value={row.phone} />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">{row.use}</span>
               </div>
             ))}
           </div>

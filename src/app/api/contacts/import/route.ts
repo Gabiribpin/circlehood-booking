@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { normalizePhone } from '@/lib/phone-normalization';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,11 +43,12 @@ export async function POST(request: NextRequest) {
         professional_id: professional.id,
         name,
         email: email || null,
-        phone: phone || null,
+        phone: phone ? normalizePhone(phone) : null,
         notes: notes || null,
         source: 'import' as const,
         marketing_consent: false,
         whatsapp_consent: false,
+        use_bot: false, // Imported contacts don't get bot responses until explicitly enabled
       };
     }).filter(c => c.name); // Only keep rows with a name
 

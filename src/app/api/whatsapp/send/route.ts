@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit: 30/h · 50/d · 200/sem
-    const limit = WhatsAppRateLimiter.check(professional.id);
+    const limit = await WhatsAppRateLimiter.checkAndIncrement(professional.id);
     if (!limit.allowed) {
       return NextResponse.json({ error: limit.reason }, { status: 429 });
     }
@@ -55,9 +55,6 @@ export async function POST(request: NextRequest) {
       apiKey: config.evolution_api_key,
       instance: config.evolution_instance || 'default',
     });
-
-    // Só incrementa após envio bem-sucedido
-    WhatsAppRateLimiter.increment(professional.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

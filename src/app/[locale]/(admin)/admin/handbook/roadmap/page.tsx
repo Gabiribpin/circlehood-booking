@@ -94,7 +94,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function HandbookRoadmapPage() {
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-3xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-3xl">
       <Link
         href="/admin/handbook"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

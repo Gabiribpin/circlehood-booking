@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { evolutionConfig } from '@/lib/evolution/config';
 
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
     });
 
     // ── 3. Save to Supabase ───────────────────────────────────────────────
+    const webhookSecret = randomUUID();
     await supabase
       .from('whatsapp_config')
       .upsert({
@@ -134,8 +136,9 @@ export async function POST(request: NextRequest) {
         evolution_instance: instanceName,
         business_phone: normalizedPhone,
         is_active: false,
+        webhook_secret: webhookSecret,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      } as never, { onConflict: 'user_id' });
 
     return NextResponse.json({ instanceName, qrCode, pairingCode, token: instanceToken });
   } catch (error) {

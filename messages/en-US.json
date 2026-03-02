@@ -258,7 +258,13 @@
     "saveAiError": "Error: {message}",
     "saveAiSuccess": "✅ AI settings saved!",
     "saving": "Saving...",
-    "saveAiBtn": "Save AI Settings"
+    "saveAiBtn": "Save AI Settings",
+    "botEnabledLabel": "Bot active",
+    "botEnabledHint": "When disabled, the bot will not reply to messages. WhatsApp stays connected.",
+    "botDisabledBadge": "Bot Disabled",
+    "botDisabledHint": "The bot is not responding to messages. Enable it to resume automatic responses.",
+    "botToggleSaving": "Updating...",
+    "botToggleError": "Failed to update bot status."
   },
   "settings": {
     "title": "Settings",

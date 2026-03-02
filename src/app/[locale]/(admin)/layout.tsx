@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone } from 'lucide-react';
 import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
+import { AdminMobileNav } from '@/components/admin/admin-mobile-nav';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export default async function AdminLayout({
@@ -44,9 +45,16 @@ export default async function AdminLayout({
   const newLeads = newLeadsCount ?? 0;
 
   return (
-    <div className="min-h-screen flex">
-      {/* Dark admin sidebar */}
-      <aside className="w-56 bg-slate-900 text-slate-100 flex flex-col flex-shrink-0">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Mobile nav */}
+      <AdminMobileNav
+        salesConnected={salesConnected}
+        newLeads={newLeads}
+        pendingDeletions={pendingDeletions}
+      />
+
+      {/* Desktop sidebar - hidden on mobile */}
+      <aside className="hidden lg:flex w-56 bg-slate-900 text-slate-100 flex-col flex-shrink-0">
         <div className="p-4 border-b border-slate-800">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="h-4 w-4 text-indigo-400" />
