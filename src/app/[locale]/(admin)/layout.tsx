@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone, Crosshair, Radar, CircleDot } from 'lucide-react';
 import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -115,6 +115,30 @@ export default async function AdminLayout({
                 {pendingDeletions}
               </span>
             )}
+          </Link>
+
+          <div className="my-2 border-t border-slate-800" />
+
+          <Link
+            href="/admin/execution"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <Crosshair className="h-4 w-4" />
+            Execucao Atual
+          </Link>
+          <Link
+            href="/admin/control-center"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <Radar className="h-4 w-4" />
+            Control Center
+          </Link>
+          <Link
+            href="/admin/execution-wheel"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <CircleDot className="h-4 w-4" />
+            Roda de Execucao
           </Link>
         </nav>
 

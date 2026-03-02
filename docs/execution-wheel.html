@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CircleHood — Roda de Execução</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#111824; --muted:#93a4b8; --text:#e8eef7; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --line:#1f2a3a; }
+    *{ box-sizing:border-box; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    body{ margin:0; background:var(--bg); color:var(--text); }
+    header{ padding:16px 18px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; justify-content:space-between;}
+    header h1{ font-size:16px; margin:0; letter-spacing:.3px; }
+    .wrap{ padding:16px; display:grid; grid-template-columns: 380px 1fr; gap:14px; max-width:1200px; margin:0 auto; }
+    @media (max-width: 980px){ .wrap{ grid-template-columns: 1fr; } }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+    .card h2{ font-size:13px; margin:0 0 10px 0; color:#cfe0f5; }
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input, select, textarea{
+      width:100%; background:#0d1420; color:var(--text);
+      border:1px solid #233248; border-radius:10px; padding:10px 10px; outline:none;
+    }
+    textarea{ min-height:92px; resize:vertical; }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; }
+    button{
+      background:#0d1420; color:var(--text); border:1px solid #2a3a54;
+      border-radius:12px; padding:10px 12px; cursor:pointer; font-weight:600; font-size:12px;
+    }
+    button.primary{ background:#143a66; border-color:#1d4ed8; }
+    button.good{ background:#0f2a18; border-color:#22c55e; }
+    button.bad{ background:#2a1212; border-color:#ef4444; }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .pill{ display:inline-flex; gap:6px; align-items:center; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #2a3a54; color:#cfe0f5;}
+    .pill.ok{ border-color:#22c55e; color:#bbf7d0; }
+    .pill.warn{ border-color:#f59e0b; color:#fde68a; }
+    .pill.bad{ border-color:#ef4444; color:#fecaca; }
+    .muted{ color:var(--muted); font-size:12px; line-height:1.35; }
+    .big{ font-size:18px; font-weight:800; margin:6px 0 4px 0; }
+    .link{ color:#8ab4ff; text-decoration:none; }
+    .link:hover{ text-decoration:underline; }
+    .kv{ display:grid; grid-template-columns: 130px 1fr; gap:8px; font-size:12px; }
+    .kv div{ padding:6px 0; border-bottom:1px dashed #223046; }
+    .kv div:nth-child(odd){ color:var(--muted); }
+    .log{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; white-space:pre-wrap; background:#0a0f18; border:1px solid #223046; border-radius:12px; padding:10px; min-height:120px; }
+    .divider{ height:1px; background:var(--line); margin:10px 0; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>CircleHood — Roda de Execução (auto-gerenciada)</h1>
+  <div class="pill" id="statusPill">desconectado</div>
+</header>
+
+<div class="wrap">
+  <!-- CONFIG -->
+  <section class="card">
+    <h2>Config</h2>
+    <p class="muted">
+      Isso puxa Issues do GitHub, escolhe automaticamente a "próxima" (BLOCKER &gt; CRITICAL &gt; HIGH &gt; MEDIUM &gt; LOW &gt; ENHANCEMENT),
+      e mantém um "checkpoint" (onde você parou) sem você pensar.
+      <br><br>
+      <b>Segurança:</b> para usar direto no browser, crie um <b>Fine-grained PAT</b> com acesso apenas ao repositório e permissões mínimas:
+      <b>Issues: Read/Write</b> (e opcionalmente <b>Contents: Read</b> se você quiser ler arquivos). Para produção, o ideal é um proxy/GitHub App (token nunca no front).
+    </p>
+
+    <div class="divider"></div>
+
+    <label>GitHub Repo (owner/repo)</label>
+    <input id="repo" placeholder="Gabiribpin/circlehood-booking" />
+
+    <label style="margin-top:10px;">GitHub Token (Fine-grained PAT)</label>
+    <input id="token" placeholder="ghp_..." type="password" />
+
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Project URL (opcional)</label>
+        <input id="projectUrl" placeholder="https://github.com/.../projects/7" />
+      </div>
+      <div>
+        <label>Labels de esforço (opcional)</label>
+        <input id="effortLabels" placeholder="effort:low,effort:medium,effort:high" />
+      </div>
+    </div>
+
+    <div class="btns" style="margin-top:12px;">
+      <button class="primary" id="btnConnect">Conectar</button>
+      <button id="btnRefresh" disabled>Atualizar</button>
+      <button id="btnResetCheckpoint">Reset checkpoint</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Regras (fixas)</h2>
+    <div class="muted">
+      1) Uma issue por vez. <br>
+      2) Nunca refatorar por "vontade" antes de zerar BLOCKER. <br>
+      3) Ideia nova = vira issue (enhancement) e volta para a atual. <br>
+      4) "Done" só com comentário técnico + fechamento.
+    </div>
+  </section>
+
+  <!-- EXECUTION -->
+  <section class="card">
+    <h2>Agora</h2>
+
+    <div id="nowBox">
+      <div class="muted">Conecte para a roda escolher automaticamente a próxima issue.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Ações</h2>
+    <div class="btns">
+      <button class="good" id="btnStart" disabled>Iniciar (checkpoint)</button>
+      <button id="btnCopyBranch" disabled>Copiar nome da branch</button>
+      <button id="btnOpenIssue" disabled>Abrir issue</button>
+      <button id="btnOpenProject" disabled>Abrir project</button>
+      <button class="good" id="btnCommentDone" disabled>Comentar progresso</button>
+      <button class="bad" id="btnCloseIssue" disabled>Fechar issue</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Capturar ideia/bug (sem quebrar foco)</h2>
+    <div class="row">
+      <div>
+        <label>Tipo</label>
+        <select id="newType">
+          <option value="enhancement">Ideia (enhancement)</option>
+          <option value="bug">Bug (bug)</option>
+          <option value="security">Segurança (security)</option>
+        </select>
+      </div>
+      <div>
+        <label>Severidade (opcional)</label>
+        <select id="newSeverity">
+          <option value="">(nenhuma)</option>
+          <option value="blocker">blocker</option>
+          <option value="critical">critical</option>
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+      </div>
+    </div>
+
+    <label style="margin-top:10px;">Título</label>
+    <input id="newTitle" placeholder="[IDEA] ..." />
+
+    <label style="margin-top:10px;">Descrição (curta e objetiva)</label>
+    <textarea id="newBody" placeholder="Contexto, impacto e definição de pronto."></textarea>
+
+    <div class="btns" style="margin-top:10px;">
+      <button class="primary" id="btnCreateIssue" disabled>Criar issue e voltar ao foco</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Log</h2>
+    <div class="log" id="log"></div>
+  </section>
+</div>
+
+<script>
+/**
+ * RODA DE EXECUÇÃO — GH Issues
+ * - Escolhe automaticamente o próximo item baseado em severidade + esforço
+ * - Mantém checkpoint (issue em foco) em localStorage
+ * - Permite criar issue rápida para ideias/bugs sem mudar o foco
+ *
+ * OBS: Branch/PR/merge não são feitos aqui de propósito (segurança + complexidade).
+ * Você usa o "Copiar nome da branch" e faz o trabalho no seu fluxo normal (Cloud Code/CLI).
+ */
+
+const $ = (id) => document.getElementById(id);
+
+const PRIORITY = ["blocker","critical","high","medium","low","enhancement"]; // ordem fixa
+const SEV_LABELS = new Set(PRIORITY);
+
+const LS = {
+  repo: "wheel.repo",
+  token: "wheel.token",
+  projectUrl: "wheel.projectUrl",
+  effortLabels: "wheel.effortLabels",
+  checkpoint: "wheel.checkpoint" // { number, url, title, labels[] }
+};
+
+let state = {
+  repo: "",
+  token: "",
+  projectUrl: "",
+  effortLabels: ["effort:low","effort:medium","effort:high"],
+  connected: false,
+  issues: [],
+  focus: null
+};
+
+function log(msg){
+  const el = $("log");
+  const ts = new Date().toISOString().slice(11,19);
+  el.textContent = `[${ts}] ${msg}\n` + el.textContent;
+}
+
+function setStatus(kind, text){
+  const pill = $("statusPill");
+  pill.className = "pill " + (kind || "");
+  pill.textContent = text;
+}
+
+function saveConfig(){
+  localStorage.setItem(LS.repo, state.repo);
+  localStorage.setItem(LS.token, state.token);
+  localStorage.setItem(LS.projectUrl, state.projectUrl);
+  localStorage.setItem(LS.effortLabels, state.effortLabels.join(","));
+}
+
+function loadConfig(){
+  $("repo").value = localStorage.getItem(LS.repo) || "Gabiribpin/circlehood-booking";
+  $("token").value = localStorage.getItem(LS.token) || "";
+  $("projectUrl").value = localStorage.getItem(LS.projectUrl) || "";
+  $("effortLabels").value = localStorage.getItem(LS.effortLabels) || "effort:low,effort:medium,effort:high";
+}
+
+function saveCheckpoint(focus){
+  if(!focus){ localStorage.removeItem(LS.checkpoint); return; }
+  localStorage.setItem(LS.checkpoint, JSON.stringify(focus));
+}
+
+function loadCheckpoint(){
+  try{
+    const raw = localStorage.getItem(LS.checkpoint);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch{ return null; }
+}
+
+async function gh(path, opts={}){
+  const url = `https://api.github.com${path}`;
+  const headers = {
+    "Accept": "application/vnd.github+json",
+    "Authorization": `Bearer ${state.token}`,
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  const res = await fetch(url, { ...opts, headers: { ...headers, ...(opts.headers||{}) } });
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error(`GitHub API ${res.status}: ${txt}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function parseOwnerRepo(){
+  const parts = state.repo.split("/").map(s => s.trim()).filter(Boolean);
+  if(parts.length !== 2) throw new Error("Repo inválido. Use owner/repo.");
+  return { owner: parts[0], repo: parts[1] };
+}
+
+function labelsOf(issue){
+  return (issue.labels || []).map(l => typeof l === "string" ? l : l.name).filter(Boolean);
+}
+
+function getSeverity(labels){
+  for(const p of PRIORITY){
+    if(labels.includes(p)) return p;
+  }
+  // fallback: se bug/security sem severidade, trata como medium
+  return "medium";
+}
+
+function getEffortScore(labels){
+  // menor score = menor esforço (preferência)
+  // tenta effort:low/medium/high ou size:S/M/L
+  const lset = new Set(labels);
+  if(lset.has("effort:low") || lset.has("size:S")) return 1;
+  if(lset.has("effort:medium") || lset.has("size:M")) return 2;
+  if(lset.has("effort:high") || lset.has("size:L")) return 3;
+  return 2; // default
+}
+
+function severityScore(sev){
+  return PRIORITY.indexOf(sev) === -1 ? 999 : PRIORITY.indexOf(sev);
+}
+
+function pickNextIssue(issues){
+  // filtra abertas e com alguma severidade/priority implícita
+  const open = issues.filter(i => i.state === "open");
+  if(open.length === 0) return null;
+
+  // ordenação:
+  // 1) severidade (blocker primeiro)
+  // 2) esforço (menor primeiro)
+  // 3) número (mais antigo primeiro)
+  open.sort((a,b) => {
+    const la = labelsOf(a), lb = labelsOf(b);
+    const sa = getSeverity(la), sb = getSeverity(lb);
+    const d1 = severityScore(sa) - severityScore(sb);
+    if(d1 !== 0) return d1;
+    const d2 = getEffortScore(la) - getEffortScore(lb);
+    if(d2 !== 0) return d2;
+    return (a.number||0) - (b.number||0);
+  });
+
+  return open[0];
+}
+
+function slugify(s){
+  return (s||"")
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g,"")
+    .replace(/[^a-z0-9]+/g,"-")
+    .replace(/-+/g,"-")
+    .replace(/^-|-$/g,"")
+    .slice(0,40) || "work";
+}
+
+function branchName(issue){
+  return `fix/issue-${issue.number}-${slugify(issue.title)}`;
+}
+
+function renderNow(){
+  const box = $("nowBox");
+  const focus = state.focus;
+  if(!focus){
+    box.innerHTML = `<div class="muted">Nenhuma issue em foco. Clique em <b>Atualizar</b> e depois <b>Iniciar</b>.</div>`;
+    return;
+  }
+
+  const labels = focus.labels || [];
+  const sev = getSeverity(labels);
+  const effort = getEffortScore(labels);
+  const sevPill = sev === "blocker" ? "bad" : (sev === "critical" ? "warn" : "ok");
+  const effTxt = effort === 1 ? "baixo" : (effort === 2 ? "médio" : "alto");
+
+  box.innerHTML = `
+    <div class="big">#${focus.number} — ${escapeHtml(focus.title)}</div>
+    <div class="muted">
+      Severidade: <span class="pill ${sevPill}">${sev.toUpperCase()}</span>
+      &nbsp;&nbsp;Esforço (heurística): <span class="pill">${effTxt}</span>
+    </div>
+    <div style="margin-top:10px" class="kv">
+      <div>Link</div><div><a class="link" href="${focus.url}" target="_blank" rel="noreferrer">${focus.url}</a></div>
+      <div>Branch</div><div><span class="pill">${branchName(focus)}</span></div>
+      <div>Labels</div><div>${labels.map(l => `<span class="pill">${escapeHtml(l)}</span>`).join(" ") || "<span class='muted'>(nenhuma)</span>"}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="muted"><b>Protocolo:</b> planejar (10 linhas) → implementar → build verde → comentar progresso → fechar.</div>
+  `;
+}
+
+function escapeHtml(str){
+  return (str||"").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+}
+
+function setButtons(enabled){
+  $("btnRefresh").disabled = !enabled;
+  $("btnStart").disabled = !enabled;
+  $("btnCopyBranch").disabled = !enabled || !state.focus;
+  $("btnOpenIssue").disabled = !enabled || !state.focus;
+  $("btnOpenProject").disabled = !enabled;
+  $("btnCommentDone").disabled = !enabled || !state.focus;
+  $("btnCloseIssue").disabled = !enabled || !state.focus;
+  $("btnCreateIssue").disabled = !enabled;
+}
+
+async function connect(){
+  state.repo = $("repo").value.trim();
+  state.token = $("token").value.trim();
+  state.projectUrl = $("projectUrl").value.trim();
+  state.effortLabels = ($("effortLabels").value || "").split(",").map(s=>s.trim()).filter(Boolean);
+  if(state.effortLabels.length === 0) state.effortLabels = ["effort:low","effort:medium","effort:high"];
+
+  if(!state.repo) throw new Error("Repo é obrigatório.");
+  if(!state.token) throw new Error("Token é obrigatório para operar via browser.");
+
+  saveConfig();
+
+  // sanity check: get repo
+  const {owner, repo} = parseOwnerRepo();
+  await gh(`/repos/${owner}/${repo}`, { method:"GET" });
+
+  state.connected = true;
+  setStatus("ok","conectado");
+  log("Conectado ao GitHub com sucesso.");
+  setButtons(true);
+
+  // carregar checkpoint se existir
+  const cp = loadCheckpoint();
+  if(cp){
+    state.focus = cp;
+    log(`Checkpoint carregado: #${cp.number}`);
+  }
+
+  await refresh();
+}
+
+async function refresh(){
+  const {owner, repo} = parseOwnerRepo();
+  log("Buscando issues abertas...");
+  // busca as últimas 100 abertas (ajuste se precisar)
+  const issues = await gh(`/repos/${owner}/${repo}/issues?state=open&per_page=100`, { method:"GET" });
+
+  // filtra só issues (não PR)
+  state.issues = issues.filter(i => !i.pull_request);
+
+  // se não houver foco, escolhe automaticamente
+  if(!state.focus){
+    const next = pickNextIssue(state.issues);
+    if(next){
+      const labels = labelsOf(next);
+      state.focus = { number: next.number, title: next.title, url: next.html_url, labels };
+      saveCheckpoint(state.focus);
+      log(`Próxima selecionada automaticamente: #${next.number} (${getSeverity(labels)})`);
+    }else{
+      log("Nenhuma issue aberta encontrada.");
+    }
+  }else{
+    // atualiza labels/título do foco
+    const current = state.issues.find(i => i.number === state.focus.number);
+    if(current){
+      state.focus.title = current.title;
+      state.focus.url = current.html_url;
+      state.focus.labels = labelsOf(current);
+      saveCheckpoint(state.focus);
+      log(`Foco atualizado: #${current.number}`);
+    }else{
+      log("Issue do checkpoint não está mais aberta. Limpando foco e recalculando...");
+      state.focus = null;
+      saveCheckpoint(null);
+      const next = pickNextIssue(state.issues);
+      if(next){
+        const labels = labelsOf(next);
+        state.focus = { number: next.number, title: next.title, url: next.html_url, labels };
+        saveCheckpoint(state.focus);
+        log(`Novo foco: #${next.number}`);
+      }
+    }
+  }
+
+  renderNow();
+  setButtons(true);
+  $("btnCopyBranch").disabled = !state.focus;
+  $("btnOpenIssue").disabled = !state.focus;
+  $("btnCommentDone").disabled = !state.focus;
+  $("btnCloseIssue").disabled = !state.focus;
+}
+
+async function startCheckpoint(){
+  if(!state.focus) return;
+  const msg = [
+    "🧭 MODO EXECUÇÃO AUTÔNOMA — checkpoint iniciado.",
+    "",
+    `Foco: #${state.focus.number} — ${state.focus.title}`,
+    `Branch sugerida: ${branchName(state.focus)}`,
+    "",
+    "Protocolo:",
+    "1) Plano técnico (≤10 linhas)",
+    "2) Implementar",
+    "3) Build verde + sem regressões",
+    "4) Comentário técnico",
+    "5) Fechar issue",
+  ].join("\n");
+  log(msg);
+}
+
+async function commentProgress(){
+  if(!state.focus) return;
+  const text = prompt("Comentário de progresso (curto e técnico). Ex: 'Corrigi validação de state, adicionei teste X, build verde.'");
+  if(!text) return;
+  const {owner, repo} = parseOwnerRepo();
+  await gh(`/repos/${owner}/${repo}/issues/${state.focus.number}/comments`, {
+    method:"POST",
+    body: JSON.stringify({ body: `✅ Progresso\n\n${text}\n\n— Roda de Execução` })
+  });
+  log(`Comentário postado na issue #${state.focus.number}`);
+}
+
+async function closeIssue(){
+  if(!state.focus) return;
+  const ok = confirm(`Fechar a issue #${state.focus.number}? (faça isso só se estiver DONE: build verde + comentário técnico)`);
+  if(!ok) return;
+
+  const {owner, repo} = parseOwnerRepo();
+  await gh(`/repos/${owner}/${repo}/issues/${state.focus.number}`, {
+    method:"PATCH",
+    body: JSON.stringify({ state: "closed" })
+  });
+
+  log(`Issue #${state.focus.number} fechada.`);
+
+  // limpa foco e pega próxima automaticamente
+  state.focus = null;
+  saveCheckpoint(null);
+  await refresh();
+}
+
+function copyBranch(){
+  if(!state.focus) return;
+  const name = branchName(state.focus);
+  navigator.clipboard.writeText(name).then(() => log(`Branch copiada: ${name}`)).catch(()=>log("Falha ao copiar para clipboard."));
+}
+
+function openIssue(){
+  if(!state.focus) return;
+  window.open(state.focus.url, "_blank", "noreferrer");
+}
+
+function openProject(){
+  const url = state.projectUrl || localStorage.getItem(LS.projectUrl) || "";
+  if(!url){
+    alert("Sem Project URL configurada. Preencha em Config.");
+    return;
+  }
+  window.open(url, "_blank", "noreferrer");
+}
+
+async function createIssue(){
+  const title = $("newTitle").value.trim();
+  const body = $("newBody").value.trim();
+  const type = $("newType").value;
+  const sev = $("newSeverity").value;
+
+  if(!title) return alert("Título é obrigatório.");
+
+  const labels = [type].filter(Boolean);
+  if(sev) labels.push(sev);
+
+  const {owner, repo} = parseOwnerRepo();
+  const created = await gh(`/repos/${owner}/${repo}/issues`, {
+    method:"POST",
+    body: JSON.stringify({ title, body: body || "", labels })
+  });
+
+  log(`Issue criada: #${created.number} (${labels.join(", ")})`);
+  $("newTitle").value = "";
+  $("newBody").value = "";
+  $("newSeverity").value = "";
+
+  // NÃO muda foco. Só atualiza cache.
+  await refresh();
+}
+
+function resetCheckpoint(){
+  state.focus = null;
+  saveCheckpoint(null);
+  renderNow();
+  log("Checkpoint resetado. Clique em Atualizar para selecionar a próxima automaticamente.");
+}
+
+$("btnConnect").addEventListener("click", async () => {
+  try{
+    setStatus("warn","conectando...");
+    await connect();
+  }catch(e){
+    setStatus("bad","erro");
+    log(`ERRO: ${e.message}`);
+    alert(e.message);
+  }
+});
+
+$("btnRefresh").addEventListener("click", async () => {
+  try{ await refresh(); }catch(e){ log(`ERRO: ${e.message}`); alert(e.message); }
+});
+
+$("btnStart").addEventListener("click", startCheckpoint);
+$("btnCopyBranch").addEventListener("click", copyBranch);
+$("btnOpenIssue").addEventListener("click", openIssue);
+$("btnOpenProject").addEventListener("click", openProject);
+$("btnCommentDone").addEventListener("click", async () => {
+  try{ await commentProgress(); }catch(e){ log(`ERRO: ${e.message}`); alert(e.message); }
+});
+$("btnCloseIssue").addEventListener("click", async () => {
+  try{ await closeIssue(); }catch(e){ log(`ERRO: ${e.message}`); alert(e.message); }
+});
+$("btnCreateIssue").addEventListener("click", async () => {
+  try{ await createIssue(); }catch(e){ log(`ERRO: ${e.message}`); alert(e.message); }
+});
+$("btnResetCheckpoint").addEventListener("click", resetCheckpoint);
+
+// bootstrap
+loadConfig();
+setStatus("", "desconectado");
+renderNow();
+setButtons(false);
+log("Pronto. Configure repo + token e clique Conectar.");
+</script>
+</body>
+</html>
