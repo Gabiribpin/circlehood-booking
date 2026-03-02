@@ -122,6 +122,8 @@ export default function ExecutionWheelPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [validated, setValidated] = useState(false);
+
   // Capture form
   const [newType, setNewType] = useState('enhancement');
   const [newSev, setNewSev] = useState('');
@@ -175,6 +177,7 @@ export default function ExecutionWheelPage() {
 
   const saveFocus = useCallback((f: Focus | null) => {
     setFocus(f);
+    setValidated(false);
   }, []);
 
   const refresh = useCallback(async (tok: string, currentFocus: Focus | null) => {
@@ -328,6 +331,36 @@ export default function ExecutionWheelPage() {
     try {
       await navigator.clipboard.writeText(prompt);
       log(`Prompt Claude copiado — Issue #${focus.number}`);
+    } catch {
+      log('ERRO: falha ao copiar para clipboard.');
+    }
+  }
+
+  async function handleValidate() {
+    if (!focus) { alert('Nenhuma issue em foco.'); return; }
+
+    const prompt = [
+      'Modo Validação Final — Issue #' + focus.number,
+      'Título: ' + focus.title,
+      '',
+      'Não confie na implementação anterior.',
+      'Prove que a issue está realmente resolvida.',
+      '',
+      '1) Liste todos os arquivos alterados.',
+      '2) Mostre o diff relevante.',
+      '3) Mostre o teste que cobre o problema.',
+      '4) Mostre o output completo do runner de testes.',
+      '5) Explique por que o bug não pode mais ocorrer.',
+      '6) Liste possíveis regressões e por que não acontecem.',
+      '',
+      'Se qualquer item acima não estiver completo,',
+      'a issue deve ser considerada NÃO resolvida.',
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setValidated(true);
+      log(`Prompt de validação copiado — Issue #${focus.number}`);
     } catch {
       log('ERRO: falha ao copiar para clipboard.');
     }
@@ -502,14 +535,21 @@ export default function ExecutionWheelPage() {
                 Comentar progresso
               </button>
               <button
+                onClick={handleValidate}
+                disabled={!focus || validated}
+                className="rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-xs font-bold px-3 py-2 transition-colors"
+              >
+                {validated ? 'Validado ✓' : 'Validar implementacao'}
+              </button>
+              <button
                 onClick={handleCloseIssue}
-                disabled={!focus}
+                disabled={!focus || !validated}
                 className="rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-bold px-3 py-2 transition-colors"
               >
                 Fechar issue
               </button>
               <button
-                onClick={() => { saveFocus(null); log('Checkpoint resetado.'); }}
+                onClick={() => { saveFocus(null); setValidated(false); log('Checkpoint resetado.'); }}
                 disabled={!focus}
                 className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-500 dark:text-slate-400 text-xs font-bold px-3 py-2 transition-colors"
               >
