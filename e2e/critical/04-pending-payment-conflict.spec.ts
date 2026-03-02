@@ -149,10 +149,6 @@ test.describe('pending_payment bloqueia double-booking (Issue #3)', () => {
     });
 
     // Deve ser 409 (slot ocupado por pending_payment)
-    // Nota: se CI roda contra produção sem o fix deployado, skip gracioso
-    if (res.status() === 201) {
-      test.skip(true, 'Fix pending_payment não deployado no servidor de teste (rodando contra produção sem o fix)');
-    }
     expect(res.status()).toBe(409);
 
     const body = await res.json();

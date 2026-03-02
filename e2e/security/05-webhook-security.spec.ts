@@ -107,10 +107,6 @@ test.describe('Bot Toggle API — Security', () => {
     const res = await request.put(`${BASE}/api/whatsapp/bot-toggle`, {
       data: { enabled: false },
     });
-    // Se a rota não está deployada ou retorna 405 (method not allowed), skip
-    if (res.status() === 404 || res.status() === 405) {
-      test.skip(true, 'Rota /api/whatsapp/bot-toggle não deployada no servidor de teste');
-    }
     expect(res.status()).toBe(401);
   });
 
@@ -133,10 +129,6 @@ test.describe('Bot Toggle API — Security', () => {
       return { status: res.status, body: await res.json() };
     }, BASE);
 
-    // Se a rota não está deployada
-    if (result.status === 404 || result.status === 405) {
-      test.skip(true, 'Rota /api/whatsapp/bot-toggle não deployada no servidor de teste');
-    }
     expect(result.status).toBe(400);
   });
 });
