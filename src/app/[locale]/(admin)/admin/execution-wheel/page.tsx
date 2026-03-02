@@ -32,6 +32,7 @@ const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
 const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
 const LS_TOKEN = 'wheel.token';
 const LS_CHECKPOINT = 'wheel.checkpoint';
+const ENV_TOKEN = process.env.NEXT_PUBLIC_GH_ISSUES_PAT || '';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -134,14 +135,28 @@ export default function ExecutionWheelPage() {
     setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 100));
   }, []);
 
-  // Load saved state
+  // Load saved state + auto-connect if env token available
   useEffect(() => {
-    const t = localStorage.getItem(LS_TOKEN) || '';
-    setToken(t);
+    const savedToken = localStorage.getItem(LS_TOKEN) || '';
+    const initialToken = ENV_TOKEN || savedToken;
+    setToken(initialToken);
     try {
       const cp = localStorage.getItem(LS_CHECKPOINT);
       if (cp) setFocus(JSON.parse(cp));
     } catch { /* ignore */ }
+
+    // Auto-connect if we have a token
+    if (initialToken) {
+      (async () => {
+        try {
+          await ghFetch(`/repos/${REPO}`, initialToken);
+          localStorage.setItem(LS_TOKEN, initialToken);
+          setConnected(true);
+          // refresh will be triggered by the connected effect below
+        } catch { /* silent — user can connect manually */ }
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save checkpoint
@@ -149,6 +164,14 @@ export default function ExecutionWheelPage() {
     if (focus) localStorage.setItem(LS_CHECKPOINT, JSON.stringify(focus));
     else localStorage.removeItem(LS_CHECKPOINT);
   }, [focus]);
+
+  // Auto-refresh when connected
+  useEffect(() => {
+    if (connected && token) {
+      refresh(token, focus);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected]);
 
   const saveFocus = useCallback((f: Focus | null) => {
     setFocus(f);
