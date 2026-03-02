@@ -366,6 +366,47 @@ export default function ExecutionWheelPage() {
     }
   }
 
+  async function handleAuditPrompt() {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '-');
+    const prompt = [
+      'MODO AUDITORIA COMPLETA — EXECUÇÃO TRANSPARENTE',
+      '',
+      'Executar varredura técnica completa.',
+      '',
+      'Analisar:',
+      '- API routes',
+      '- Banco de dados',
+      '- Pagamentos',
+      '- Segurança',
+      '- Frontend',
+      '- Build e dependências',
+      '',
+      'Classificar em:',
+      'BLOCKER / CRITICAL / HIGH / MEDIUM / LOW / ENHANCEMENT',
+      '',
+      'Para cada problema:',
+      '- Evidência (arquivo/linha)',
+      '- Impacto real',
+      '- Correção mínima',
+      '- Estimativa de esforço',
+      '',
+      'Gerar:',
+      `- docs/AUDIT_${today}.md`,
+      '- Criar issues no GitHub com labels corretas',
+      '- Atualizar Project',
+      '',
+      'Mostrar resumo final com veredito:',
+      'PRONTO ou NÃO PRONTO.',
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(prompt);
+      log('Prompt de auditoria copiado');
+    } catch {
+      log('ERRO: falha ao copiar para clipboard.');
+    }
+  }
+
   const openCount = issues.filter((i) => !i.pull_request).length;
   const sev = focus ? getSeverity(focus.labels) : '';
   const effort = focus ? getEffortScore(focus.labels) : 2;
@@ -442,7 +483,19 @@ export default function ExecutionWheelPage() {
               Agora
             </h2>
 
-            {!focus ? (
+            {!focus && connected && openCount === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
+                  Sem issues abertas. Projeto aparentemente estavel.
+                </p>
+                <button
+                  onClick={handleAuditPrompt}
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+                >
+                  Gerar Prompt Nova Auditoria
+                </button>
+              </div>
+            ) : !focus ? (
               <p className="text-sm text-slate-400 dark:text-slate-500 italic">
                 {connected ? 'Nenhuma issue em foco. Clique Atualizar.' : 'Conecte para começar.'}
               </p>
