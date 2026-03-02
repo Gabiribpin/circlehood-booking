@@ -535,11 +535,13 @@ export default function ExecutionWheelPage() {
                 Comentar progresso
               </button>
               <button
-                onClick={handleValidate}
-                disabled={!focus || validated}
-                className="rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-xs font-bold px-3 py-2 transition-colors"
+                onClick={validated ? () => { setValidated(false); log('Validação resetada.'); } : handleValidate}
+                disabled={!focus}
+                className={`rounded-lg disabled:opacity-40 text-white text-xs font-bold px-3 py-2 transition-colors ${
+                  validated ? 'bg-emerald-600 hover:bg-red-600' : 'bg-amber-600 hover:bg-amber-700'
+                }`}
               >
-                {validated ? 'Validado ✓' : 'Validar implementacao'}
+                {validated ? 'Validado ✓ (desfazer)' : 'Validar implementacao'}
               </button>
               <button
                 onClick={handleCloseIssue}
