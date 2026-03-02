@@ -288,6 +288,51 @@ export default function ExecutionWheelPage() {
     navigator.clipboard.writeText(branchName(focus)).then(() => log(`Branch copiada: ${branchName(focus)}`));
   }
 
+  async function handleCopyPrompt() {
+    if (!focus) { alert('Nenhuma issue em foco.'); return; }
+
+    let body = '(não foi possível carregar o corpo da issue)';
+    try {
+      const issue = await ghFetch(`/repos/${REPO}/issues/${focus.number}`, token);
+      if (issue?.body) body = issue.body;
+    } catch { /* use fallback body */ }
+
+    const prompt = [
+      'MODO EXECUÇÃO CONTROLADA — Issue #' + focus.number,
+      'Título: ' + focus.title,
+      'Link: ' + focus.url,
+      'Labels: ' + (focus.labels.join(', ') || '(nenhuma)'),
+      '',
+      'Regras:',
+      '- Trabalhar somente nesta issue.',
+      '- Não alterar escopo.',
+      '- Não concluir sem teste + build verde.',
+      '- Sempre em branch separada.',
+      '',
+      'Contexto da issue:',
+      body,
+      '',
+      'Tarefas:',
+      '1) Diagnóstico técnico',
+      '2) Causa raiz',
+      '3) Correção mínima e segura',
+      '4) Testes obrigatórios',
+      '5) Evidência (diff + build + testes)',
+      '6) Criar branch: ' + branchName(focus),
+      '7) Commit:',
+      '   fix(scope): descrição objetiva',
+      '',
+      '   Closes #' + focus.number,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(prompt);
+      log(`Prompt Claude copiado — Issue #${focus.number}`);
+    } catch {
+      log('ERRO: falha ao copiar para clipboard.');
+    }
+  }
+
   const openCount = issues.filter((i) => !i.pull_request).length;
   const sev = focus ? getSeverity(focus.labels) : '';
   const effort = focus ? getEffortScore(focus.labels) : 2;
@@ -441,6 +486,13 @@ export default function ExecutionWheelPage() {
                 className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 transition-colors"
               >
                 Abrir project
+              </button>
+              <button
+                onClick={handleCopyPrompt}
+                disabled={!focus}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold px-3 py-2 transition-colors"
+              >
+                Copiar prompt (Claude)
               </button>
               <button
                 onClick={handleCommentProgress}
