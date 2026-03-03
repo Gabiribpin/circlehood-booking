@@ -1538,53 +1538,36 @@ PROIBIDO ao rejeitar data/horário:
       const endTotal = h * 60 + m + duration;
       const endTime = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}:00`;
 
-      // 4. Cancelar agendamento antigo
-      const { error: cancelErr } = await this.supabase
-        .from('bookings')
-        .update({
-          status: 'cancelled',
-          cancelled_by: 'client',
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: 'Reagendado pelo cliente via WhatsApp',
-        })
-        .eq('id', bookingId);
+      // 4. Reschedule atômico via RPC (cancel + insert numa única transação)
+      const { data: rpcResult, error: rpcErr } = await this.supabase
+        .rpc('reschedule_booking', {
+          p_booking_id: bookingId,
+          p_professional_id: professionalId,
+          p_new_date: normalizedDate,
+          p_new_start_time: `${normalizedTime}:00`,
+          p_new_end_time: endTime,
+        });
 
-      if (cancelErr) {
-        return { success: false, error: 'cancel_failed', message: 'Erro ao cancelar o agendamento anterior.' };
+      if (rpcErr) {
+        return { success: false, error: 'rpc_failed', message: 'Erro ao reagendar. O horário anterior foi mantido.' };
       }
 
-      // 5. Criar novo agendamento (sem verificação de duplicata — é um reagendamento explícito)
-      const { data: newBooking, error: insertErr } = await this.supabase
-        .from('bookings')
-        .insert({
-          professional_id: professionalId,
-          service_id: existing.service_id,
-          booking_date: normalizedDate,
-          start_time: `${normalizedTime}:00`,
-          end_time: endTime,
-          client_name: existing.client_name,
-          client_phone: existing.client_phone,
-          client_email: existing.client_email ?? null,
-          notes: existing.notes ?? null,
-          status: 'confirmed',
-          service_location: existing.service_location ?? 'in_salon',
-          customer_address: existing.customer_address ?? null,
-        })
-        .select('id')
-        .single();
+      const result = rpcResult as { success: boolean; error?: string; new_booking_id?: string; old_date?: string; old_time?: string; current_status?: string; detail?: string };
 
-      if (insertErr || !newBooking) {
-        // Rollback: restaurar agendamento antigo
-        await this.supabase
-          .from('bookings')
-          .update({ status: 'confirmed', cancelled_by: null, cancelled_at: null, cancellation_reason: null })
-          .eq('id', bookingId);
-
-        if (insertErr?.code === '23505') {
+      if (!result.success) {
+        if (result.error === 'not_found') {
+          return { success: false, error: 'not_found', message: 'Agendamento não encontrado.' };
+        }
+        if (result.error === 'not_confirmed') {
+          return { success: false, error: 'not_confirmed', message: `Agendamento não está confirmado (status: ${result.current_status}).` };
+        }
+        if (result.error === 'slot_taken') {
           return { success: false, error: 'slot_taken_race', message: 'O novo horário foi ocupado durante o processamento. Escolha outro horário.' };
         }
-        return { success: false, error: 'insert_failed', message: 'Erro ao criar novo agendamento. O horário anterior foi mantido.' };
+        return { success: false, error: result.error ?? 'unknown', message: 'Erro ao reagendar. O horário anterior foi mantido.' };
       }
+
+      const newBooking = { id: result.new_booking_id! };
 
       const oldDateFmt = new Date(existing.booking_date + 'T12:00:00Z')
         .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
