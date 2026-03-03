@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -9,7 +9,7 @@ export async function POST(
   const body = await request.json();
   const { new_date, new_time } = body;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   try {
     // Validar token
