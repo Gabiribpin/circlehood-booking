@@ -13,16 +13,16 @@ import { resolve } from 'path';
 describe('GDPR job uses Vercel preview URL (issue #54)', () => {
   const ciYml = readFileSync(resolve('.github/workflows/ci.yml'), 'utf-8');
 
-  it('does not hardcode production URL in the polling step', () => {
-    // The old pattern: curl directly against production URL
+  it('does not hardcode production URL in a curl polling loop', () => {
+    // The old pattern: curl directly against production URL in a loop
     expect(ciYml).not.toContain(
       'curl -sfL --max-time 15 https://booking.circlehood-tech.com/register'
     );
   });
 
-  it('has a step to obtain the Vercel preview URL', () => {
+  it('has a step to obtain the Vercel deploy URL', () => {
     expect(ciYml).toContain('id: vercel-url');
-    expect(ciYml).toContain('Obter URL do Vercel preview deploy');
+    expect(ciYml).toContain('Obter URL do Vercel deploy');
   });
 
   it('uses GitHub Deployments API to find preview URL on PRs', () => {
@@ -31,9 +31,14 @@ describe('GDPR job uses Vercel preview URL (issue #54)', () => {
     expect(ciYml).toContain('environment_url');
   });
 
-  it('falls back to production URL on push to main', () => {
+  it('falls back to production URL when preview is unavailable', () => {
     expect(ciYml).toContain('https://booking.circlehood-tech.com');
-    expect(ciYml).toContain('usando URL de produção como fallback');
+    expect(ciYml).toContain('usando produção como fallback');
+  });
+
+  it('verifies preview URL responds before using it', () => {
+    expect(ciYml).toContain('Verificando se preview responde');
+    expect(ciYml).toContain('Preview responde');
   });
 
   it('passes the dynamic URL as TEST_BASE_URL to the GDPR tests', () => {
@@ -41,7 +46,7 @@ describe('GDPR job uses Vercel preview URL (issue #54)', () => {
   });
 
   it('does not hardcode TEST_BASE_URL to production in the GDPR job', () => {
-    // Extract the GDPR job section (between gdpr-legal-e2e: and the next job)
+    // Extract the GDPR job section
     const gdprMatch = ciYml.match(/gdpr-legal-e2e:[\s\S]*?(?=\n  \w[\w-]*:|$)/);
     expect(gdprMatch).toBeTruthy();
     const gdprSection = gdprMatch![0];
@@ -51,5 +56,12 @@ describe('GDPR job uses Vercel preview URL (issue #54)', () => {
     for (const line of testBaseUrlLines) {
       expect(line).not.toContain('https://booking.circlehood-tech.com');
     }
+  });
+
+  it('polls at most 18 times (3 min) instead of 30 times (5 min)', () => {
+    // The old code did 30 attempts × 10s = 5 min polling against production
+    expect(ciYml).not.toContain('seq 1 30');
+    // New code polls max 18 attempts for preview URL
+    expect(ciYml).toContain('seq 1 18');
   });
 });
