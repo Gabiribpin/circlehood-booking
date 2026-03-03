@@ -15,7 +15,10 @@
     "search": "Buscar",
     "actions": "Acciones",
     "optional": "opcional",
-    "required": "obligatorio"
+    "required": "obligatorio",
+    "errorBoundaryTitle": "Algo salió mal",
+    "errorBoundaryDescription": "Ocurrió un error inesperado. Inténtalo de nuevo.",
+    "tryAgain": "Intentar de nuevo"
   },
   "nav": {
     "dashboard": "Panel",

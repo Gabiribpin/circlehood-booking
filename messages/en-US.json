@@ -15,7 +15,10 @@
     "search": "Search",
     "actions": "Actions",
     "optional": "optional",
-    "required": "required"
+    "required": "required",
+    "errorBoundaryTitle": "Something went wrong",
+    "errorBoundaryDescription": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try again"
   },
   "nav": {
     "dashboard": "Dashboard",
