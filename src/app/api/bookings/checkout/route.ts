@@ -226,15 +226,22 @@ export async function POST(request: NextRequest) {
     { idempotencyKey }
   );
 
-  // ─── 12. INSERT payment ──────────────────────────────────────────────────
-  await supabase.from('payments').insert({
+  // ─── 12. INSERT payment (must succeed before returning session URL) ──────
+  const { error: paymentError } = await supabase.from('payments').insert({
     professional_id,
     booking_id: booking.id,
     amount: depositAmount,
     currency: currencyCode,
     status: 'pending',
     stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id: (session.payment_intent as string) || null,
   });
+
+  if (paymentError) {
+    console.error('[checkout] payment insert failed, rolling back booking:', paymentError);
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+    return NextResponse.json({ error: 'Failed to create payment record' }, { status: 500 });
+  }
 
   return NextResponse.json({ session_url: session.url });
 }
