@@ -189,7 +189,7 @@ test.describe('Autorização — WhatsApp Webhook', () => {
 });
 
 test.describe('Autorização — Stripe Webhook', () => {
-  test('POST /api/stripe/webhook sem assinatura → 400 ou 403', async ({ request }) => {
+  test('POST /api/stripe/webhook sem assinatura → 400, 403 ou 503', async ({ request }) => {
     // Stripe webhook sem header stripe-signature válido
     const res = await request.post(`${BASE}/api/stripe/webhook`, {
       data: { type: 'checkout.session.completed', data: {} },
@@ -198,7 +198,7 @@ test.describe('Autorização — Stripe Webhook', () => {
         'content-type': 'application/json',
       },
     });
-    // Stripe rejeita assinaturas inválidas
-    expect([400, 403]).toContain(res.status());
+    // 400: assinatura inválida, 403: acesso negado, 503: Stripe/webhook secret não configurado
+    expect([400, 403, 503]).toContain(res.status());
   });
 });
