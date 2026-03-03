@@ -5,6 +5,7 @@ import { classifyIntent } from './intent-classifier';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 import { timeToMinutes, suggestAlternative, normalizeDate, normalizeTime } from './booking-utils';
 import { detectLanguage } from './language-detector';
+import { sanitizePromptField, delimitUserData } from './sanitize-prompt';
 
 // Tier 3 de fallback: in-memory Map (funciona dentro da mesma instância Vercel)
 // Garante contexto mesmo quando Redis (tier 1) e Supabase (tier 2) falham
@@ -909,11 +910,20 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
     const { businessInfo, phone, history } = context;
     const botConfig = businessInfo.botConfig;
 
-    const botName = botConfig?.bot_name || businessInfo.business_name;
+    // Sanitize all user-controlled fields before prompt injection
+    const sBusinessName = sanitizePromptField(businessInfo.business_name, 'business_name');
+    const sDescription = sanitizePromptField(businessInfo.description ?? '', 'description');
+    const sLocation = sanitizePromptField(businessInfo.location ?? '', 'location');
+    const sWebsite = sanitizePromptField(businessInfo.website ?? '', 'website');
+    const sAiInstructions = sanitizePromptField(businessInfo.ai_instructions ?? '', 'ai_instructions');
+
+    const sBotName = sanitizePromptField(botConfig?.bot_name ?? '', 'bot_name');
+    const sGreetingMsg = sanitizePromptField(botConfig?.greeting_message ?? '', 'greeting_message');
+    const sUnavailableMsg = sanitizePromptField(botConfig?.unavailable_message ?? '', 'unavailable_message');
+    const sConfirmationMsg = sanitizePromptField(botConfig?.confirmation_message ?? '', 'confirmation_message');
+
+    const botName = sBotName || sBusinessName;
     const personality = botConfig?.bot_personality ?? 'friendly';
-    const greetingMsg = botConfig?.greeting_message ?? '';
-    const unavailableMsg = botConfig?.unavailable_message ?? '';
-    const confirmationMsg = botConfig?.confirmation_message ?? '';
     const autoBook = botConfig?.auto_book_if_available ?? true;
     const alwaysConfirm = botConfig?.always_confirm_booking ?? false;
     const askAdditional = botConfig?.ask_for_additional_info ?? false;
@@ -1013,18 +1023,19 @@ ERRADO → "Sim! Fazemos vários serviços, incluindo unhas!" ← MENTIRA, servi
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
-    // Se custom_system_prompt preenchido → usar com substituição de variáveis
+    // Se custom_system_prompt preenchido → sanitizar e usar com substituição de variáveis
     if (botConfig?.custom_system_prompt) {
+      const sCustomPrompt = sanitizePromptField(botConfig.custom_system_prompt, 'ai_instructions');
       const vars: Record<string, string> = {
-        '{business_name}': businessInfo.business_name,
+        '{business_name}': sBusinessName,
         '{bot_name}': botName,
         '{phone}': phone,
         '{services}': this.formatServices(businessInfo.services),
         '{schedule}': this.formatSchedule(businessInfo.schedule),
-        '{location}': businessInfo.location,
+        '{location}': sLocation,
         '{conversation_history}': '(histórico disponível nas mensagens acima)',
       };
-      let prompt = botConfig.custom_system_prompt;
+      let prompt = sCustomPrompt;
       for (const [key, value] of Object.entries(vars)) {
         prompt = prompt.split(key).join(value);
       }
@@ -1034,21 +1045,21 @@ ERRADO → "Sim! Fazemos vários serviços, incluindo unhas!" ← MENTIRA, servi
     return `${criticalRules}
 
 # IDENTIDADE
-${botConfig?.bot_name
-      ? `Você é ${botName}, assistente do ${businessInfo.business_name}.`
-      : `Você é assistente do ${businessInfo.business_name}.`} Telefone do cliente: ${phone} — nunca peça.
+${sBotName
+      ? `Você é ${delimitUserData('bot_name', botName)}, assistente do ${delimitUserData('business_name', sBusinessName)}.`
+      : `Você é assistente do ${delimitUserData('business_name', sBusinessName)}.`} Telefone do cliente: ${phone} — nunca peça.
 Tom: ${this.getPersonalityInstructions(personality)}
 Responda SEMPRE no idioma do cliente.
 
 # APRESENTAÇÃO
 ${isFirstMessage
-      ? (botConfig?.bot_name && greetingMsg)
-        ? `PRIMEIRA MENSAGEM: comece com EXATAMENTE: "Olá! Sou ${botName}. ${greetingMsg}"`
-        : botConfig?.bot_name
-          ? `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Sou ${botName}, assistente do ${businessInfo.business_name}. Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
-          : greetingMsg
-            ? `PRIMEIRA MENSAGEM: responda com EXATAMENTE este texto (sem alterar): "${greetingMsg}"`
-            : `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Bem-vindo ao ${businessInfo.business_name}! Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
+      ? (sBotName && sGreetingMsg)
+        ? `PRIMEIRA MENSAGEM: comece com EXATAMENTE: "Olá! Sou ${botName}. ${sGreetingMsg}"`
+        : sBotName
+          ? `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Sou ${botName}, assistente do ${sBusinessName}. Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
+          : sGreetingMsg
+            ? `PRIMEIRA MENSAGEM: responda com EXATAMENTE este texto (sem alterar): "${sGreetingMsg}"`
+            : `PRIMEIRA MENSAGEM: comece OBRIGATORIAMENTE com: "Olá! Bem-vindo ao ${sBusinessName}! Como posso ajudar? 😊" — NÃO omita o nome do negócio. NÃO liste serviços proativamente.`
       : `PROIBIDO apresentar-se ou saudar o cliente. A conversa já está em curso — vá DIRETAMENTE ao pedido. Se a mensagem menciona data, dia ou horário: chame check_availability IMEDIATAMENTE como PRIMEIRA ação, antes de qualquer texto.`}
 
 # HISTÓRICO DA CONVERSA
@@ -1206,19 +1217,19 @@ Formato date: YYYY-MM-DD | Formato time: HH:MM
 Use SEMPRE as datas acima — nunca calcule datas manualmente.
 
 # NEGÓCIO
-${businessInfo.business_name}${businessInfo.description ? ` — ${businessInfo.description}` : ''}
-Local: ${businessInfo.location}${businessInfo.website ? `\nSite/Portfólio: ${businessInfo.website}` : ''}
+${delimitUserData('business_name', sBusinessName)}${sDescription ? ` — ${delimitUserData('description', sDescription)}` : ''}
+Local: ${delimitUserData('location', sLocation)}${sWebsite ? `\nSite/Portfólio: ${delimitUserData('website', sWebsite)}` : ''}
 
 Serviços:
 ${this.formatServices(businessInfo.services)}
 
 Horário:
 ${this.formatSchedule(businessInfo.schedule)}
-${businessInfo.ai_instructions ? `\nInstruções: ${businessInfo.ai_instructions}` : ''}
-${unavailableMsg ? `\nIndisponível: ${unavailableMsg}` : ''}
+${sAiInstructions ? `\nInstruções: ${delimitUserData('ai_instructions', sAiInstructions)}` : ''}
+${sUnavailableMsg ? `\nIndisponível: ${delimitUserData('unavailable_message', sUnavailableMsg)}` : ''}
 
 # CONFIRMAÇÃO DE AGENDAMENTO
-${confirmationMsg || `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊`}
+${sConfirmationMsg ? delimitUserData('confirmation_message', sConfirmationMsg) : `Agendado [Nome]! ✅\n[Data] [Hora] - [Serviço] €[Preço]\nNos vemos em breve! 😊`}
 
 # VERIFICAÇÃO DE DISPONIBILIDADE — OBRIGATÓRIO ANTES DE COLETAR DADOS
 Quando o cliente mencionar uma data, dia ou horário (ex: "amanhã", "sábado", "dia 25", "às 9h"):
