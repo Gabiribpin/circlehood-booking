@@ -11,9 +11,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const { professional_id, service_id } = body as {
+  const { professional_id, service_id, idempotency_key: clientKey } = body as {
     professional_id?: string;
     service_id?: string;
+    idempotency_key?: string;
   };
 
   if (!professional_id || !service_id) {
@@ -83,19 +84,25 @@ export async function POST(request: NextRequest) {
   const currency = (professional.currency ?? 'EUR').toLowerCase();
 
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: toCents(depositAmount),
-      currency,
-      metadata: {
-        professional_id,
-        service_id,
-        service_name: service.name,
-        deposit_type: professional.deposit_type,
-        deposit_value: String(professional.deposit_value),
+    // Idempotency key: usa key do frontend se enviada (retry-safe), senão gera UUID
+    const idempotencyKey = clientKey || `pi:${professional_id}:${service_id}:${crypto.randomUUID()}`;
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: toCents(depositAmount),
+        currency,
+        metadata: {
+          professional_id,
+          service_id,
+          service_name: service.name,
+          deposit_type: professional.deposit_type,
+          deposit_value: String(professional.deposit_value),
+        },
+        // Permite cards e outros métodos automaticamente
+        automatic_payment_methods: { enabled: true },
       },
-      // Permite cards e outros métodos automaticamente
-      automatic_payment_methods: { enabled: true },
-    });
+      { idempotencyKey }
+    );
 
     // Salvar registro de pagamento pendente
     await supabase.from('payments').insert({
