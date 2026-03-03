@@ -233,14 +233,16 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Marcar lembrete como enviado
-        await supabase
-          .from('bookings')
-          .update({
-            reminder_sent: true,
-            reminder_sent_at: new Date().toISOString(),
-          })
-          .eq('id', booking.id);
+        // Marcar lembrete como enviado — SOMENTE se envio confirmado
+        if (sent) {
+          await supabase
+            .from('bookings')
+            .update({
+              reminder_sent: true,
+              reminder_sent_at: new Date().toISOString(),
+            })
+            .eq('id', booking.id);
+        }
 
         // Registrar log
         await supabase.from('notification_logs').insert({
