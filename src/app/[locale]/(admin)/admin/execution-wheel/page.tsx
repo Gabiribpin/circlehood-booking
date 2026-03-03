@@ -500,7 +500,7 @@ export default function ExecutionWheelPage() {
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                 {botE2eError
                   ? botE2eError
-                  : 'Deixe OFF no dia-a-dia. Ligue apenas antes de release.'}
+                  : 'Controla a variável BOT_E2E_ENABLED no GitHub Actions. Deixe OFF no dia-a-dia — ligue apenas antes de release.'}
               </p>
             </div>
           </div>
