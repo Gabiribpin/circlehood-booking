@@ -628,22 +628,51 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install chromium --with-deps
-      - name: Aguardar Vercel deployar novo código
+      - name: Obter URL do Vercel preview deploy
+        id: vercel-url
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Aguardando Vercel publicar commit $GITHUB_SHA..."
-          for i in $(seq 1 30); do
-            if curl -sfL --max-time 15 https://booking.circlehood-tech.com/register 2>/dev/null | grep -q 'noopener'; then
-              echo "✅ Vercel deployment pronto (tentativa $i)"
+          PROD_URL="https://booking.circlehood-tech.com"
+          # On PRs, poll GitHub Deployments API for preview URL
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SHA="${{ github.event.pull_request.head.sha }}"
+            echo "Buscando preview URL para SHA $SHA..."
+            for i in $(seq 1 30); do
+              DEPLOY_URL=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&environment=Preview&per_page=5" \
+                --jq '.[0].id // empty' 2>/dev/null)
+              if [ -n "$DEPLOY_URL" ]; then
+                STATUS_URL=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_URL/statuses" \
+                  --jq '[.[] | select(.state == "success")][0].environment_url // empty' 2>/dev/null)
+                if [ -n "$STATUS_URL" ]; then
+                  echo "✅ Preview URL encontrada: $STATUS_URL (tentativa $i)"
+                  echo "url=$STATUS_URL" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
+              fi
+              echo "⏳ Tentativa $i/30: preview deploy não pronto, aguardando 10s..."
+              sleep 10
+            done
+            echo "⚠️ Timeout — usando URL de produção como fallback"
+          fi
+          echo "url=$PROD_URL" >> "$GITHUB_OUTPUT"
+      - name: Aguardar preview responder
+        run: |
+          TARGET="${{ steps.vercel-url.outputs.url }}"
+          echo "Aguardando $TARGET responder..."
+          for i in $(seq 1 12); do
+            if curl -sfL --max-time 15 "$TARGET/register" 2>/dev/null | grep -q 'noopener'; then
+              echo "✅ Deploy pronto (tentativa $i)"
               exit 0
             fi
-            echo "⏳ Tentativa $i/30: deployment não pronto, aguardando 10s..."
+            echo "⏳ Tentativa $i/12: aguardando 10s..."
             sleep 10
           done
-          echo "⚠️ Timeout (5min) — continuando mesmo assim"
+          echo "⚠️ Timeout — continuando mesmo assim"
       - name: Run GDPR and legal pages tests
         run: npx playwright test --project=auth-setup --project=legal --project=gdpr
         env:
-          TEST_BASE_URL: https://booking.circlehood-tech.com
+          TEST_BASE_URL: ${{ steps.vercel-url.outputs.url }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
