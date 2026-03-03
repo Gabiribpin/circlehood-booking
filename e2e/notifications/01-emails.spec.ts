@@ -1,9 +1,8 @@
 /**
- * Email & Notificações — Crons e Fila
+ * Email & Notificações — Crons e Webhook
  *
  * Testes de integração que verificam o pipeline de notificações:
  *  - Crons de lembrete agendados (send-reminders, send-maintenance-reminders)
- *  - Processamento da notification_queue pelo endpoint /notifications/send
  *  - Webhook Resend para tracking de entregas
  *
  * Estratégia:
@@ -111,119 +110,9 @@ test.describe('Cron — send-maintenance-reminders', () => {
   });
 });
 
-// ─── 3: Notification Queue Processing ────────────────────────────────────────
-
-test.describe('Notification Queue — /api/notifications/send', () => {
-  let testNotificationId: string | null = null;
-
-  test.afterEach(async () => {
-    // Cleanup: remover notificação de teste se criada
-    if (testNotificationId) {
-      await supabase.from('notification_queue').delete().eq('id', testNotificationId);
-      testNotificationId = null;
-    }
-  });
-
-  test('processa notificação pendente e muda status para sent', async ({ request }) => {
-    // Setup: inserir notificação de teste sem email (para não enviar email real)
-    const { data: inserted, error } = await supabase
-      .from('notification_queue')
-      .insert({
-        professional_id: TEST.PROFESSIONAL_ID,
-        type: 'reminder',
-        recipient_name: 'Teste E2E Notificação',
-        recipient_phone: TEST.PHONE,
-        recipient_email: null, // sem email → sem Resend chamado
-        message_template: 'reminder',
-        message_data: {
-          booking_id: null,
-          message: 'Teste de lembrete E2E — pode ignorar',
-        },
-        language: 'pt',
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (error || !inserted) {
-      console.log(`⏭️  Falha ao inserir notificação de teste: ${error?.message}`);
-      test.skip(true, 'Não foi possível inserir na notification_queue');
-      return;
-    }
-
-    testNotificationId = inserted.id;
-    console.log(`✅ Notificação de teste inserida: id=${testNotificationId}`);
-
-    // Chamar endpoint de processamento
-    const res = await request.post(`${TEST.BASE_URL}/api/notifications/send`, {
-      headers: { 'x-cron-secret': TEST.CRON_SECRET },
-    });
-
-    expect(res.status()).toBe(200);
-    const data = await res.json();
-    console.log('  ✅ /api/notifications/send response:', JSON.stringify(data));
-
-    // Response deve ser JSON válido com campo recognized
-    expect(data).toBeDefined();
-
-    // Aguardar processamento assíncrono (Vercel pode ter latência)
-    await new Promise<void>((r) => setTimeout(r, 2000));
-
-    // Verificar status da notificação
-    const { data: updated } = await supabase
-      .from('notification_queue')
-      .select('status, sent_at, error_message')
-      .eq('id', testNotificationId)
-      .maybeSingle();
-
-    if (updated) {
-      console.log(
-        `  ℹ️  Notificação: status=${updated.status}, sent_at=${updated.sent_at}`,
-      );
-      if (updated.status === 'pending') {
-        // O endpoint usa auth de sessão (sem cookies em contexto cron) →
-        // RLS pode impedir visibilidade da notificação. Resultado documentativo.
-        console.log('  ℹ️  Notificação ainda pending — endpoint pode não ter acesso via RLS sem sessão ativa');
-      } else if (updated.status === 'failed') {
-        console.log(`  ℹ️  Notificação falhou: ${updated.error_message}`);
-      } else {
-        console.log(`  ✅ Notificação processada com sucesso: status=${updated.status}`);
-      }
-      // Status pode ser 'pending', 'sent' ou 'failed' — todos são resultados válidos em E2E
-      expect(['pending', 'sent', 'failed']).toContain(updated.status);
-    } else {
-      console.log('  ℹ️  Notificação não encontrada após processamento (pode ter sido deletada)');
-    }
-  });
-
-  test('retorna estrutura correta quando não há notificações pendentes', async ({ request }) => {
-    // Chamar endpoint sem inserir nada — não garante fila vazia,
-    // mas verifica que o endpoint responde com estrutura correta
-
-    const res = await request.post(`${TEST.BASE_URL}/api/notifications/send`, {
-      headers: { 'x-cron-secret': TEST.CRON_SECRET },
-    });
-
-    expect(res.status()).toBe(200);
-    const data = await res.json();
-
-    // Resposta deve ser JSON válido com campo processed ou message
-    const hasExpectedField =
-      'processed' in data || 'message' in data || 'success' in data || 'results' in data;
-    expect(hasExpectedField).toBe(true);
-
-    console.log(`✅ /api/notifications/send: resposta válida ${JSON.stringify(data)}`);
-  });
-
-  test('retorna 401 sem x-cron-secret', async ({ request }) => {
-    const res = await request.post(`${TEST.BASE_URL}/api/notifications/send`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    expect(res.status()).toBe(401);
-    console.log('✅ /api/notifications/send rejeita request sem auth (401)');
-  });
-});
+// ─── 3: Notification Queue — REMOVED (issue #18) ────────────────────────────
+// notification_queue was a dead queue (never processed by any cron).
+// Table dropped in migration 20260303000007. Tests removed.
 
 // ─── 4: Resend Webhook ───────────────────────────────────────────────────────
 
@@ -277,38 +166,9 @@ test.describe('Webhook Resend — /api/webhooks/resend', () => {
   });
 });
 
-// ─── 5: Integridade da notification_queue ────────────────────────────────────
+// ─── 5: notification_logs (notification_queue removed in issue #18) ──────────
 
-test.describe('Notification Queue — Integridade', () => {
-  test('não há notificações travadas em pending por mais de 1 hora', async () => {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-    const { data: stuckNotifications, count } = await supabase
-      .from('notification_queue')
-      .select('id, type, created_at, recipient_phone', { count: 'exact' })
-      .eq('status', 'pending')
-      .lt('created_at', oneHourAgo);
-
-    const stuckCount = count ?? 0;
-
-    if (stuckCount > 0) {
-      console.log(`⚠️  ${stuckCount} notificação(ões) travada(s) em pending por >1h:`);
-      (stuckNotifications ?? []).slice(0, 5).forEach((n) => {
-        console.log(`  - id=${n.id}, type=${n.type}, created_at=${n.created_at}`);
-      });
-      // Não falhamos o CI por notificações travadas — é informativo
-      // (pode ser que o processador ainda não rodou)
-      console.log(
-        '  ℹ️  Notificações travadas documentadas — verificar se /api/notifications/send está sendo chamado',
-      );
-    } else {
-      console.log('✅ Nenhuma notificação travada em pending por >1h');
-    }
-
-    // Este teste sempre passa — é puramente documentativo
-    expect(true).toBe(true);
-  });
-
+test.describe('Notification Logs — Integridade', () => {
   test('notification_logs registra notificações enviadas recentemente', async () => {
     const { data: recentLogs, count } = await supabase
       .from('notification_logs')

@@ -3,14 +3,14 @@
  *
  * Verifica que o cron /api/cron/send-maintenance-reminders:
  *  - Identifica bookings concluídos cujo prazo (completed_at + lifetime_days) é hoje
- *  - Insere entrada na notification_queue para o cliente
+ *  - Envia notificação diretamente ao cliente (fire-and-forget)
  *  - Marca maintenance_reminder_sent = true no booking
  *
  * Estratégia:
  *  1. Criar serviço de teste com lifetime_days = 3
  *  2. Criar booking concluído com completed_at = hoje − 3 dias, maintenance_reminder_sent = false
  *  3. Chamar o cron
- *  4. Verificar notification_queue tem entrada para o booking
+ *  4. Verificar booking.maintenance_reminder_sent = true
  *  5. Verificar booking.maintenance_reminder_sent = true
  *  6. Cleanup
  */
@@ -81,12 +81,8 @@ test.describe('Cron — send-maintenance-reminders — com dados reais', () => {
   });
 
   test.afterAll(async () => {
-    // Cleanup: deletar notification_queue entries, booking e serviço
+    // Cleanup: deletar booking e serviço
     if (bookingId) {
-      await supabase
-        .from('notification_queue')
-        .delete()
-        .contains('message_data', { booking_id: bookingId });
       await supabase.from('bookings').delete().eq('id', bookingId);
     }
     if (serviceId) {
@@ -94,15 +90,13 @@ test.describe('Cron — send-maintenance-reminders — com dados reais', () => {
     }
   });
 
-  test('cron identifica booking vencido e insere na notification_queue', async ({
+  test('cron identifica booking vencido e envia notificação', async ({
     request,
   }) => {
     if (!bookingId || !serviceId) {
       test.skip(true, 'Setup falhou — pulando teste');
       return;
     }
-
-    const before = new Date().toISOString();
 
     // 3. Chamar o cron
     const res = await request.post(
@@ -117,36 +111,8 @@ test.describe('Cron — send-maintenance-reminders — com dados reais', () => {
     expect(data).toHaveProperty('success', true);
     expect(typeof data.remindersSent).toBe('number');
 
-    // 4. Verificar notification_queue tem entrada para o booking
-    // Aguardar brevemente para escrita no DB
+    // 4. Verificar booking.maintenance_reminder_sent = true
     await new Promise<void>((r) => setTimeout(r, 1000));
-
-    const { data: queueEntry } = await supabase
-      .from('notification_queue')
-      .select('id, type, recipient_phone, status, message_data')
-      .eq('professional_id', TEST.PROFESSIONAL_ID)
-      .eq('type', 'maintenance_reminder')
-      .gte('created_at', before)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (queueEntry && queueEntry.length > 0) {
-      const entry = queueEntry.find(
-        (q) => (q.message_data as any)?.booking_id === bookingId
-      );
-      if (entry) {
-        console.log(`  ✅ notification_queue entry criada: id=${entry.id}, phone=${entry.recipient_phone}`);
-        expect(entry.recipient_phone).toBe(TEST.PHONE);
-      } else {
-        console.log(`  ℹ️  ${queueEntry.length} entrie(s) maintenance_reminder, mas não para este booking_id`);
-        console.log('  ℹ️  O cron pode ter encontrado outro booking elegível e processado antes');
-      }
-    } else {
-      console.log('  ℹ️  Nenhuma entrada maintenance_reminder na fila após o cron');
-      console.log('  ℹ️  Possíveis razões: booking já teve reminder enviado, ou cron_logs indica erro');
-    }
-
-    // 5. Verificar booking.maintenance_reminder_sent = true
     const { data: updatedBooking } = await supabase
       .from('bookings')
       .select('maintenance_reminder_sent, maintenance_reminder_sent_at')
