@@ -628,22 +628,50 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install chromium --with-deps
-      - name: Aguardar Vercel deployar novo código
+      - name: Obter URL do Vercel deploy
+        id: vercel-url
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Aguardando Vercel publicar commit $GITHUB_SHA..."
-          for i in $(seq 1 30); do
-            if curl -sfL --max-time 15 https://booking.circlehood-tech.com/register 2>/dev/null | grep -q 'noopener'; then
-              echo "✅ Vercel deployment pronto (tentativa $i)"
-              exit 0
+          PROD_URL="https://booking.circlehood-tech.com"
+          # On PRs, try to use the Vercel preview URL for this commit
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SHA="${{ github.event.pull_request.head.sha }}"
+            echo "Buscando preview URL para SHA $SHA..."
+            PREVIEW_URL=""
+            for i in $(seq 1 18); do
+              DEPLOY_ID=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&environment=Preview&per_page=5" \
+                --jq '.[0].id // empty' 2>/dev/null)
+              if [ -n "$DEPLOY_ID" ]; then
+                CANDIDATE=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" \
+                  --jq '[.[] | select(.state == "success")][0].environment_url // empty' 2>/dev/null)
+                if [ -n "$CANDIDATE" ]; then
+                  PREVIEW_URL="$CANDIDATE"
+                  echo "✅ Preview URL encontrada: $PREVIEW_URL (tentativa $i)"
+                  break
+                fi
+              fi
+              echo "⏳ Tentativa $i/18: preview deploy não pronto, aguardando 10s..."
+              sleep 10
+            done
+            # Verify the preview URL actually serves the page
+            if [ -n "$PREVIEW_URL" ]; then
+              echo "Verificando se preview responde..."
+              if curl -sfL --max-time 20 "$PREVIEW_URL/register" 2>/dev/null | grep -q 'noopener'; then
+                echo "✅ Preview responde — usando $PREVIEW_URL"
+                echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "⚠️ Preview URL não respondeu — usando produção como fallback"
+            else
+              echo "⚠️ Preview URL não encontrada — usando produção como fallback"
             fi
-            echo "⏳ Tentativa $i/30: deployment não pronto, aguardando 10s..."
-            sleep 10
-          done
-          echo "⚠️ Timeout (5min) — continuando mesmo assim"
+          fi
+          echo "url=$PROD_URL" >> "$GITHUB_OUTPUT"
       - name: Run GDPR and legal pages tests
         run: npx playwright test --project=auth-setup --project=legal --project=gdpr
         env:
-          TEST_BASE_URL: https://booking.circlehood-tech.com
+          TEST_BASE_URL: ${{ steps.vercel-url.outputs.url }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
