@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { createClient } from '@/lib/supabase/server';
+import { encryptToken, decryptToken } from '@/lib/integrations/token-encryption';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
@@ -66,27 +67,26 @@ export async function getAuthenticatedClient(professionalId: string): Promise<OA
     return null;
   }
 
-  // Decriptar credenciais (TODO: implementar encriptação)
   const credentials = integration.credentials as any;
 
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({
-    access_token: credentials.access_token,
-    refresh_token: credentials.refresh_token,
+    access_token: decryptToken(credentials.access_token),
+    refresh_token: decryptToken(credentials.refresh_token),
     expiry_date: credentials.expiry_date,
   });
 
   // Refresh token automaticamente se expirado
   oauth2Client.on('tokens', async (tokens) => {
     if (tokens.refresh_token) {
-      // Atualizar no banco
+      // Atualizar no banco (criptografado)
       await supabase
         .from('integrations')
         .update({
           credentials: {
             ...credentials,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token || credentials.refresh_token,
+            access_token: tokens.access_token ? encryptToken(tokens.access_token) : credentials.access_token,
+            refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : credentials.refresh_token,
             expiry_date: tokens.expiry_date,
           },
           updated_at: new Date().toISOString(),

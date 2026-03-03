@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getTokensFromCode } from '@/lib/integrations/google-calendar';
+import { encryptToken } from '@/lib/integrations/token-encryption';
 
 /**
  * Callback do OAuth Google Calendar
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to get tokens from Google');
     }
 
-    // Salvar tokens no banco (encriptados - TODO: adicionar encriptação)
+    // Salvar tokens no banco (criptografados com AES-256-GCM)
     const { error: dbError } = await supabase.from('integrations').upsert(
       {
         professional_id: professional.id,
@@ -72,8 +73,8 @@ export async function GET(request: NextRequest) {
         is_active: true,
         is_configured: true,
         credentials: {
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
+          access_token: encryptToken(tokens.access_token!),
+          refresh_token: encryptToken(tokens.refresh_token!),
           expiry_date: tokens.expiry_date,
           scope: tokens.scope,
           token_type: tokens.token_type,
