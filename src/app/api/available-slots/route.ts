@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 3. Get working hours for the day of week
-  const dayOfWeek = new Date(date + 'T12:00:00').getDay(); // 0=Sunday
+  const dayOfWeek = new Date(date + 'T00:00:00Z').getUTCDay(); // 0=Sunday
   const { data: workingHours } = await supabase
     .from('working_hours')
     .select('*')
