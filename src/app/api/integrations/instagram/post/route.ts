@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { postPhoto, postStory } from '@/lib/integrations/instagram'
+import { decryptToken } from '@/lib/integrations/token-encryption'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -40,11 +41,13 @@ export async function POST(request: NextRequest) {
   try {
     let result: { id: string; permalink?: string }
 
+    const accessToken = decryptToken(integration.access_token);
+
     if (postType === 'story') {
       // Postar story
       result = await postStory(
         integration.instagram_user_id,
-        integration.access_token,
+        accessToken,
         {
           imageUrl,
           link // Requer 10K+ followers
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
       // Postar foto no feed
       result = await postPhoto(
         integration.instagram_user_id,
-        integration.access_token,
+        accessToken,
         {
           imageUrl,
           caption

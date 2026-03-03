@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { exchangeCodeForToken, getLongLivedToken, getUserProfile } from '@/lib/integrations/instagram'
+import { encryptToken } from '@/lib/integrations/token-encryption'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       .upsert({
         professional_id: user.id,
         type: 'instagram',
-        access_token: longToken,
+        access_token: encryptToken(longToken),
         refresh_token: null,
         token_expires_at: expiresAt.toISOString(),
         instagram_user_id: userId,
