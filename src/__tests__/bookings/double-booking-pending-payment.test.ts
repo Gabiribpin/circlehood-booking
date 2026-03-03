@@ -206,15 +206,15 @@ describe('Double-booking — code verification (#3)', () => {
     expect(source).toContain(".in('status', ['confirmed', 'pending_payment'])");
   });
 
-  it('chatbot conflict check excludes cancelled/completed (catches pending_payment)', async () => {
+  it('chatbot conflict check uses positive status filter (catches pending_payment)', async () => {
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
     const chatbotPath = join(process.cwd(), 'src/lib/ai/chatbot.ts');
     const source = readFileSync(chatbotPath, 'utf-8');
 
-    // Chatbot uses .neq('status', 'cancelled').neq('status', 'completed')
-    // which naturally includes pending_payment
-    expect(source).toContain(".neq('status', 'cancelled')");
-    expect(source).toContain(".neq('status', 'completed')");
+    // Chatbot uses .in('status', ['confirmed', 'pending_payment'])
+    // which explicitly treats pending_payment as occupied
+    expect(source).toContain(".in('status', ['confirmed', 'pending_payment'])");
+    expect(source).not.toContain(".neq('status', 'cancelled')");
   });
 });

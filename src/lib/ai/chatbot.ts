@@ -523,8 +523,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .select('start_time, end_time')
         .eq('professional_id', professionalId)
         .eq('booking_date', normalizedDate)
-        .neq('status', 'cancelled')
-        .neq('status', 'completed');
+        .in('status', ['confirmed', 'pending_payment']);
 
       if (existingBookings && existingBookings.length > 0) {
         const BUFFER = 15;
@@ -693,8 +692,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .eq('professional_id', professionalId)
         .eq('client_phone', clientPhone)
         .gte('booking_date', todayISO)
-        .neq('status', 'cancelled')
-        .neq('status', 'completed')
+        .in('status', ['confirmed', 'pending_payment'])
         .order('booking_date', { ascending: true });
 
       if (futureBookings && futureBookings.length > 0) {
@@ -749,8 +747,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .select('start_time, end_time')
         .eq('professional_id', professionalId)
         .eq('booking_date', bookingDate)
-        .neq('status', 'cancelled')
-        .neq('status', 'completed');
+        .in('status', ['confirmed', 'pending_payment']);
 
       if (existingBookings && existingBookings.length > 0) {
         const reqStart = timeToMinutes(bookingTime);
@@ -808,8 +805,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
                 .select('start_time, end_time')
                 .eq('professional_id', professionalId)
                 .eq('booking_date', tomorrowStr)
-                .neq('status', 'cancelled')
-                .neq('status', 'completed'),
+                .in('status', ['confirmed', 'pending_payment']),
             ]);
 
             logger.info(`🗓️ Working hours amanhã (day_int=${tomorrowDayInt}, data=${tomorrowStr}):`, tomorrowWH ? `${tomorrowWH.start_time}–${tomorrowWH.end_time}` : 'não atende');
