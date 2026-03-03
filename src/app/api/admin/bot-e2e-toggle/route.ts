@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { validateAdminToken } from '@/lib/admin/session';
 
 const REPO = 'Gabiribpin/circlehood-booking';
 const VAR_NAME = 'BOT_E2E_ENABLED';
@@ -18,7 +19,7 @@ function ghHeaders(token: string) {
 
 export async function GET() {
   const cookieStore = await cookies();
-  if (cookieStore.get('admin_session')?.value !== '1') {
+  if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -50,7 +51,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const cookieStore = await cookies();
-  if (cookieStore.get('admin_session')?.value !== '1') {
+  if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
