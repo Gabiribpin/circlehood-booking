@@ -84,10 +84,10 @@ describe('Cron: expire-pending-payments (issue #5)', () => {
     expect(cronEntry).toBeDefined();
   });
 
-  it('runs every 30 minutes', () => {
+  it('runs every hour', () => {
     const cronEntry = vercelJson.crons.find(
       (c: { path: string }) => c.path === '/api/cron/expire-pending-payments'
     );
-    expect(cronEntry.schedule).toBe('*/30 * * * *');
+    expect(cronEntry.schedule).toBe('0 * * * *');
   });
 });

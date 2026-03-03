@@ -65,7 +65,7 @@
     },
     {
       "path": "/api/cron/expire-pending-payments",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
