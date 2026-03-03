@@ -25,7 +25,10 @@ export async function GET() {
 
   const token = process.env.GH_ACTIONS_TOKEN;
   if (!token) {
-    return NextResponse.json({ enabled: false, error: 'GH_ACTIONS_TOKEN not configured' });
+    return NextResponse.json({
+      enabled: false,
+      error: 'GH_ACTIONS_TOKEN não configurado. Adicione um GitHub PAT (Fine-grained, permissão Actions: Read/Write) nas env vars do Vercel.',
+    });
   }
 
   try {
@@ -57,7 +60,9 @@ export async function PATCH(request: Request) {
 
   const token = process.env.GH_ACTIONS_TOKEN;
   if (!token) {
-    return NextResponse.json({ error: 'GH_ACTIONS_TOKEN not configured' }, { status: 500 });
+    return NextResponse.json({
+      error: 'GH_ACTIONS_TOKEN não configurado. Adicione um GitHub PAT nas env vars do Vercel.',
+    }, { status: 500 });
   }
 
   const body = await request.json();
