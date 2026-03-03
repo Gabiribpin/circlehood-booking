@@ -161,6 +161,17 @@ async function fillBookingFormToStep4(
 
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
+// Warmup: aquecer o Vercel serverless antes do primeiro teste.
+// Sem isso, o cold start (~5-10s no CI) consome parte do timeout de 45s
+// do toBeVisible, causando falhas flaky no primeiro teste que roda.
+test.beforeAll(async ({ request }) => {
+  // Dispara 2 requests em paralelo para aquecer diferentes serverless functions
+  await Promise.allSettled([
+    request.get(`${BASE}/${BOOKING_SLUG}`).catch(() => {}),
+    request.get(`${BASE}/api/available-slots?professional_id=${TEST.PROFESSIONAL_ID}&date=2026-01-01&service_id=dummy`).catch(() => {}),
+  ]);
+});
+
 test.beforeEach(async () => {
   await cleanIdempotencyBookings();
   // Garantir que require_deposit está false — o job de pagamentos (paralelo no CI)
