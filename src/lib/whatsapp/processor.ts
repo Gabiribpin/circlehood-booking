@@ -74,6 +74,12 @@ export async function processWhatsAppMessage(
     const bot = new AIBot();
     const response = await bot.processMessage(from, text, config.user_id);
 
+    // Resposta vazia = duplicata suprimida pelo greeting lock — não enviar nada
+    if (!response) {
+      logger.info('⏭️ Resposta vazia (duplicata suprimida) — nada a enviar');
+      return;
+    }
+
     // Enviar resposta pelo provider correto
     if (provider === 'evolution') {
       await sendEvolutionMessage(from, response, {

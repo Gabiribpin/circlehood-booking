@@ -116,10 +116,10 @@ export class AIBot {
         // Lock distribuído: evita race condition quando mensagens chegam simultaneamente
         const lockAcquired = await ConversationCache.acquireGreetingLock(cacheKey);
         if (!lockAcquired) {
-          logger.info(`🔒 Greeting já enviado por outro processo — processando como mensagem normal`);
-          // Aguarda brevemente para o histórico ser salvo pelo processo que ganhou o lock
-          await new Promise(r => setTimeout(r, 500));
-          // Continua para processamento normal (Claude responde às perguntas)
+          logger.info(`🔒 Greeting já enviado por outro processo — ignorando duplicata`);
+          // Outro processo já está tratando esta saudação — retornar vazio
+          // para que o processor NÃO envie uma segunda mensagem.
+          return '';
         } else {
           logger.info(`👋 Saudação direta (bypass Claude): "${greeting}"`);
           const entry = memoryCache.get(cacheKey) || { conversationId: context.conversationId, messages: [] };
