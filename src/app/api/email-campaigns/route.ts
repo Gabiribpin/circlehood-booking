@@ -10,13 +10,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 })
+  }
+
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
 
   let query = supabase
     .from('email_campaigns')
     .select('*')
-    .eq('professional_id', user.id)
+    .eq('professional_id', professional.id)
     .order('created_at', { ascending: false })
 
   if (status && status !== 'all') {
@@ -40,6 +50,16 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 })
   }
 
   const body = await request.json()
@@ -78,7 +98,7 @@ export async function POST(request: NextRequest) {
   const { data: contactsCount } = await supabase.rpc(
     'get_contacts_by_segment',
     {
-      p_professional_id: user.id,
+      p_professional_id: professional.id,
       p_segment: targetSegment || 'all',
       p_custom_filters: customFilters || {}
     }
@@ -90,7 +110,7 @@ export async function POST(request: NextRequest) {
   const { data: campaign, error } = await supabase
     .from('email_campaigns')
     .insert({
-      professional_id: user.id,
+      professional_id: professional.id,
       name,
       subject,
       from_name: fromName,
