@@ -15,7 +15,7 @@
  *  - /api/cron/send-reminders             → Authorization: Bearer {CRON_SECRET}
  *  - /api/cron/send-maintenance-reminders → Authorization: Bearer {CRON_SECRET}
  *  - /api/notifications/send              → x-cron-secret: {CRON_SECRET}
- *  - /api/webhooks/resend                 → sem auth (webhook público)
+ *  - /api/webhooks/resend                 → Svix signature (RESEND_WEBHOOK_SECRET)
  */
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
@@ -117,10 +117,11 @@ test.describe('Cron — send-maintenance-reminders', () => {
 // ─── 4: Resend Webhook ───────────────────────────────────────────────────────
 
 test.describe('Webhook Resend — /api/webhooks/resend', () => {
-  test('aceita evento email.delivered sem campaign_id e retorna {received: true}', async ({
+  test('rejeita request sem assinatura Svix válida (issue #20)', async ({
     request,
   }) => {
-    // Simular evento de entrega do Resend (sem campaign_id → not found → {received: true})
+    // Após issue #20, o webhook exige assinatura Svix válida.
+    // Requests sem headers svix-id/svix-timestamp/svix-signature → 401
     const mockEvent = {
       type: 'email.delivered',
       data: {
@@ -128,7 +129,7 @@ test.describe('Webhook Resend — /api/webhooks/resend', () => {
         from: 'noreply@circlehood-tech.com',
         to: 'test@example.com',
         created_at: new Date().toISOString(),
-        tags: [], // sem campaign_id → webhook retorna {received: true} imediatamente
+        tags: [],
       },
     };
 
@@ -136,14 +137,14 @@ test.describe('Webhook Resend — /api/webhooks/resend', () => {
       data: mockEvent,
     });
 
-    // Resend webhook deve retornar 200 (sempre aceita, processa assincronamente)
-    expect(res.status()).toBe(200);
+    // Webhook agora requer signature validation → 401 sem headers válidos
+    expect(res.status()).toBe(401);
     const data = await res.json();
-    expect(data).toHaveProperty('received', true);
-    console.log('✅ Webhook /api/webhooks/resend aceita evento email.delivered');
+    expect(data).toHaveProperty('error', 'Unauthorized');
+    console.log('✅ Webhook /api/webhooks/resend rejeita request sem assinatura Svix');
   });
 
-  test('aceita evento email.bounced e retorna 200', async ({ request }) => {
+  test('rejeita request com headers Svix inválidos', async ({ request }) => {
     const mockEvent = {
       type: 'email.bounced',
       data: {
@@ -156,13 +157,16 @@ test.describe('Webhook Resend — /api/webhooks/resend', () => {
     };
 
     const res = await request.post(`${TEST.BASE_URL}/api/webhooks/resend`, {
+      headers: {
+        'svix-id': 'msg_fake',
+        'svix-timestamp': Math.floor(Date.now() / 1000).toString(),
+        'svix-signature': 'v1,invalidbase64signature',
+      },
       data: mockEvent,
     });
 
-    expect(res.status()).toBe(200);
-    const data = await res.json();
-    expect(data).toHaveProperty('received', true);
-    console.log('✅ Webhook aceita evento email.bounced');
+    expect(res.status()).toBe(401);
+    console.log('✅ Webhook rejeita headers Svix inválidos');
   });
 });
 
