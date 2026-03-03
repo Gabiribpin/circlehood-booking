@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 
-function detectLanguage(phone: string): 'pt' | 'en' {
+function detectLanguageFromPhone(phone: string): 'pt' | 'en' {
   // Aceita com ou sem '+' (ex: '+5511...' e '5511...' são ambos Brasil)
   const clean = phone.replace(/\D/g, '');
   if (
@@ -11,6 +11,16 @@ function detectLanguage(phone: string): 'pt' | 'en' {
     clean.startsWith('55') || clean.startsWith('351')
   ) return 'pt';
   return 'en';
+}
+
+/** Determina idioma: locale do profissional > prefixo do telefone */
+function resolveLanguage(professionalLocale: string | null | undefined, phone: string): 'pt' | 'en' {
+  if (professionalLocale) {
+    if (professionalLocale.startsWith('pt')) return 'pt';
+    if (professionalLocale.startsWith('en')) return 'en';
+    if (professionalLocale.startsWith('es')) return 'pt'; // espanhol → template PT (mais próximo)
+  }
+  return detectLanguageFromPhone(phone);
 }
 
 const MESSAGE_TEMPLATES = {
@@ -58,7 +68,9 @@ export async function POST(request: NextRequest) {
       )
       .eq('status', 'completed')
       .eq('maintenance_reminder_sent', false)
-      .not('completed_at', 'is', null);
+      .not('completed_at', 'is', null)
+      .not('client_name', 'ilike', '[E2E]%')
+      .not('client_name', 'ilike', 'E2E %');
 
     if (bookingsError) {
       throw new Error(`Error fetching bookings: ${bookingsError.message}`);
@@ -120,12 +132,12 @@ export async function POST(request: NextRequest) {
 
     const { data: professionals } = await supabase
       .from('professionals')
-      .select('id, user_id')
+      .select('id, user_id, locale')
       .in('id', professionalIds);
 
-    const profMap = new Map((professionals ?? []).map((p) => [p.id, p.user_id]));
+    const profMap = new Map((professionals ?? []).map((p) => [p.id, { user_id: p.user_id, locale: p.locale }]));
 
-    const userIds = (professionals ?? []).map((p) => p.user_id).filter(Boolean);
+    const userIds = (professionals ?? []).map((p) => p.user_id).filter(Boolean) as string[];
     const { data: whatsappConfigs } = await supabase
       .from('whatsapp_config')
       .select('user_id, provider, evolution_api_url, evolution_api_key, evolution_instance, phone_number_id, access_token, is_active')
@@ -171,16 +183,17 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const lang = detectLanguage(phone);
+        // Obter config do profissional
+        const profInfo = profMap.get(booking.professional_id);
+        const userId = profInfo?.user_id;
+        const wc = userId ? wcMap.get(userId) : undefined;
+
+        const lang = resolveLanguage(profInfo?.locale, phone);
         const message = MESSAGE_TEMPLATES[lang](
           booking.client_name,
           service.lifetime_days,
           service.name
         );
-
-        // Obter config WhatsApp do profissional
-        const userId = profMap.get(booking.professional_id);
-        const wc = userId ? wcMap.get(userId) : undefined;
 
         let sent = false;
 
