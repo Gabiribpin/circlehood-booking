@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import Anthropic from '@anthropic-ai/sdk';
 
 // ─── CircleHood Booking FAQ for bot context ──────────────────────────────────
@@ -149,7 +150,7 @@ ${CIRCLEHOOD_FAQ}`,
 
     return { message: text, shouldEscalate: false };
   } catch (err) {
-    console.error('[support-bot] Error:', err);
+    logger.error('[support-bot] Error:', err);
     // On error: escalate gracefully
     return {
       message:

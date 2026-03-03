@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const data = await res.json();
     return NextResponse.json({ qrCode: data?.base64 ?? null });
   } catch (error) {
-    console.error('get-qrcode error:', error);
+    logger.error('get-qrcode error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

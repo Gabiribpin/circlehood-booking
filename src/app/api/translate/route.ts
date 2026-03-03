@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -50,7 +51,7 @@ Translation:`,
 
     return Response.json(translations);
   } catch (error) {
-    console.error('Translation error:', error);
+    logger.error('Translation error:', error);
     return Response.json({ error: 'Translation failed' }, { status: 500 });
   }
 }

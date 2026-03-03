@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
         });
 
         sent++;
-        console.log(
+        logger.info(
           `[retention-emails] Sent ${emailType} to professional ${prof.id} (${userEmail})`
         );
       } catch (emailError: any) {
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, sent, errors });
   } catch (error: any) {
-    console.error('[retention-emails] Error:', error);
+    logger.error('[retention-emails] Error:', error);
     try {
       await supabase.from('cron_logs').insert({
         job_name: 'send-retention-emails',

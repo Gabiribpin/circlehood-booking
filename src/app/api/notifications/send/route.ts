@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
               status: 'sent',
             });
           } catch (emailError) {
-            console.error('Email error:', emailError);
+            logger.error('Email error:', emailError);
           }
         }
 
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
 
         results.push({ id: notification.id, status: 'sent' });
       } catch (error: any) {
-        console.error(`Error processing notification ${notification.id}:`, error);
+        logger.error(`Error processing notification ${notification.id}:`, error);
 
         // Marcar como falhou
         await supabase
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
       results,
     });
   } catch (error: any) {
-    console.error('Error in notification sender:', error);
+    logger.error('Error in notification sender:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

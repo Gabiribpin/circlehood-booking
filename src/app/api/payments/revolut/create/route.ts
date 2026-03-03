@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createSubscriptionOrder } from '@/lib/integrations/revolut'
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (paymentError) {
-      console.error('Error saving payment:', paymentError)
+      logger.error('Error saving payment:', paymentError)
       return NextResponse.json(
         { error: 'Order created but failed to save to database' },
         { status: 500 }
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       orderId: order.id
     })
   } catch (error: any) {
-    console.error('Revolut API error:', error)
+    logger.error('Revolut API error:', error)
     return NextResponse.json(
       { error: error.message || 'Failed to create Revolut order' },
       { status: 500 }

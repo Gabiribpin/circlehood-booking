@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripeServer } from '@/lib/stripe/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -202,7 +203,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (err) {
-          console.error('[Webhook] checkout.session.completed notifications failed:', err);
+          logger.error('[Webhook] checkout.session.completed notifications failed:', err);
         }
       })();
 

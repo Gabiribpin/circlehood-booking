@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -44,7 +45,7 @@ export async function GET() {
 
     return NextResponse.json({ connected, state: data?.instance?.state ?? 'unknown' });
   } catch (error) {
-    console.error('admin/check-connection error:', error);
+    logger.error('admin/check-connection error:', error);
     return NextResponse.json({ connected: false, state: 'error' });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -78,16 +79,16 @@ export async function POST(request: NextRequest) {
       if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
         const normalized = normalizePhoneForWhatsApp(booking.client_phone);
         const evoUrl = `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`;
-        console.log('[cancel-notification] WhatsApp attempt:', { raw: booking.client_phone, normalized, url: evoUrl, hasApiKey: !!wc.evolution_api_key });
+        logger.info('[cancel-notification] WhatsApp attempt:', { raw: booking.client_phone, normalized, url: evoUrl, hasApiKey: !!wc.evolution_api_key });
         const res = await fetch(evoUrl, {
           method: 'POST',
           headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: normalized, text: message }),
         });
         const resBody = await res.text();
-        console.log('[cancel-notification] WhatsApp response:', { status: res.status, ok: res.ok, body: resBody.slice(0, 300) });
+        logger.info('[cancel-notification] WhatsApp response:', { status: res.status, ok: res.ok, body: resBody.slice(0, 300) });
         whatsappSent = res.ok;
-        if (!whatsappSent) console.error('[cancel-notification] Evolution error:', res.status, resBody);
+        if (!whatsappSent) logger.error('[cancel-notification] Evolution error:', res.status, resBody);
       }
 
       if (!whatsappSent && wc.provider === 'meta' && wc.phone_number_id) {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
           }),
         });
         whatsappSent = res.ok;
-        if (!whatsappSent) console.error('[cancel-notification] Meta error:', res.status, await res.text());
+        if (!whatsappSent) logger.error('[cancel-notification] Meta error:', res.status, await res.text());
       }
     }
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
         });
         emailSent = true;
       } catch (emailErr) {
-        console.error('[cancel-notification] Email error:', emailErr);
+        logger.error('[cancel-notification] Email error:', emailErr);
       }
     }
 
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, whatsappSent, emailSent });
   } catch (error: any) {
-    console.error('[cancel-notification] Erro:', error);
+    logger.error('[cancel-notification] Erro:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,7 @@ export function AutoTranslateButton({
       // Reset done state after 3 seconds
       setTimeout(() => setDone(false), 3000);
     } catch (error) {
-      console.error('Translation error:', error);
+      logger.error('Translation error:', error);
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { exchangeCodeForToken, getLongLivedToken, getUserProfile } from '@/lib/integrations/instagram'
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       })
 
     if (dbError) {
-      console.error('Database error:', dbError)
+      logger.error('Database error:', dbError)
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?error=database_error`
       )
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
       `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?success=instagram_connected`
     )
   } catch (error: any) {
-    console.error('Instagram OAuth error:', error)
+    logger.error('Instagram OAuth error:', error)
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?error=${encodeURIComponent(error.message)}`
     )

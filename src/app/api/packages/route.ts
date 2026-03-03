@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ packages: packages || [] });
   } catch (error: any) {
-    console.error('Error fetching packages:', error);
+    logger.error('Error fetching packages:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       package: packageData,
     });
   } catch (error: any) {
-    console.error('Error creating package:', error);
+    logger.error('Error creating package:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

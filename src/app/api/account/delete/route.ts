@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (stripeError) {
-        console.error('[account-delete] Stripe cancellation failed:', stripeError);
+        logger.error('[account-delete] Stripe cancellation failed:', stripeError);
         // Non-fatal — continue with deletion
       }
     }
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
         `,
       });
     } catch (emailError) {
-      console.error('[account-delete] Email failed:', emailError);
+      logger.error('[account-delete] Email failed:', emailError);
       // Non-fatal
     }
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
       deletionDate: deletionDate.toISOString(),
     });
   } catch (error: any) {
-    console.error('[account-delete] Error:', error);
+    logger.error('[account-delete] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

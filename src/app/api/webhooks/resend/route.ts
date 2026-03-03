@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -6,7 +7,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  console.log('Resend webhook event:', body.type)
+  logger.info('Resend webhook event:', body.type)
 
   try {
     const { type, data } = body
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     const campaignId = campaignTag?.value
 
     if (!campaignId) {
-      console.warn('No campaign_id in webhook tags')
+      logger.warn('No campaign_id in webhook tags')
       return NextResponse.json({ received: true })
     }
 
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true })
   } catch (error: any) {
-    console.error('Error processing Resend webhook:', error)
+    logger.error('Error processing Resend webhook:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

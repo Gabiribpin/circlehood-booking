@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 
 interface InactiveClient {
@@ -26,7 +27,7 @@ export async function detectInactiveClients(
     .single();
 
   if (profError || !professional) {
-    console.error('Professional not found for user:', userId);
+    logger.error('Professional not found for user:', userId);
     return [];
   }
 
@@ -41,7 +42,7 @@ export async function detectInactiveClients(
     .eq('professional_id', professional.id);
 
   if (contactsError || !contacts?.length) {
-    console.error('Error fetching contacts:', contactsError);
+    logger.error('Error fetching contacts:', contactsError);
     return [];
   }
 
@@ -55,7 +56,7 @@ export async function detectInactiveClients(
     .order('booking_date', { ascending: false });
 
   if (bookingsError) {
-    console.error('Error fetching bookings:', bookingsError);
+    logger.error('Error fetching bookings:', bookingsError);
     return [];
   }
 
@@ -146,7 +147,7 @@ export async function detectInactiveClients(
     });
 
   if (notifError) {
-    console.error('Error creating win-back notifications:', notifError);
+    logger.error('Error creating win-back notifications:', notifError);
   }
 
   return inactiveClients;

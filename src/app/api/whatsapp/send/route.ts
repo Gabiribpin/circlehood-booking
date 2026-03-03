@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    logger.error('Error sending WhatsApp message:', error);
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
   }
 }

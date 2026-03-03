@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { AIBot } from '@/lib/ai/chatbot';
 import { WhatsAppClient } from './client';
 import { sendEvolutionMessage } from './evolution';
@@ -17,7 +18,7 @@ export async function processWhatsAppMessage(
     if (messageId) {
       const isDuplicate = !(await ConversationCache.acquireGreetingLock(`msg:${messageId}`));
       if (isDuplicate) {
-        console.log(`⚡ Mensagem duplicada ignorada: ${messageId}`);
+        logger.info(`⚡ Mensagem duplicada ignorada: ${messageId}`);
         return;
       }
     }
@@ -41,7 +42,7 @@ export async function processWhatsAppMessage(
     const { data: config } = await query.single();
 
     if (!config) {
-      console.error('No active WhatsApp config found');
+      logger.error('No active WhatsApp config found');
       return;
     }
 
@@ -64,7 +65,7 @@ export async function processWhatsAppMessage(
         .maybeSingle();
 
       if (contact && contact.use_bot === false) {
-        console.log('🚫 Bot desativado para contato:', from);
+        logger.info('🚫 Bot desativado para contato:', from);
         return;
       }
     }
@@ -89,6 +90,6 @@ export async function processWhatsAppMessage(
       await whatsapp.markAsRead(messageId);
     }
   } catch (error) {
-    console.error('Error processing WhatsApp message:', error);
+    logger.error('Error processing WhatsApp message:', error);
   }
 }

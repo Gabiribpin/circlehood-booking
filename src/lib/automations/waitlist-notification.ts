@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 
 export async function notifyWaitlist(
@@ -17,7 +18,7 @@ export async function notifyWaitlist(
     .single();
 
   if (bookingError || !cancelledBooking) {
-    console.error('notifyWaitlist: cancelled booking not found', bookingError);
+    logger.error('notifyWaitlist: cancelled booking not found', bookingError);
     return 0;
   }
 
@@ -29,7 +30,7 @@ export async function notifyWaitlist(
     .single();
 
   if (profError || !professional) {
-    console.error('notifyWaitlist: professional not found', profError);
+    logger.error('notifyWaitlist: professional not found', profError);
     return 0;
   }
 
@@ -43,7 +44,7 @@ export async function notifyWaitlist(
     .order('created_at', { ascending: true });
 
   if (waitlistError) {
-    console.error('notifyWaitlist: error fetching waitlist', waitlistError);
+    logger.error('notifyWaitlist: error fetching waitlist', waitlistError);
     return 0;
   }
 
@@ -100,7 +101,7 @@ export async function notifyWaitlist(
       });
 
     if (insertError) {
-      console.error(
+      logger.error(
         `notifyWaitlist: error inserting notification for ${waitlistBooking.client_name}`,
         insertError
       );

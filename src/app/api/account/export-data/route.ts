@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -87,7 +88,7 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[export-data] Error:', error);
+    logger.error('[export-data] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

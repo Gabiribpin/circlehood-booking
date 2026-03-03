@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,13 +32,13 @@ export async function POST() {
     });
 
     if (error) {
-      console.error('[resend-verification] error:', error);
+      logger.error('[resend-verification] error:', error);
       return NextResponse.json({ error: error.message }, { status: 429 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[resend-verification] unexpected error:', error);
+    logger.error('[resend-verification] unexpected error:', error);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

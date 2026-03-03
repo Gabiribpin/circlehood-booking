@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * POST /api/webhooks/whatsapp-support
  *
@@ -41,7 +42,7 @@ async function sendWhatsAppReply(to: string, message: string) {
       }),
     });
   } catch (err) {
-    console.error('[whatsapp-support] send error:', err);
+    logger.error('[whatsapp-support] send error:', err);
   }
 }
 

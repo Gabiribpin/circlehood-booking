@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
     .lte('trial_ends_at', windowEnd.toISOString());
 
   if (error) {
-    console.error('[send-trial-expiration-notifications] query error:', error);
+    logger.error('[send-trial-expiration-notifications] query error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest) {
       breakdown[notificationType]++;
       totalSent++;
     } catch (emailErr) {
-      console.error(`[send-trial-expiration-notifications] error for ${professional.id}:`, emailErr);
+      logger.error(`[send-trial-expiration-notifications] error for ${professional.id}:`, emailErr);
     }
   }
 

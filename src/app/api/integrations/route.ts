@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -53,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json(integrationsMap);
   } catch (error: any) {
-    console.error('Error fetching integrations:', error);
+    logger.error('Error fetching integrations:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch integrations',

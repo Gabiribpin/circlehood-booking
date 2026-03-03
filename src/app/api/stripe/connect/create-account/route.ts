@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -28,7 +29,7 @@ export async function POST(_request: NextRequest) {
 
     const stripe = getStripeServer();
     if (!stripe) {
-      console.error('[stripe/connect/create-account] STRIPE_SECRET_KEY not set');
+      logger.error('[stripe/connect/create-account] STRIPE_SECRET_KEY not set');
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
     }
 
@@ -55,7 +56,7 @@ export async function POST(_request: NextRequest) {
       const email = user.email;
       const country = (professional.address_country as string) || (professional.country as string) || 'IE';
 
-      console.log('[stripe/connect/create-account] creating Standard account', {
+      logger.info('[stripe/connect/create-account] creating Standard account', {
         country,
         hasEmail: !!email,
       });
@@ -74,7 +75,7 @@ export async function POST(_request: NextRequest) {
       });
 
       stripeAccountId = account.id;
-      console.log('[stripe/connect/create-account] account created:', stripeAccountId);
+      logger.info('[stripe/connect/create-account] account created:', stripeAccountId);
 
       // INSERT na tabela connect
       await admin.from('stripe_connect_accounts').upsert({
@@ -92,7 +93,7 @@ export async function POST(_request: NextRequest) {
     }
 
     // Criar AccountLink
-    console.log('[stripe/connect/create-account] creating AccountLink for', stripeAccountId);
+    logger.info('[stripe/connect/create-account] creating AccountLink for', stripeAccountId);
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
       refresh_url: `${BASE_URL}/settings/payment?connect=refresh`,
@@ -103,7 +104,7 @@ export async function POST(_request: NextRequest) {
     return NextResponse.json({ url: accountLink.url });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[stripe/connect/create-account] error:', message);
+    logger.error('[stripe/connect/create-account] error:', message);
     return NextResponse.json(
       { error: 'Failed to create Stripe Connect account', detail: message },
       { status: 500 }

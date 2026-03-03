@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -82,7 +83,7 @@ export async function POST(
       booking: updatedBooking,
     });
   } catch (error: any) {
-    console.error('Error rescheduling booking:', error);
+    logger.error('Error rescheduling booking:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

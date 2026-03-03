@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -75,7 +76,7 @@ export async function POST(
           replyMessage: message.trim(),
         });
       } catch (err) {
-        console.error('[admin/support/reply] email error:', err);
+        logger.error('[admin/support/reply] email error:', err);
       }
     })();
   }

@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useRef, useId } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -76,10 +77,10 @@ export function ImageUpload({
       // Call callback
       onUploadComplete(publicUrl);
     } catch (error: any) {
-      console.error('❌ Upload error full object:', error);
-      console.error('❌ error.message:', error?.message);
-      console.error('❌ error.statusCode:', error?.statusCode);
-      console.error('❌ error.error:', error?.error);
+      logger.error('❌ Upload error full object:', error);
+      logger.error('❌ error.message:', error?.message);
+      logger.error('❌ error.statusCode:', error?.statusCode);
+      logger.error('❌ error.error:', error?.error);
       const msg = error?.message ?? error?.error ?? JSON.stringify(error);
       alert(`Erro upload (bucket: ${bucket}): ${msg}`);
     } finally {

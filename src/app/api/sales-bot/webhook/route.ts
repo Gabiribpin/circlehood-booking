@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Sales Bot Webhook — Evolution API → Claude Sales Bot
  *
@@ -134,7 +135,7 @@ async function getEvolutionConfig(supabase: ReturnType<typeof createSupabase>) {
 async function sendWhatsApp(supabase: ReturnType<typeof createSupabase>, phone: string, text: string) {
   const config = await getEvolutionConfig(supabase);
   if (!config) {
-    console.warn('[sales-bot] No Evolution API config found in database');
+    logger.warn('[sales-bot] No Evolution API config found in database');
     return;
   }
 
@@ -145,7 +146,7 @@ async function sendWhatsApp(supabase: ReturnType<typeof createSupabase>, phone: 
       body: JSON.stringify({ number: phone, text }),
     });
   } catch (err) {
-    console.error('[sales-bot] Failed to send WhatsApp:', err);
+    logger.error('[sales-bot] Failed to send WhatsApp:', err);
   }
 }
 
@@ -263,7 +264,7 @@ export async function POST(request: NextRequest) {
       try {
         await processSalesMessage(phone, text);
       } catch (err) {
-        console.error('[sales-bot/webhook] Error processing message:', err);
+        logger.error('[sales-bot/webhook] Error processing message:', err);
       }
     });
 

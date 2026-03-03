@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
 import { TestimonialsData } from '@/lib/page-sections/types';
@@ -28,7 +29,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
       const result = await res.json();
       setTestimonials((result.testimonials || []).slice(0, data.maxToShow));
     } catch (error) {
-      console.error('Error fetching testimonials:', error);
+      logger.error('Error fetching testimonials:', error);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
       setShowForm(false);
       setSelectedRating(5);
     } catch (error) {
-      console.error('Error submitting testimonial:', error);
+      logger.error('Error submitting testimonial:', error);
     } finally {
       setSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { getRedisEnv } from './redis/prefix';
 
 /**
@@ -14,7 +15,7 @@ export function validateEnvironment(): void {
 
   const productionRef = process.env.SUPABASE_PRODUCTION_REF;
 
-  console.log(
+  logger.info(
     `[env] environment=${env} database=${projectRef} redis-prefix=${env}`
   );
 
@@ -32,7 +33,7 @@ export function validateEnvironment(): void {
 
   // Aviso: production apontando para staging DB
   if (env === 'production' && !isProductionDb) {
-    console.warn(
+    logger.warn(
       `[env] ⚠️ AVISO: ambiente "production" está usando banco não-production (${projectRef}). ` +
         'Verifique NEXT_PUBLIC_SUPABASE_URL.'
     );

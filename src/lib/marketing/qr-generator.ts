@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import QRCode from 'qrcode';
 
 export interface QROptions {
@@ -34,7 +35,7 @@ export async function generateQRDataURL(
 
     return dataUrl;
   } catch (error) {
-    console.error('Error generating QR code:', error);
+    logger.error('Error generating QR code:', error);
     throw new Error('Failed to generate QR code');
   }
 }
@@ -65,7 +66,7 @@ export async function generateQRCanvas(
       errorCorrectionLevel,
     });
   } catch (error) {
-    console.error('Error generating QR on canvas:', error);
+    logger.error('Error generating QR on canvas:', error);
     throw new Error('Failed to generate QR code on canvas');
   }
 }

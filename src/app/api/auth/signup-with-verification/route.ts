@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateEmail, generateVerificationToken } from '@/lib/email-validation';
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (profileError || !professional) {
-    console.error('[signup-with-verification] profile insert error:', profileError);
+    logger.error('[signup-with-verification] profile insert error:', profileError);
     await supabase.auth.admin.deleteUser(authData.user.id);
     return NextResponse.json({ error: 'Erro ao criar perfil. Tente novamente.' }, { status: 500 });
   }
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
     .insert({ professional_id: professional.id, token, expires_at: expiresAt });
 
   if (tokenError) {
-    console.error('[signup-with-verification] token insert error:', tokenError);
+    logger.error('[signup-with-verification] token insert error:', tokenError);
     // Non-fatal — user can resend via /api/auth/resend-verification-email
   }
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
       html: buildVerificationEmailHtml(businessName, verifyUrl),
     });
   } catch (emailErr) {
-    console.error('[signup-with-verification] email send error:', emailErr);
+    logger.error('[signup-with-verification] email send error:', emailErr);
     // Non-fatal — user can resend
   }
 

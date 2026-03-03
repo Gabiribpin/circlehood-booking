@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -60,7 +61,7 @@ export async function GET(
       token: token,
     });
   } catch (error: any) {
-    console.error('Error validating token:', error);
+    logger.error('Error validating token:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

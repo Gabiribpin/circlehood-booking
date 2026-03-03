@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { createClient } from '@/lib/supabase/server';
@@ -290,13 +291,13 @@ export async function syncGoogleEventsToCircleHood(professionalId: string) {
         );
 
       if (error) {
-        console.error('Error syncing event:', error);
+        logger.error('Error syncing event:', error);
         results.errors++;
       } else {
         results.imported++;
       }
     } catch (error) {
-      console.error('Error processing event:', error);
+      logger.error('Error processing event:', error);
       results.errors++;
     }
   }
@@ -361,7 +362,7 @@ export async function syncCircleHoodEventsToGoogle(professionalId: string) {
 
       results.synced++;
     } catch (error) {
-      console.error('Error syncing to Google:', error);
+      logger.error('Error syncing to Google:', error);
       results.errors++;
     }
   }

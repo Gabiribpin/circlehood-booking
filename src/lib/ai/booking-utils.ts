@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Funções puras de agendamento — extraídas de chatbot.ts para permitir testes unitários.
  */
@@ -35,7 +36,7 @@ export function suggestAlternative(
     : workStartMins;
 
   if (isToday) {
-    console.log(
+    logger.info(
       `⏰ Hoje Dublin ${nowDublin.getHours()}:${String(nowDublin.getMinutes()).padStart(2, '0')} → mínimo ${Math.floor(minMinutes / 60)}:00 | expediente ${workStartTime}–${workEndTime}`
     );
   }
@@ -74,7 +75,7 @@ export function normalizeDate(dateStr: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
-  console.warn('normalizeDate: data não reconhecida:', dateStr, '→ usando hoje');
+  logger.warn('normalizeDate: data não reconhecida:', dateStr, '→ usando hoje');
   return todayStr;
 }
 

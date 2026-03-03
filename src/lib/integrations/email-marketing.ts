@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Email Marketing Library
  * Gerencia campanhas de email via Resend
@@ -265,7 +266,7 @@ export async function sendEmail(params: {
 
     return { success: true, id: result.data?.id }
   } catch (error: any) {
-    console.error('Error sending email:', error)
+    logger.error('Error sending email:', error)
     return { success: false, error: error.message }
   }
 }
