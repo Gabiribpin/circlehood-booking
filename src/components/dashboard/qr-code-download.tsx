@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, QrCode } from 'lucide-react';
+import { Download } from 'lucide-react';
 import QRCode from 'qrcode';
+import { useTranslations } from 'next-intl';
 
 interface QrCodeDownloadProps {
   slug: string;
@@ -11,6 +12,7 @@ interface QrCodeDownloadProps {
 }
 
 export function QrCodeDownload({ slug, businessName }: QrCodeDownloadProps) {
+  const t = useTranslations('marketing');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
 
   const fullUrl = `https://circlehood-booking.vercel.app/${slug}`;
@@ -40,7 +42,7 @@ export function QrCodeDownload({ slug, businessName }: QrCodeDownloadProps) {
       ctx.fillText(businessName, canvas.width / 2, 260);
       ctx.font = '14px Arial';
       ctx.fillStyle = '#666666';
-      ctx.fillText('Escaneie para agendar', canvas.width / 2, 285);
+      ctx.fillText(t('ctaBooking'), canvas.width / 2, 285);
       ctx.font = '12px monospace';
       ctx.fillStyle = '#999999';
       ctx.fillText(`circlehood.app/${slug}`, canvas.width / 2, 310);
@@ -62,13 +64,13 @@ export function QrCodeDownload({ slug, businessName }: QrCodeDownloadProps) {
           </div>
         )}
         <div>
-          <p className="text-sm font-semibold text-blue-900">QR Code da sua página</p>
-          <p className="text-xs text-blue-700">Cole no seu estabelecimento ou compartilhe nas redes</p>
+          <p className="text-sm font-semibold text-blue-900">{t('qrPageTitle')}</p>
+          <p className="text-xs text-blue-700">{t('qrPageDesc')}</p>
         </div>
       </div>
       <Button variant="outline" size="sm" onClick={handleDownload} disabled={!qrCodeUrl}>
         <Download className="w-4 h-4 mr-2" />
-        Baixar
+        {t('downloadBtn')}
       </Button>
     </div>
   );

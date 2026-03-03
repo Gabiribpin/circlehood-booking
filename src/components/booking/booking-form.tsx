@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslations } from 'next-intl';
 
 interface BookingFormData {
   clientName: string;
@@ -17,6 +18,8 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ data, onChange }: BookingFormProps) {
+  const t = useTranslations('public');
+
   function update(field: keyof BookingFormData, value: string) {
     onChange({ ...data, [field]: value });
   }
@@ -24,17 +27,17 @@ export function BookingForm({ data, onChange }: BookingFormProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="clientName">Nome *</Label>
+        <Label htmlFor="clientName">{t('nameLabel')}</Label>
         <Input
           id="clientName"
           value={data.clientName}
           onChange={(e) => update('clientName', e.target.value)}
-          placeholder="Seu nome completo"
+          placeholder={t('namePlaceholder')}
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="clientEmail">Email</Label>
+        <Label htmlFor="clientEmail">{t('emailLabel')}</Label>
         <Input
           id="clientEmail"
           type="email"
@@ -44,26 +47,26 @@ export function BookingForm({ data, onChange }: BookingFormProps) {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="clientPhone">WhatsApp *</Label>
+        <Label htmlFor="clientPhone">{t('phoneLabel')}</Label>
         <Input
           id="clientPhone"
           type="tel"
           value={data.clientPhone}
           onChange={(e) => update('clientPhone', e.target.value)}
-          placeholder="+351 912 345 678"
+          placeholder={t('phonePlaceholder')}
           required
         />
         <p className="text-xs text-muted-foreground">
-          Necessário para confirmar seu agendamento
+          {t('phoneHelp')}
         </p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="notes">Observacoes</Label>
+        <Label htmlFor="notes">{t('notesLabel')}</Label>
         <Textarea
           id="notes"
           value={data.notes}
           onChange={(e) => update('notes', e.target.value)}
-          placeholder="Alguma informacao adicional?"
+          placeholder={t('notesPlaceholder')}
           rows={3}
         />
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface TimeSlotsProps {
   professionalId: string;
@@ -19,6 +20,7 @@ export function TimeSlots({
   selectedSlot,
   onSelect,
 }: TimeSlotsProps) {
+  const t = useTranslations('public');
   const [slots, setSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,7 @@ export function TimeSlots({
   if (slots.length === 0) {
     return (
       <p className="text-center text-sm text-muted-foreground py-8">
-        Nenhum horario disponível nesta data.
+        {t('noSlotsDate')}
       </p>
     );
   }
