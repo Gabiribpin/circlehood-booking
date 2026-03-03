@@ -1,11 +1,29 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateResendWebhook } from '@/lib/webhooks/signature'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
+  // ─── Signature validation (Svix / Resend) ──────────────────────────
+  const rawBody = await request.text()
 
-  const body = await request.json()
+  const isValid = validateResendWebhook(
+    rawBody,
+    {
+      'svix-id': request.headers.get('svix-id'),
+      'svix-timestamp': request.headers.get('svix-timestamp'),
+      'svix-signature': request.headers.get('svix-signature'),
+    },
+    process.env.RESEND_WEBHOOK_SECRET,
+  )
+
+  if (!isValid) {
+    logger.warn('[resend/webhook] Invalid signature — rejecting request')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = JSON.parse(rawBody)
+  const supabase = await createClient()
 
   logger.info('Resend webhook event:', body.type)
 
