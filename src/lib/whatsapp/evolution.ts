@@ -79,8 +79,10 @@ export async function sendEvolutionMessage(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Evolution API error: ${response.status} - ${error}`);
+    const errorBody = await response.text();
+    // Log full body only at debug level — may contain credentials
+    console.debug(`[Evolution API] ${response.status} response body:`, errorBody);
+    throw new Error(`Evolution API error: ${response.status}`);
   }
 }
 

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { normalizePhoneForWhatsApp } from './evolution';
+import { describe, it, expect, vi } from 'vitest';
+import { normalizePhoneForWhatsApp, sendEvolutionMessage } from './evolution';
 
 describe('normalizePhoneForWhatsApp', () => {
   // ─── Casos do enunciado ───────────────────────────────────────────────────
@@ -64,5 +64,53 @@ describe('normalizePhoneForWhatsApp', () => {
 
   it('só símbolos → string vazia', () => {
     expect(normalizePhoneForWhatsApp('+-() ')).toBe('');
+  });
+});
+
+describe('sendEvolutionMessage error sanitization', () => {
+  it('does NOT leak response body in thrown error message', async () => {
+    const sensitiveBody = 'Invalid API key: sk_live_secret123_leaked';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(sensitiveBody, { status: 401 })
+    );
+
+    const config = {
+      apiUrl: 'https://evo.example.com',
+      apiKey: 'secret-key-value',
+      instance: 'test-instance',
+    };
+
+    try {
+      await sendEvolutionMessage('+353800000000', 'test', config);
+      expect.unreachable('Should have thrown');
+    } catch (err: any) {
+      expect(err.message).toBe('Evolution API error: 401');
+      expect(err.message).not.toContain('sk_live_secret123');
+      expect(err.message).not.toContain('Invalid API key');
+    }
+
+    vi.restoreAllMocks();
+  });
+
+  it('error message contains only status code, no body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response('{"error":"Unauthorized","apikey":"abc123"}', { status: 403 })
+    );
+
+    const config = {
+      apiUrl: 'https://evo.example.com',
+      apiKey: 'abc123',
+      instance: 'test',
+    };
+
+    try {
+      await sendEvolutionMessage('+353800000001', 'test', config);
+    } catch (err: any) {
+      expect(err.message).toBe('Evolution API error: 403');
+      expect(err.message).not.toContain('abc123');
+      expect(err.message).not.toContain('Unauthorized');
+    }
+
+    vi.restoreAllMocks();
   });
 });
