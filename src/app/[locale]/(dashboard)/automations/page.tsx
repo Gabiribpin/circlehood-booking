@@ -36,12 +36,6 @@ export default async function AutomationsPage() {
     .select('*', { count: 'exact', head: true })
     .eq('professional_id', professional.id);
 
-  const { count: pendingQueue } = await supabase
-    .from('notification_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('professional_id', professional.id)
-    .eq('status', 'pending');
-
   return (
     <AutomationsManager
       professional={professional}
@@ -49,7 +43,7 @@ export default async function AutomationsPage() {
       notificationLogs={notificationLogs || []}
       stats={{
         totalNotifications: totalNotifications || 0,
-        pendingQueue: pendingQueue || 0,
+        pendingQueue: 0,
       }}
     />
   );

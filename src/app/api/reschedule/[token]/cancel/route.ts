@@ -69,20 +69,6 @@ export async function POST(
       (err) => console.error('notifyWaitlist error:', err)
     );
 
-    // Notificar profissional (log na fila)
-    await supabase.from('notification_queue').insert({
-      professional_id: tokenData.bookings.professional_id,
-      type: 'booking_confirmation',
-      recipient_name: 'Profissional',
-      recipient_phone: '',
-      message_template: 'booking_cancelled_by_client',
-      message_data: {
-        booking_id: tokenData.bookings.id,
-        reason: reason || 'Cancelado pelo cliente',
-      },
-      language: 'pt',
-    });
-
     // Notificar cliente via email (fire-and-forget)
     const booking = tokenData.bookings as any;
     if (booking.client_email) {

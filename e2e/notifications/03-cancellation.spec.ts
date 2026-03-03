@@ -2,7 +2,7 @@
  * Notificação de cancelamento — Prompt 1.1
  *
  * Verifica que quando um agendamento é cancelado via token (cliente cancela),
- * a notificação de email é disparada (notification_logs / notification_queue).
+ * a notificação de email é disparada (notification_logs).
  *
  * Estratégia:
  *  - Inserir booking com client_email via admin client
@@ -155,28 +155,12 @@ test.describe('Notificação de cancelamento — cliente cancela via token', () 
       // Email deve ter sido enviado (ou pelo menos tentado)
       expect(['sent', 'failed']).toContain(emailLogs[0].status);
     } else {
-      // Se não há logs, verificar notification_queue (pode estar pendente)
-      const { data: queueEntry } = await supabase
-        .from('notification_queue')
-        .select('id, type, message_template, status')
-        .eq('professional_id', TEST.PROFESSIONAL_ID)
-        .gte('created_at', logsBefore)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (queueEntry && queueEntry.length > 0) {
-        console.log(`  ℹ️  notification_queue tem ${queueEntry.length} entrada(s) (ainda não processado)`);
-        queueEntry.forEach((q) => {
-          console.log(`    - id=${q.id}, type=${q.type}, template=${q.message_template}`);
-        });
-      } else {
-        console.log(
-          '  ⚠️  Nenhum log ou queue entry encontrado — email pode não ter sido disparado'
-        );
-        console.log(
-          '  ℹ️  Verificar: cliente tem RESEND_API_KEY configurada? sendCancellationEmail foi chamado?'
-        );
-      }
+      console.log(
+        '  ⚠️  Nenhum log encontrado — email pode não ter sido disparado'
+      );
+      console.log(
+        '  ℹ️  Verificar: cliente tem RESEND_API_KEY configurada? sendCancellationEmail foi chamado?'
+      );
       // Este teste é documentativo — não falha o CI se email não foi enviado em prod
       // (pode ser que RESEND_API_KEY não está configurada no ambiente de teste)
       expect(true).toBe(true);

@@ -76,21 +76,6 @@ export async function POST(
       booking_id: tokenData.bookings.id,
     });
 
-    // Notificar profissional
-    await supabase.from('notification_queue').insert({
-      professional_id: tokenData.bookings.professional_id,
-      type: 'booking_confirmation',
-      recipient_name: 'Profissional',
-      recipient_phone: '',
-      message_template: 'booking_rescheduled',
-      message_data: {
-        booking_id: tokenData.bookings.id,
-        new_date,
-        new_time,
-      },
-      language: 'pt',
-    });
-
     return NextResponse.json({
       success: true,
       message: 'Agendamento reagendado com sucesso',
