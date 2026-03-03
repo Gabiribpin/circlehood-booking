@@ -236,8 +236,11 @@ export async function POST(request: NextRequest) {
     await supabase.from('cron_logs').insert({
       job_name: 'send-trial-expiration-notifications',
       status: 'success',
-      message: `Sent ${totalSent} notifications. Breakdown: ${JSON.stringify(breakdown)}`,
       records_processed: processed,
+      metadata: {
+        message: `Sent ${totalSent} notifications. Breakdown: ${JSON.stringify(breakdown)}`,
+        professional_ids: professionals.map((p) => p.id),
+      },
     } as never);
   } catch { /* non-fatal */ }
 

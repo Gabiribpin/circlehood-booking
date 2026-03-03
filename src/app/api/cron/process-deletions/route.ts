@@ -99,8 +99,11 @@ export async function POST(request: NextRequest) {
       status: 'success',
       records_processed: processed,
       execution_time_ms: Date.now() - startTime,
-      metadata: { accounts_deleted: processed },
-    });
+      metadata: {
+        accounts_deleted: processed,
+        professional_ids: toDelete.map((p) => p.id),
+      },
+    } as never);
 
     return NextResponse.json({ success: true, processed });
   } catch (error: any) {

@@ -128,7 +128,11 @@ export async function POST(request: NextRequest) {
         status: 'success',
         records_processed: sent,
         execution_time_ms: Date.now() - startTime,
-        metadata: { errors_count: errors.length, errors },
+        metadata: {
+          errors_count: errors.length,
+          errors,
+          professional_ids: pendingDeletion.map((p) => p.id),
+        },
       } as never);
     } catch { /* non-fatal */ }
 
