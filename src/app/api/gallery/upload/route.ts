@@ -38,13 +38,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Sanitize file extension to prevent path traversal
+    const safeExt = (name: string) =>
+      (name.split('.').pop() || 'bin').replace(/[^a-zA-Z0-9]/g, '');
+
     let imageUrl = '';
     let beforeImageUrl = '';
     let afterImageUrl = '';
 
     // Upload imagem normal
     if (file) {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = safeExt(file.name);
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -65,8 +69,8 @@ export async function POST(request: NextRequest) {
 
     // Upload before/after images
     if (isBeforeAfter && beforeFile && afterFile) {
-      const beforeExt = beforeFile.name.split('.').pop();
-      const afterExt = afterFile.name.split('.').pop();
+      const beforeExt = safeExt(beforeFile.name);
+      const afterExt = safeExt(afterFile.name);
       const beforeFileName = `${user.id}/before_${Date.now()}.${beforeExt}`;
       const afterFileName = `${user.id}/after_${Date.now()}.${afterExt}`;
 
