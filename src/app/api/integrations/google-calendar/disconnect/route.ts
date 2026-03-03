@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -53,7 +54,7 @@ export async function POST() {
       message: 'Google Calendar disconnected successfully',
     });
   } catch (error: any) {
-    console.error('Disconnect error:', error);
+    logger.error('Disconnect error:', error);
     return NextResponse.json(
       {
         error: 'Failed to disconnect Google Calendar',

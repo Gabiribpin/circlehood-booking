@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
       computedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error fetching analytics overview:', error);
+    logger.error('Error fetching analytics overview:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

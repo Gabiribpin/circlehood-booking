@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -104,7 +105,7 @@ export async function POST() {
     .insert({ professional_id: professional.id, token, expires_at: expiresAt });
 
   if (tokenError) {
-    console.error('[resend-verification-email] token insert error:', tokenError);
+    logger.error('[resend-verification-email] token insert error:', tokenError);
     return NextResponse.json({ error: 'Erro interno. Tente novamente.' }, { status: 500 });
   }
 
@@ -121,7 +122,7 @@ export async function POST() {
       html: buildVerificationEmailHtml(professional.business_name, verifyUrl),
     });
   } catch (emailErr) {
-    console.error('[resend-verification-email] email send error:', emailErr);
+    logger.error('[resend-verification-email] email send error:', emailErr);
     return NextResponse.json({ error: 'Erro ao enviar email. Tente novamente.' }, { status: 500 });
   }
 

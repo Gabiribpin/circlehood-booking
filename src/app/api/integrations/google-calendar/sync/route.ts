@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { fullSync } from '@/lib/integrations/google-calendar';
@@ -57,7 +58,7 @@ export async function POST() {
       result,
     });
   } catch (error: any) {
-    console.error('Sync error:', error);
+    logger.error('Sync error:', error);
     return NextResponse.json(
       {
         error: 'Synchronization failed',

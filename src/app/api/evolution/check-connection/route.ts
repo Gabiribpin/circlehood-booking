@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ connected, state: data?.instance?.state ?? 'unknown' });
   } catch (error) {
-    console.error('check-connection error:', error);
+    logger.error('check-connection error:', error);
     return NextResponse.json({ connected: false });
   }
 }

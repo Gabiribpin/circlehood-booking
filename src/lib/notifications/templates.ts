@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // Templates multilíngues de notificações
 
 export const NOTIFICATION_TEMPLATES = {
@@ -206,7 +207,7 @@ export function formatTemplate(
   const template = (NOTIFICATION_TEMPLATES as any)[type]?.[language]?.[channel];
 
   if (!template) {
-    console.error(`Template not found: ${type}/${channel}/${language}`);
+    logger.error(`Template not found: ${type}/${channel}/${language}`);
     return '';
   }
 

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * DELETE /api/test/cleanup-professional/[id]
  *
@@ -53,7 +54,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error('[test/cleanup-professional]', err);
+    logger.error('[test/cleanup-professional]', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

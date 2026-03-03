@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -67,12 +68,12 @@ export async function POST(_request: NextRequest) {
         `,
       });
     } catch (emailError) {
-      console.error('[cancel-deletion] Email failed:', emailError);
+      logger.error('[cancel-deletion] Email failed:', emailError);
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('[cancel-deletion] Error:', error);
+    logger.error('[cancel-deletion] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

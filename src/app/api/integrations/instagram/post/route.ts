@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { postPhoto, postStory } from '@/lib/integrations/instagram'
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (postError) {
-      console.error('Error saving post:', postError)
+      logger.error('Error saving post:', postError)
       return NextResponse.json(
         { error: 'Post created on Instagram but failed to save to database' },
         { status: 500 }
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
       permalink: result.permalink
     })
   } catch (error: any) {
-    console.error('Error posting to Instagram:', error)
+    logger.error('Error posting to Instagram:', error)
 
     // Salvar erro no banco
     await supabase

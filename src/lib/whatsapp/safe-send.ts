@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Wrapper resiliente para envio de WhatsApp.
  * Retry 2x com backoff exponencial + timeout de 30s por tentativa.
@@ -21,12 +22,12 @@ export async function safeSendWhatsApp(
     try {
       await withTimeout(fn(), timeoutMs);
       if (attempt > 0) {
-        console.log(`[SafeSend] WhatsApp OK na tentativa ${attempt + 1}`);
+        logger.info(`[SafeSend] WhatsApp OK na tentativa ${attempt + 1}`);
       }
       return { success: true };
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
-      console.error(`[SafeSend] WhatsApp tentativa ${attempt + 1}/${retries + 1} falhou:`, lastError);
+      logger.error(`[SafeSend] WhatsApp tentativa ${attempt + 1}/${retries + 1} falhou:`, lastError);
       onFailure?.(lastError, attempt + 1);
 
       if (attempt < retries) {

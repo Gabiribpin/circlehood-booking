@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -109,7 +110,7 @@ export function RegionBroadcast() {
       setOpen(false);
       resetForm();
     } catch (err) {
-      console.error('Broadcast error:', err);
+      logger.error('Broadcast error:', err);
       toast({
         title: 'Erro ao enviar',
         description: 'Não foi possível enviar o broadcast. Tente novamente.',

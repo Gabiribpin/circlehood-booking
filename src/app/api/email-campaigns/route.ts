@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   const { data: campaigns, error } = await query
 
   if (error) {
-    console.error('Error fetching campaigns:', error)
+    logger.error('Error fetching campaigns:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating campaign:', error)
+    logger.error('Error creating campaign:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

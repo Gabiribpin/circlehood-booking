@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendBulkEmails } from '@/lib/integrations/email-marketing'
@@ -139,7 +140,7 @@ export async function POST(
       total: recipients.length
     })
   } catch (error: any) {
-    console.error('Error sending campaign:', error)
+    logger.error('Error sending campaign:', error)
 
     // Reverter status para draft
     await supabase

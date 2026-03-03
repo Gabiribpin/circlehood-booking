@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { classifyIntent } from './intent-classifier';
@@ -115,12 +116,12 @@ export class AIBot {
         // Lock distribuído: evita race condition quando mensagens chegam simultaneamente
         const lockAcquired = await ConversationCache.acquireGreetingLock(cacheKey);
         if (!lockAcquired) {
-          console.log(`🔒 Greeting já enviado por outro processo — processando como mensagem normal`);
+          logger.info(`🔒 Greeting já enviado por outro processo — processando como mensagem normal`);
           // Aguarda brevemente para o histórico ser salvo pelo processo que ganhou o lock
           await new Promise(r => setTimeout(r, 500));
           // Continua para processamento normal (Claude responde às perguntas)
         } else {
-          console.log(`👋 Saudação direta (bypass Claude): "${greeting}"`);
+          logger.info(`👋 Saudação direta (bypass Claude): "${greeting}"`);
           const entry = memoryCache.get(cacheKey) || { conversationId: context.conversationId, messages: [] };
           entry.messages.push(
             { role: 'user', content: message, ts: Date.now() },
@@ -158,16 +159,16 @@ export class AIBot {
         { role: 'user' as const, content: 'olá' },
         { role: 'assistant' as const, content: `Olá! Sou ${guardBotName}. Como posso ajudar? 😊` },
       ];
-      console.log('🔧 Cold-start guard: injetando contexto mínimo (histórico vazio + não-saudação)');
+      logger.info('🔧 Cold-start guard: injetando contexto mínimo (histórico vazio + não-saudação)');
     }
 
     // 5. Classificar intenção
     const intent = await classifyIntent(message, context.language);
 
     // 5. Gerar resposta
-    console.log('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
+    logger.info('🤖 Chamando Anthropic para', phone, '| intent:', intent, '| history:', context.history.length);
     const response = await this.generateResponse(message, intent, context);
-    console.log('✅ Anthropic respondeu para', phone);
+    logger.info('✅ Anthropic respondeu para', phone);
 
     // 5. Salvar nos 3 tiers em paralelo
     const cacheKey = `${businessId}_${phone}`;
@@ -280,13 +281,13 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       { role: 'user', content: message },
     ];
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 CONTEXTO ANTHROPIC:');
-    console.log('  history.length:', context.history.length);
-    console.log('  isFirstMessage:', context.history.length === 0);
-    console.log('  conversationId:', context.conversationId);
-    console.log('  messages[últimas 2]:', messages.slice(-2).map(m => `${m.role}: ${String(m.content).substring(0, 60)}`));
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('📊 CONTEXTO ANTHROPIC:');
+    logger.info('  history.length:', context.history.length);
+    logger.info('  isFirstMessage:', context.history.length === 0);
+    logger.info('  conversationId:', context.conversationId);
+    logger.info('  messages[últimas 2]:', messages.slice(-2).map(m => `${m.role}: ${String(m.content).substring(0, 60)}`));
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const cachedSystem = [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }];
 
@@ -302,7 +303,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         messages,
       });
 
-      console.log(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
+      logger.info(`💰 Cache: create=${(response.usage as any).cache_creation_input_tokens ?? 0} read=${(response.usage as any).cache_read_input_tokens ?? 0} input=${response.usage.input_tokens}`);
 
       // Loop agentic: suporta encadeamento de tools (ex: get_my_appointments → cancel_appointment)
       // IMPORTANTE: processa TODOS os tool_use blocks de uma resposta, não só o primeiro.
@@ -319,12 +320,12 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         );
         if (toolUseBlocks.length === 0) break;
 
-        console.log(`🛠️ Tool use [${iteration}]: ${toolUseBlocks.map(b => b.name).join(', ')}`);
+        logger.info(`🛠️ Tool use [${iteration}]: ${toolUseBlocks.map(b => b.name).join(', ')}`);
 
         // Executar todos os tools em paralelo (quando possível)
         const toolResults = await Promise.all(
           toolUseBlocks.map(async (toolUseBlock) => {
-            console.log(`  → ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
+            logger.info(`  → ${toolUseBlock.name}`, JSON.stringify(toolUseBlock.input));
             let result: any;
 
             if (toolUseBlock.name === 'create_appointment') {
@@ -343,11 +344,11 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
             } else if (toolUseBlock.name === 'check_availability') {
               result = await this.checkAvailability(toolUseBlock.input.date, toolUseBlock.input.time, professionalId);
             } else {
-              console.warn('Tool desconhecida:', toolUseBlock.name);
+              logger.warn('Tool desconhecida:', toolUseBlock.name);
               result = { error: 'unknown_tool' };
             }
 
-            console.log(`  ← ${toolUseBlock.name} result:`, JSON.stringify(result));
+            logger.info(`  ← ${toolUseBlock.name} result:`, JSON.stringify(result));
             return { id: toolUseBlock.id, result };
           })
         );
@@ -373,21 +374,21 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
           messages: currentMessages,
         });
 
-        console.log(`💰 Cache [${iteration}]: create=${(currentResponse.usage as any).cache_creation_input_tokens ?? 0} read=${(currentResponse.usage as any).cache_read_input_tokens ?? 0}`);
+        logger.info(`💰 Cache [${iteration}]: create=${(currentResponse.usage as any).cache_creation_input_tokens ?? 0} read=${(currentResponse.usage as any).cache_read_input_tokens ?? 0}`);
       }
 
       const textBlock = (currentResponse.content as any[]).find(c => c.type === 'text');
       const responseText = textBlock?.text ?? '';
 
       if (!responseText || responseText.trim().length === 0) {
-        console.error('❌ Claude retornou resposta vazia');
+        logger.error('❌ Claude retornou resposta vazia');
         return 'Desculpe, não consegui processar sua mensagem. Pode repetir? 😊';
       }
 
       // Detectar gibberish: palavras muito longas sem espaços (≥50 chars) são sinal de resposta corrompida
       const hasGibberish = responseText.split(/\s+/).some((word: string) => word.replace(/[^\w]/g, '').length >= 50);
       if (hasGibberish) {
-        console.error('❌ Claude retornou gibberish:', responseText.substring(0, 120));
+        logger.error('❌ Claude retornou gibberish:', responseText.substring(0, 120));
         return 'Desculpe, tive uma falha técnica no momento. Por favor, tente novamente em alguns instantes. 😊';
       }
 
@@ -396,7 +397,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
     } catch (error: any) {
       const errMsg = error?.message ?? '';
       const errBody = error?.error ? JSON.stringify(error.error) : undefined;
-      console.error(`❌ Erro na API Anthropic (attempt ${attempt + 1}/2):`, {
+      logger.error(`❌ Erro na API Anthropic (attempt ${attempt + 1}/2):`, {
         status: error?.status,
         message: errMsg,
         type: error?.constructor?.name,
@@ -405,23 +406,23 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
 
       // Erros definitivos — não tentar novamente
       if (error?.status === 529 || errMsg.includes('overloaded')) {
-        console.error('⚠️ API Anthropic sobrecarregada (529)');
+        logger.error('⚠️ API Anthropic sobrecarregada (529)');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns instantes. 😊';
       }
       if (error?.status === 429) {
-        console.error('⚠️ Rate limit atingido');
+        logger.error('⚠️ Rate limit atingido');
         return 'Estamos com muito volume agora. Por favor, tente novamente em alguns minutos. 😊';
       }
       if (error?.code === 'ETIMEDOUT' || errMsg.includes('timeout')) {
-        console.error('⏱️ Timeout na API Anthropic');
+        logger.error('⏱️ Timeout na API Anthropic');
         return 'Desculpe a demora. Pode repetir sua mensagem? 😊';
       }
       if (error?.status === 401 || error?.status === 403) {
-        console.error('🔑 Erro de autenticação na API Anthropic');
+        logger.error('🔑 Erro de autenticação na API Anthropic');
         return 'Estou com uma dificuldade técnica no momento. Entre em contato diretamente pelo telefone.';
       }
       if (errMsg.includes('credit balance') || errBody?.includes('credit balance')) {
-        console.error('💳 CONTA ANTHROPIC SEM CRÉDITOS — adicionar créditos em console.anthropic.com');
+        logger.error('💳 CONTA ANTHROPIC SEM CRÉDITOS — adicionar créditos em console.anthropic.com');
         return 'Estou temporariamente fora do ar para manutenção. Por favor, entre em contato diretamente pelo telefone. 😊';
       }
 
@@ -429,9 +430,9 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       // → tentar uma vez mais com o loop de mensagens resetado
       if (attempt === 0) {
         if (error?.status === 400) {
-          console.warn('🔄 400 (provável desalinhamento tool_use/tool_result) — retentando do zero...');
+          logger.warn('🔄 400 (provável desalinhamento tool_use/tool_result) — retentando do zero...');
         } else {
-          console.warn(`🔄 Erro transiente (${error?.status ?? 'desconhecido'}) — retentando em 500ms...`);
+          logger.warn(`🔄 Erro transiente (${error?.status ?? 'desconhecido'}) — retentando em 500ms...`);
         }
         await new Promise(r => setTimeout(r, 500));
         continue; // reinicia o loop: messages volta ao estado inicial (sem tool_use blocks acumulados)
@@ -572,7 +573,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       const bookingTime = normalizeTime(data.time);
       // Normalizar telefone: remover tudo que não é dígito (ex: +353... → 353...)
       const clientPhone = (data.customer_phone ?? '').replace(/\D/g, '');
-      console.log(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}" phone="${data.customer_phone}"→"${clientPhone}"`);
+      logger.info(`📅 createAppointment: date="${data.date}"→"${bookingDate}" time="${data.time}"→"${bookingTime}" service="${data.service_name}" name="${data.customer_name}" phone="${data.customer_phone}"→"${clientPhone}"`);
 
       // BUG #1 fix: rejeitar horários no passado (Dublin timezone)
       const now = new Date();
@@ -584,7 +585,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       if (requestedDateTime < dublinNowDateTime) {
         const diffMins = Math.ceil((dublinNowDateTime.getTime() - requestedDateTime.getTime()) / (1000 * 60));
         const nowLabel = `${String(dublinNow.getHours()).padStart(2, '0')}:${String(dublinNow.getMinutes()).padStart(2, '0')}`;
-        console.log(`⛔ Horário no passado: solicitado ${bookingDate} ${bookingTime}, Dublin agora ${dublinTodayStr} ${nowLabel} (diff=${diffMins}min)`);
+        logger.info(`⛔ Horário no passado: solicitado ${bookingDate} ${bookingTime}, Dublin agora ${dublinTodayStr} ${nowLabel} (diff=${diffMins}min)`);
         if (diffMins <= 30) {
           return {
             success: false,
@@ -647,7 +648,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .maybeSingle();
 
       if (serviceError || !service) {
-        console.error('createAppointment: serviço não encontrado:', data.service_name, serviceError);
+        logger.error('createAppointment: serviço não encontrado:', data.service_name, serviceError);
         return { success: false, error: `Serviço "${data.service_name}" não encontrado` };
       }
 
@@ -663,7 +664,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .maybeSingle();
 
       if (!dayWH) {
-        console.log(`🚫 Profissional não atende dia_int=${bookingDayInt} (${bookingDate})`);
+        logger.info(`🚫 Profissional não atende dia_int=${bookingDayInt} (${bookingDate})`);
         return {
           success: false,
           error: 'day_unavailable',
@@ -676,7 +677,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       const workStartMins = timeToMinutes(dayWH.start_time);
       const workEndMins = timeToMinutes(dayWH.end_time);
       if (reqStartMins < workStartMins || reqStartMins + duration > workEndMins) {
-        console.log(`🚫 Horário fora do expediente: ${bookingTime} (expediente ${dayWH.start_time}–${dayWH.end_time})`);
+        logger.info(`🚫 Horário fora do expediente: ${bookingTime} (expediente ${dayWH.start_time}–${dayWH.end_time})`);
         return {
           success: false,
           error: 'outside_hours',
@@ -697,7 +698,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .order('booking_date', { ascending: true });
 
       if (futureBookings && futureBookings.length > 0) {
-        console.log(`⚠️ Cliente já tem ${futureBookings.length} agendamento(s) futuro(s)`);
+        logger.info(`⚠️ Cliente já tem ${futureBookings.length} agendamento(s) futuro(s)`);
 
         // Mesmo dia (qualquer serviço)
         const sameDay = futureBookings.find((b) => b.booking_date === bookingDate);
@@ -706,7 +707,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
           const sameDayService = (sameDay as any).services?.name ?? 'serviço';
           const sameDayDateLabel = new Date(sameDay.booking_date + 'T12:00:00Z')
             .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-          console.log(`🚨 Duplicata mesmo dia: ${sameDay.booking_date} ${sameDayTime} ${sameDayService}`);
+          logger.info(`🚨 Duplicata mesmo dia: ${sameDay.booking_date} ${sameDayTime} ${sameDayService}`);
           return {
             success: false,
             error: 'duplicate_same_day',
@@ -726,7 +727,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
             .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
           const requestedDateLabel = new Date(bookingDate + 'T12:00:00Z')
             .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-          console.log(`⚠️ Mesmo serviço em dias próximos: ${nearby.booking_date} ${nearbyTime}`);
+          logger.info(`⚠️ Mesmo serviço em dias próximos: ${nearby.booking_date} ${nearbyTime}`);
           return {
             success: false,
             error: 'duplicate_nearby',
@@ -760,7 +761,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
           const bEnd = (b.end_time ? timeToMinutes(b.end_time) : bStart + 60) + BUFFER;
           if (reqStart < bEnd && reqEnd > bStart) {
             const occupied = b.start_time.slice(0, 5);
-            console.log(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
+            logger.info(`❌ Conflito: solicitado ${bookingTime}–${endTime.slice(0, 5)}, existente ${occupied}–${b.end_time?.slice(0, 5) ?? '?'}`);
 
             // day_of_week é INT: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
             const todayDayInt = new Date(bookingDate + 'T12:00:00Z').getUTCDay();
@@ -774,7 +775,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
               .eq('is_available', true)
               .maybeSingle();
 
-            console.log(`🗓️ Working hours hoje (day_int=${todayDayInt}):`, todayWH ? `${todayWH.start_time}–${todayWH.end_time}` : 'não atende');
+            logger.info(`🗓️ Working hours hoje (day_int=${todayDayInt}):`, todayWH ? `${todayWH.start_time}–${todayWH.end_time}` : 'não atende');
 
             const todaySlot = todayWH
               ? suggestAlternative(bookingDate, existingBookings, duration, todayWH.start_time, todayWH.end_time, bookingTime)
@@ -811,7 +812,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
                 .neq('status', 'completed'),
             ]);
 
-            console.log(`🗓️ Working hours amanhã (day_int=${tomorrowDayInt}, data=${tomorrowStr}):`, tomorrowWH ? `${tomorrowWH.start_time}–${tomorrowWH.end_time}` : 'não atende');
+            logger.info(`🗓️ Working hours amanhã (day_int=${tomorrowDayInt}, data=${tomorrowStr}):`, tomorrowWH ? `${tomorrowWH.start_time}–${tomorrowWH.end_time}` : 'não atende');
 
             if (!tomorrowWH) {
               return {
@@ -853,12 +854,12 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
         .single();
 
       if (bookingError || !booking) {
-        console.error('createAppointment: erro ao inserir booking:', JSON.stringify(bookingError));
-        console.error('createAppointment: dados enviados:', { bookingDate, bookingTime, professionalId, serviceId: service.id });
+        logger.error('createAppointment: erro ao inserir booking:', JSON.stringify(bookingError));
+        logger.error('createAppointment: dados enviados:', { bookingDate, bookingTime, professionalId, serviceId: service.id });
         return { success: false, error: bookingError?.message ?? 'Erro ao criar agendamento' };
       }
 
-      console.log('✅ Agendamento criado:', booking.id, '| serviço:', service.name, '| data:', data.date, data.time);
+      logger.info('✅ Agendamento criado:', booking.id, '| serviço:', service.name, '| data:', data.date, data.time);
 
       // Auto-save contato (fire and forget)
       ;(async () => {
@@ -877,7 +878,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
             });
           }
         } catch (err) {
-          console.error('[Bot] Contact auto-save failed:', err);
+          logger.error('[Bot] Contact auto-save failed:', err);
         }
       })();
 
@@ -891,7 +892,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       };
 
     } catch (err) {
-      console.error('createAppointment: erro inesperado:', err);
+      logger.error('createAppointment: erro inesperado:', err);
       return { success: false, error: 'Erro inesperado ao criar agendamento' };
     }
   }
@@ -927,7 +928,7 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
     const looksLikeGreeting = /^[\s]*?(oi\b|olá|ola\b|oii|hello\b|hi\b|hey\b|bom dia|boa tarde|boa noite|tudo bem|e aí|good morning|good afternoon)/i.test(currentMessage.trim());
     const isFirstMessage = history.length === 0 && looksLikeGreeting;
 
-    console.log(`📝 Prompt | isFirstMessage=${isFirstMessage} | historyLen=${history.length} | bot="${botName}"`);
+    logger.info(`📝 Prompt | isFirstMessage=${isFirstMessage} | historyLen=${history.length} | bot="${botName}"`);
 
     const criticalRules = `# ⚠️ REGRAS ABSOLUTAS — LEIA PRIMEIRO ⚠️
 
@@ -1319,7 +1320,7 @@ PROIBIDO ao rejeitar data/horário:
     }
 
     if (!conversation) {
-      console.error('Error fetching/creating conversation:', convError);
+      logger.error('Error fetching/creating conversation:', convError);
       return { userId: phone, phone, conversationId: '', language: '', history: [], businessInfo: {} };
     }
 
@@ -1368,7 +1369,7 @@ PROIBIDO ao rejeitar data/horário:
         if (memEntry.conversationId !== conversation.id) {
           // Conversa foi recriada (ex: limpeza de testes) — descartar cache stale
           memoryCache.delete(cacheKey);
-          console.log(`🗑️ Tier 3 stale detectado (conversation ID mudou) — cache descartado para ${cacheKey}`);
+          logger.info(`🗑️ Tier 3 stale detectado (conversation ID mudou) — cache descartado para ${cacheKey}`);
         } else {
           const fresh = memEntry.messages.filter(m => Date.now() - m.ts < 24 * 60 * 60 * 1000);
           if (fresh.length > 0) {
@@ -1382,7 +1383,7 @@ PROIBIDO ao rejeitar data/horário:
     // OPT 3: limitar histórico a 10 mensagens para reduzir tokens
     const totalHistory = history.length;
     history = history.slice(-10);
-    console.log(`📊 Histórico: ${history.length}/${totalHistory} msgs | source=${historySource} | conversationId=${conversation.id}`);
+    logger.info(`📊 Histórico: ${history.length}/${totalHistory} msgs | source=${historySource} | conversationId=${conversation.id}`);
 
     // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
     const [
@@ -1431,7 +1432,7 @@ PROIBIDO ao rejeitar data/horário:
     );
 
     // Log explícito para diagnóstico no Vercel
-    console.log('🤖 Bot config loaded:', botConfig
+    logger.info('🤖 Bot config loaded:', botConfig
       ? JSON.stringify({ bot_name: botConfig.bot_name, personality: botConfig.bot_personality, has_greeting: !!botConfig.greeting_message, auto_book: botConfig.auto_book_if_available })
       : 'NULL — nenhuma configuração encontrada para user_id=' + businessId
     );
@@ -1574,7 +1575,7 @@ PROIBIDO ao rejeitar data/horário:
       const newDateFmt = new Date(normalizedDate + 'T12:00:00Z')
         .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
-      console.log(`✅ Reagendado: ${bookingId} → ${newBooking.id} | ${existing.booking_date} ${existing.start_time} → ${normalizedDate} ${normalizedTime}`);
+      logger.info(`✅ Reagendado: ${bookingId} → ${newBooking.id} | ${existing.booking_date} ${existing.start_time} → ${normalizedDate} ${normalizedTime}`);
 
       return {
         success: true,
@@ -1586,7 +1587,7 @@ PROIBIDO ao rejeitar data/horário:
         message: `Reagendado com sucesso! Cancelei ${oldDateFmt} às ${existing.start_time.slice(0, 5)} e marquei ${newDateFmt} às ${normalizedTime}.`,
       };
     } catch (err) {
-      console.error('rescheduleAppointment: erro inesperado:', err);
+      logger.error('rescheduleAppointment: erro inesperado:', err);
       return { success: false, error: 'unexpected', message: 'Erro inesperado ao reagendar.' };
     }
   }
@@ -1618,11 +1619,11 @@ PROIBIDO ao rejeitar data/horário:
       .eq('professional_id', professionalId);
 
     if (error) {
-      console.error('cancelAppointment error:', error);
+      logger.error('cancelAppointment error:', error);
       return { success: false, error: 'Erro ao cancelar. Por favor, tente novamente.' };
     }
 
-    console.log('✅ Agendamento cancelado:', bookingId);
+    logger.info('✅ Agendamento cancelado:', bookingId);
     return {
       success: true,
       date_formatted: new Date(booking.booking_date + 'T12:00:00Z').toLocaleDateString('pt-BR', {
@@ -1638,9 +1639,9 @@ PROIBIDO ao rejeitar data/horário:
     userMessage: string,
     botResponse: string
   ) {
-    console.log('💾 saveToHistory iniciado | conversationId:', conversationId);
+    logger.info('💾 saveToHistory iniciado | conversationId:', conversationId);
     if (!conversationId) {
-      console.error('saveToHistory: conversationId vazio, abortando');
+      logger.error('saveToHistory: conversationId vazio, abortando');
       return;
     }
 
@@ -1674,11 +1675,11 @@ PROIBIDO ao rejeitar data/horário:
       ]);
 
     if (msgError) {
-      console.error('saveToHistory: error inserting messages', msgError);
+      logger.error('saveToHistory: error inserting messages', msgError);
       return;
     }
 
-    console.log('✅ saveToHistory: mensagens salvas para conversa', conversationId);
+    logger.info('✅ saveToHistory: mensagens salvas para conversa', conversationId);
 
     await this.supabase
       .from('whatsapp_conversations')

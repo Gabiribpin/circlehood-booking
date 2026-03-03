@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * POST /api/test/setup-professional
  *
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       })),
     });
   } catch (err: any) {
-    console.error('[test/setup-professional]', err);
+    logger.error('[test/setup-professional]', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

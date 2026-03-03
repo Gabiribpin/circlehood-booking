@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       .select();
 
     if (error) {
-      console.error('Error inserting contacts:', error);
+      logger.error('Error inserting contacts:', error);
       return NextResponse.json({ error: 'Failed to import contacts' }, { status: 500 });
     }
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Import error:', error);
+    logger.error('Import error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

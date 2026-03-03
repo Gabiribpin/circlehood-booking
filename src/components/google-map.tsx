@@ -1,4 +1,5 @@
 'use client'
+import { logger } from '@/lib/logger';
 
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
@@ -113,7 +114,7 @@ export function GoogleMap({
 
       setMapLoaded(true)
     } catch (err: any) {
-      console.error('Error initializing map:', err)
+      logger.error('Error initializing map:', err)
       setError(err.message)
     }
   }

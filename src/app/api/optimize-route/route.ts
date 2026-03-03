@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
       potentialSavings,
     });
   } catch (error) {
-    console.error('Route optimization error:', error);
+    logger.error('Route optimization error:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

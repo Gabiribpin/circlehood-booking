@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -69,18 +70,18 @@ export async function POST(request: NextRequest) {
           { headers: { 'apikey': instanceToken } },
         );
         const pairData = await pairRes.json();
-        console.log('[admin/create-instance] pairing connect response:', JSON.stringify(pairData));
+        logger.info('[admin/create-instance] pairing connect response:', JSON.stringify(pairData));
         pairingCode = pairData?.pairingCode ?? null;
       } else {
         const qrRes = await fetch(`${evolutionConfig.baseUrl}/instance/connect/${instanceName}`, {
           headers: { 'apikey': instanceToken },
         });
         const qrRaw = await qrRes.json();
-        console.log('[admin/create-instance] qr connect response:', JSON.stringify(qrRaw));
+        logger.info('[admin/create-instance] qr connect response:', JSON.stringify(qrRaw));
         qrCode = qrRaw?.base64 ?? qrRaw?.qrcode?.base64 ?? qrRaw?.code ?? null;
       }
     } else {
-      console.log('[admin/create-instance] createData:', JSON.stringify(createData));
+      logger.info('[admin/create-instance] createData:', JSON.stringify(createData));
       instanceToken = createData?.hash?.apikey ?? createData?.instance?.token ?? '';
 
       if (!instanceToken) {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         const fetchData2 = await fetchRes2.json();
         const inst = Array.isArray(fetchData2) ? fetchData2[0] : fetchData2;
         instanceToken = inst?.token ?? '';
-        console.log('[admin/create-instance] fallback token fetch:', instanceToken ? 'OK' : 'EMPTY');
+        logger.info('[admin/create-instance] fallback token fetch:', instanceToken ? 'OK' : 'EMPTY');
       }
 
       if (method === 'pairing') {
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
           { headers: { 'apikey': instanceToken || evolutionConfig.globalApiKey } },
         );
         const pairData = await pairRes.json();
-        console.log('[admin/create-instance] pairing response:', JSON.stringify(pairData));
+        logger.info('[admin/create-instance] pairing response:', JSON.stringify(pairData));
         pairingCode = pairData?.pairingCode ?? null;
       } else {
         qrCode = createData?.qrcode?.base64 ?? null;
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ instanceName, qrCode, pairingCode, token: instanceToken });
   } catch (error) {
-    console.error('admin/create-instance error:', error);
+    logger.error('admin/create-instance error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

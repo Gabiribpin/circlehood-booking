@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Export utility functions for marketing materials
  * Convert canvas to PNG, SVG, and PDF formats
@@ -17,7 +18,7 @@ export function canvasToPNG(
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (error) {
-    console.error('Error exporting PNG:', error);
+    logger.error('Error exporting PNG:', error);
     throw new Error('Failed to export PNG');
   }
 }
@@ -37,7 +38,7 @@ export function canvasToJPEG(
     link.href = canvas.toDataURL('image/jpeg', quality);
     link.click();
   } catch (error) {
-    console.error('Error exporting JPEG:', error);
+    logger.error('Error exporting JPEG:', error);
     throw new Error('Failed to export JPEG');
   }
 }
@@ -70,7 +71,7 @@ export function canvasToSVG(
     // Clean up
     setTimeout(() => URL.revokeObjectURL(url), 100);
   } catch (error) {
-    console.error('Error exporting SVG:', error);
+    logger.error('Error exporting SVG:', error);
     throw new Error('Failed to export SVG');
   }
 }
@@ -105,7 +106,7 @@ export async function canvasToClipboard(canvas: HTMLCanvasElement): Promise<void
       new ClipboardItem({ 'image/png': blob })
     ]);
   } catch (error) {
-    console.error('Error copying to clipboard:', error);
+    logger.error('Error copying to clipboard:', error);
     throw new Error('Failed to copy to clipboard');
   }
 }
@@ -144,7 +145,7 @@ export function printCanvas(canvas: HTMLCanvasElement): void {
       </html>
     `);
   } catch (error) {
-    console.error('Error printing canvas:', error);
+    logger.error('Error printing canvas:', error);
     throw new Error('Failed to print canvas');
   }
 }

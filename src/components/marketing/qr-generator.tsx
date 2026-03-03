@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,7 +63,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
       });
       setQrCodeUrl(dataUrl);
     } catch (error) {
-      console.error('Error generating QR preview:', error);
+      logger.error('Error generating QR preview:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao gerar preview do QR code',
@@ -111,7 +112,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
       };
       img.src = qrCodeUrl;
     } catch (error) {
-      console.error('Error downloading QR:', error);
+      logger.error('Error downloading QR:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao baixar QR code',
@@ -147,7 +148,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
       };
       img.src = qrCodeUrl;
     } catch (error) {
-      console.error('Error downloading SVG:', error);
+      logger.error('Error downloading SVG:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao baixar QR code SVG',
@@ -202,7 +203,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
 
       setSaveName('');
     } catch (error) {
-      console.error('Error saving QR design:', error);
+      logger.error('Error saving QR design:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao salvar design',

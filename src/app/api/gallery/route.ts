@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ images: images || [] });
   } catch (error) {
-    console.error('Error fetching gallery images:', error);
+    logger.error('Error fetching gallery images:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -87,7 +88,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ image });
   } catch (error) {
-    console.error('Error updating gallery image:', error);
+    logger.error('Error updating gallery image:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -166,7 +167,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting gallery image:', error);
+    logger.error('Error deleting gallery image:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

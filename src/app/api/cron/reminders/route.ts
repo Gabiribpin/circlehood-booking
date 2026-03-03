@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
         .eq('status', 'confirmed');
 
       if (bookingsError) {
-        console.error(`Error fetching bookings for ${professional.business_name}:`, bookingsError);
+        logger.error(`Error fetching bookings for ${professional.business_name}:`, bookingsError);
         continue;
       }
 
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError) {
-          console.error(`Error inserting notification for booking ${booking.id}:`, insertError);
+          logger.error(`Error inserting notification for booking ${booking.id}:`, insertError);
           continue;
         }
 
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ created, skipped });
   } catch (error: any) {
-    console.error('Fatal error in reminders cron:', error);
+    logger.error('Fatal error in reminders cron:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

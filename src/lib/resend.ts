@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -51,7 +52,7 @@ async function logEmailResult(opts: {
     });
   } catch (logErr) {
     // Nunca quebrar o fluxo por falha de log
-    console.error('[Resend] Falha ao gravar notification_logs:', logErr);
+    logger.error('[Resend] Falha ao gravar notification_logs:', logErr);
   }
 }
 
@@ -331,7 +332,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
 
     if (result.status === 'rejected') {
       const errorMsg = String(result.reason?.message ?? result.reason ?? 'Unknown error');
-      console.error(`[Resend] Email ${label} failed:`, errorMsg);
+      logger.error(`[Resend] Email ${label} failed:`, errorMsg);
       if (bookingId && professionalId) {
         await logEmailResult({
           professionalId,
@@ -346,7 +347,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
       const val = result.value as any;
       if (val?.error) {
         const errorMsg = JSON.stringify(val.error);
-        console.error(`[Resend] Email ${label} API error:`, errorMsg);
+        logger.error(`[Resend] Email ${label} API error:`, errorMsg);
         if (bookingId && professionalId) {
           await logEmailResult({
             professionalId,
@@ -358,7 +359,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
           });
         }
       } else {
-        console.log(`[Resend] Email ${label} sent OK, id:`, val?.data?.id);
+        logger.info(`[Resend] Email ${label} sent OK, id:`, val?.data?.id);
         if (bookingId && professionalId) {
           await logEmailResult({
             professionalId,

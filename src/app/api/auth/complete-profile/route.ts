@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
     } as never);
 
   if (insertError) {
-    console.error('[complete-profile] insert error:', insertError);
+    logger.error('[complete-profile] insert error:', insertError);
     return NextResponse.json({ error: 'Erro ao criar perfil.' }, { status: 500 });
   }
 

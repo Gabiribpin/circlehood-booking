@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -183,7 +184,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
       }
 
     } catch (error) {
-      console.error('Error generating social post:', error);
+      logger.error('Error generating social post:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao gerar post',
@@ -206,7 +207,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
         description: `Post para ${POST_FORMATS[format].label} baixado com sucesso`,
       });
     } catch (error) {
-      console.error('Error downloading post:', error);
+      logger.error('Error downloading post:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao baixar post',

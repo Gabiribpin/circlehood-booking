@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error || !ticket) {
-    console.error('[support/tickets] insert error:', error);
+    logger.error('[support/tickets] insert error:', error);
     return NextResponse.json({ error: 'Falha ao criar chamado' }, { status: 500 });
   }
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
           .eq('id', ticket.id);
       }
     } catch (err) {
-      console.error('[support/tickets] bot response error:', err);
+      logger.error('[support/tickets] bot response error:', err);
     }
   })();
 

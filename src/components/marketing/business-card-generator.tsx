@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -170,7 +171,7 @@ export function BusinessCardGenerator({
         qrImg.src = qrDataUrl;
       }
     } catch (error) {
-      console.error('Error generating business card:', error);
+      logger.error('Error generating business card:', error);
       toast({ title: 'Erro', description: 'Falha ao gerar cartão de visita', variant: 'destructive' });
     }
   }
@@ -183,7 +184,7 @@ export function BusinessCardGenerator({
       canvasToPNG(canvas, `cartao-${professional.slug}`);
       toast({ title: 'Sucesso!', description: 'Cartão de visita baixado com sucesso' });
     } catch (error) {
-      console.error('Error downloading card:', error);
+      logger.error('Error downloading card:', error);
       toast({ title: 'Erro', description: 'Falha ao baixar cartão', variant: 'destructive' });
     } finally {
       setLoading(false);

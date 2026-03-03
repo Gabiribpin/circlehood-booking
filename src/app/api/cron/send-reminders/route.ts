@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    console.error('Unauthorized cron attempt');
+    logger.error('Unauthorized cron attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -200,10 +201,10 @@ export async function POST(request: NextRequest) {
               );
               sent = res.ok;
               if (!sent) {
-                console.error('[send-reminders] Evolution error:', res.status, await res.text());
+                logger.error('[send-reminders] Evolution error:', res.status, await res.text());
               }
             } catch (sendErr: any) {
-              console.error('[send-reminders] Evolution fetch error:', sendErr.message);
+              logger.error('[send-reminders] Evolution fetch error:', sendErr.message);
             }
           } else if (wc.provider === 'meta' && wc.phone_number_id) {
             try {
@@ -225,10 +226,10 @@ export async function POST(request: NextRequest) {
               );
               sent = res.ok;
               if (!sent) {
-                console.error('[send-reminders] Meta error:', res.status, await res.text());
+                logger.error('[send-reminders] Meta error:', res.status, await res.text());
               }
             } catch (sendErr: any) {
-              console.error('[send-reminders] Meta fetch error:', sendErr.message);
+              logger.error('[send-reminders] Meta fetch error:', sendErr.message);
             }
           }
         }
@@ -261,7 +262,7 @@ export async function POST(request: NextRequest) {
           sent,
         });
       } catch (error: any) {
-        console.error(`Error processing booking ${booking.id}:`, error);
+        logger.error(`Error processing booking ${booking.id}:`, error);
         errors.push({
           booking_id: booking.id,
           error: error.message,
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Fatal error in send-reminders cron:', error);
+    logger.error('Fatal error in send-reminders cron:', error);
 
     // Log erro
     await supabase.from('cron_logs').insert({

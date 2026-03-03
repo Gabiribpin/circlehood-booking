@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -80,13 +81,13 @@ export async function POST(request: NextRequest) {
         // 4. Delete the auth user
         await supabase.auth.admin.deleteUser(professional.user_id);
 
-        console.log(
+        logger.info(
           `[account-deletion] Professional ${professional.slug} (id=${pid}) permanently deleted at ${new Date().toISOString()}`
         );
 
         processed++;
       } catch (indivError: any) {
-        console.error(
+        logger.error(
           `[account-deletion] Failed to delete professional ${professional.id}:`,
           indivError
         );
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, processed });
   } catch (error: any) {
-    console.error('[process-deletions] Error:', error);
+    logger.error('[process-deletions] Error:', error);
 
     await supabase.from('cron_logs').insert({
       job_name: 'process-deletions',

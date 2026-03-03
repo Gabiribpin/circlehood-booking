@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // ── Safety: não processar mensagens reais em staging/preview ──
     if (isNonProduction) {
-      console.log(
+      logger.info(
         `[webhook] Ambiente ${process.env.VERCEL_ENV} — mensagem recebida mas NÃO processada`,
         JSON.stringify(body).slice(0, 200)
       );
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
               await sendEvolutionMessage(from, AUDIO_REPLY, config);
             }
           } catch (audioErr) {
-            console.error('[webhook] Failed to send audio reply:', audioErr);
+            logger.error('[webhook] Failed to send audio reply:', audioErr);
           }
         });
         return NextResponse.json({ status: 'ok' });
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {
-    console.error('WhatsApp webhook error:', error);
+    logger.error('WhatsApp webhook error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

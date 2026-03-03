@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ waitlist });
   } catch (error: any) {
-    console.error('Error fetching waitlist:', error);
+    logger.error('Error fetching waitlist:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       waitlist: waitlistEntry,
     });
   } catch (error: any) {
-    console.error('Error adding to waitlist:', error);
+    logger.error('Error adding to waitlist:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }
@@ -146,7 +147,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Removido da waitlist' });
   } catch (error: any) {
-    console.error('Error removing from waitlist:', error);
+    logger.error('Error removing from waitlist:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

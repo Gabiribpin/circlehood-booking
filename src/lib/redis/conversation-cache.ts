@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import Redis from 'ioredis';
 import { redisKey } from './prefix';
 
@@ -32,7 +33,7 @@ function getRedis(): Redis | null {
     },
   });
 
-  redis.on('error', (err) => console.error('❌ Redis error:', err.message));
+  redis.on('error', (err) => logger.error('❌ Redis error:', err.message));
 
   return redis;
 }
@@ -42,7 +43,7 @@ export class ConversationCache {
   static async getHistory(cacheKey: string): Promise<ConversationMessage[]> {
     const client = getRedis();
     if (!client) {
-      console.log('⏭️ Redis não configurado — usando fallback');
+      logger.info('⏭️ Redis não configurado — usando fallback');
       return [];
     }
 
@@ -52,10 +53,10 @@ export class ConversationCache {
       if (!dataStr) return [];
 
       const data = JSON.parse(dataStr) as ConversationMessage[];
-      console.log('📦 Redis: carregou', data.length, 'mensagens para', cacheKey);
+      logger.info('📦 Redis: carregou', data.length, 'mensagens para', cacheKey);
       return data;
     } catch (error) {
-      console.error('❌ Redis get error:', (error as Error).message);
+      logger.error('❌ Redis get error:', (error as Error).message);
       return [];
     }
   }
@@ -72,9 +73,9 @@ export class ConversationCache {
       const current = await this.getHistory(cacheKey);
       const limited = [...current, ...messages].slice(-MAX_MESSAGES);
       await client.setex(key, TTL, JSON.stringify(limited));
-      console.log('✅ Redis: salvou', messages.length, 'mensagens para', cacheKey);
+      logger.info('✅ Redis: salvou', messages.length, 'mensagens para', cacheKey);
     } catch (error) {
-      console.error('❌ Redis set error:', (error as Error).message);
+      logger.error('❌ Redis set error:', (error as Error).message);
     }
   }
 
@@ -85,7 +86,7 @@ export class ConversationCache {
     try {
       await client.del(redisKey(`conversation:${cacheKey}`));
     } catch (error) {
-      console.error('❌ Redis del error:', (error as Error).message);
+      logger.error('❌ Redis del error:', (error as Error).message);
     }
   }
 

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyWaitlist } from '@/lib/automations/waitlist-notification';
@@ -66,7 +67,7 @@ export async function POST(
 
     // Notificar lista de espera automaticamente
     notifyWaitlist(tokenData.bookings.id, tokenData.bookings.professional_id).catch(
-      (err) => console.error('notifyWaitlist error:', err)
+      (err) => logger.error('notifyWaitlist error:', err)
     );
 
     // Notificar cliente via email (fire-and-forget)
@@ -92,7 +93,7 @@ export async function POST(
             professionalId: booking.professional_id,
           });
         } catch (err) {
-          console.error('[token-cancel] Email cliente error:', err);
+          logger.error('[token-cancel] Email cliente error:', err);
         }
       })();
     }
@@ -102,7 +103,7 @@ export async function POST(
       message: 'Agendamento cancelado com sucesso',
     });
   } catch (error: any) {
-    console.error('Error cancelling booking:', error);
+    logger.error('Error cancelling booking:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

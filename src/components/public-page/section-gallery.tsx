@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
 import { GalleryData } from '@/lib/page-sections/types';
@@ -30,7 +31,7 @@ export function SectionGallery({ data, professionalId, theme = 'default' }: Sect
       const data = await res.json();
       setImages(data.images || []);
     } catch (error) {
-      console.error('Error fetching gallery:', error);
+      logger.error('Error fetching gallery:', error);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 'use client';
+import { logger } from '@/lib/logger';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -232,7 +233,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
       }
 
     } catch (error) {
-      console.error('Error generating flyer:', error);
+      logger.error('Error generating flyer:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao gerar flyer',
@@ -255,7 +256,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         description: `Flyer ${FLYER_SIZES[size].label} baixado com sucesso`,
       });
     } catch (error) {
-      console.error('Error downloading flyer:', error);
+      logger.error('Error downloading flyer:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao baixar flyer',
@@ -283,7 +284,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         description: 'Janela de impressão aberta',
       });
     } catch (error) {
-      console.error('Error printing flyer:', error);
+      logger.error('Error printing flyer:', error);
       toast({
         title: 'Erro',
         description: 'Falha ao imprimir flyer',

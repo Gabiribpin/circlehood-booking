@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -89,11 +90,11 @@ export async function POST(
         body: JSON.stringify({ number: lead.phone, text: message.trim() }),
       });
     } catch (err) {
-      console.error('[admin/leads/message] Failed to send WhatsApp:', err);
+      logger.error('[admin/leads/message] Failed to send WhatsApp:', err);
       // Não falha o request — mensagem já foi salva no DB
     }
   } else {
-    console.warn('[admin/leads/message] No Evolution API config found in database');
+    logger.warn('[admin/leads/message] No Evolution API config found in database');
   }
 
   return NextResponse.json({ success: true });

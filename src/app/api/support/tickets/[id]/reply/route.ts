@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -79,7 +80,7 @@ export async function POST(
             .eq('id', id);
         }
       } catch (err) {
-        console.error('[support/tickets/reply] bot response error:', err);
+        logger.error('[support/tickets/reply] bot response error:', err);
       }
     })();
   }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getAuthUrl } from '@/lib/integrations/google-calendar';
 
@@ -11,7 +12,7 @@ export async function GET() {
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error('Error generating auth URL:', error);
+    logger.error('Error generating auth URL:', error);
     return NextResponse.json(
       { error: 'Failed to generate authorization URL' },
       { status: 500 }

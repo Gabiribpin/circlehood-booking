@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Wrapper resiliente para envio de email.
  * Retry 2x com backoff exponencial + timeout de 30s por tentativa.
@@ -33,12 +34,12 @@ export async function safeSendEmail(
     try {
       await withTimeout(fn(), timeoutMs);
       if (attempt > 0) {
-        console.log(`[SafeSend] ${label} OK na tentativa ${attempt + 1}`);
+        logger.info(`[SafeSend] ${label} OK na tentativa ${attempt + 1}`);
       }
       return { success: true };
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
-      console.error(`[SafeSend] ${label} tentativa ${attempt + 1}/${retries + 1} falhou:`, lastError);
+      logger.error(`[SafeSend] ${label} tentativa ${attempt + 1}/${retries + 1} falhou:`, lastError);
       onFailure?.(lastError, attempt + 1);
 
       if (attempt < retries) {

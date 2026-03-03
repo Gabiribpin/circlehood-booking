@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       execution_time_ms: Date.now() - startTime,
     });
   } catch (error: any) {
-    console.error('Error in refresh-analytics cron:', error);
+    logger.error('Error in refresh-analytics cron:', error);
 
     // Log erro
     await supabase.from('cron_logs').insert({

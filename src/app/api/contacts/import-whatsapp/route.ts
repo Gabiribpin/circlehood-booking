@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -72,7 +73,7 @@ export async function POST(_request: NextRequest) {
     // Evolution API v2: POST /chat/findContacts/{instance} with empty body
     // GET also works on some versions; POST is more reliable across v1/v2
     const url = `${baseUrl}/chat/findContacts/${instance}`;
-    console.log(`[import-whatsapp] Fetching contacts from: ${url}`);
+    logger.info(`[import-whatsapp] Fetching contacts from: ${url}`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55_000); // 55s — within maxDuration
@@ -91,7 +92,7 @@ export async function POST(_request: NextRequest) {
     } catch (fetchError: any) {
       clearTimeout(timeout);
       const isTimeout = fetchError.name === 'AbortError';
-      console.error('[import-whatsapp] Fetch error:', fetchError.message);
+      logger.error('[import-whatsapp] Fetch error:', fetchError.message);
       return NextResponse.json(
         { error: isTimeout ? 'Evolution API timeout' : 'Failed to reach Evolution API', detail: fetchError.message },
         { status: 502 }
@@ -99,11 +100,11 @@ export async function POST(_request: NextRequest) {
     }
     clearTimeout(timeout);
 
-    console.log(`[import-whatsapp] Evolution API status: ${evolutionRes.status}`);
+    logger.info(`[import-whatsapp] Evolution API status: ${evolutionRes.status}`);
 
     if (!evolutionRes.ok) {
       const errorText = await evolutionRes.text();
-      console.error(`[import-whatsapp] Evolution API error (${evolutionRes.status}):`, errorText);
+      logger.error(`[import-whatsapp] Evolution API error (${evolutionRes.status}):`, errorText);
       return NextResponse.json(
         { error: 'Failed to fetch contacts from Evolution API', detail: errorText, status: evolutionRes.status },
         { status: 502 }
@@ -115,7 +116,7 @@ export async function POST(_request: NextRequest) {
     try {
       evolutionContacts = JSON.parse(rawBody);
     } catch (parseError) {
-      console.error('[import-whatsapp] Failed to parse Evolution response:', rawBody.slice(0, 500));
+      logger.error('[import-whatsapp] Failed to parse Evolution response:', rawBody.slice(0, 500));
       return NextResponse.json(
         { error: 'Invalid response from Evolution API', detail: rawBody.slice(0, 200) },
         { status: 502 }
@@ -123,14 +124,14 @@ export async function POST(_request: NextRequest) {
     }
 
     if (!Array.isArray(evolutionContacts)) {
-      console.error('[import-whatsapp] Expected array, got:', typeof evolutionContacts, JSON.stringify(evolutionContacts).slice(0, 200));
+      logger.error('[import-whatsapp] Expected array, got:', typeof evolutionContacts, JSON.stringify(evolutionContacts).slice(0, 200));
       return NextResponse.json(
         { error: 'Unexpected Evolution API response format' },
         { status: 502 }
       );
     }
 
-    console.log(`[import-whatsapp] Received ${evolutionContacts.length} contacts from Evolution API`);
+    logger.info(`[import-whatsapp] Received ${evolutionContacts.length} contacts from Evolution API`);
 
     // Fetch existing contact phones to detect duplicates
     const { data: existing } = await supabase
@@ -192,13 +193,13 @@ export async function POST(_request: NextRequest) {
     if (toInsert.length > 0) {
       const { error: insertError } = await supabase.from('contacts').insert(toInsert);
       if (insertError) {
-        console.error('[import-whatsapp] Insert error:', insertError);
+        logger.error('[import-whatsapp] Insert error:', insertError);
         return NextResponse.json({ error: insertError.message }, { status: 500 });
       }
     }
 
     const imported = toInsert.length;
-    console.log(`[import-whatsapp] Done — imported: ${imported}, skipped: ${skipped}`);
+    logger.info(`[import-whatsapp] Done — imported: ${imported}, skipped: ${skipped}`);
 
     return NextResponse.json({
       success: true,
@@ -207,7 +208,7 @@ export async function POST(_request: NextRequest) {
       total: evolutionContacts.length,
     });
   } catch (error: any) {
-    console.error('[import-whatsapp] Unexpected error:', error);
+    logger.error('[import-whatsapp] Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

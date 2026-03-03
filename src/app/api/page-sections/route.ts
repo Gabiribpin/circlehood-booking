@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ sections: sections || [] });
   } catch (error) {
-    console.error('Error fetching page sections:', error);
+    logger.error('Error fetching page sections:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ section });
   } catch (error) {
-    console.error('Error creating/updating page section:', error);
+    logger.error('Error creating/updating page section:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -163,7 +164,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ sections: updatedSections || [] });
   } catch (error) {
-    console.error('Error updating page sections:', error);
+    logger.error('Error updating page sections:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -213,7 +214,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ section: data });
   } catch (error) {
-    console.error('Error hiding page section:', error);
+    logger.error('Error hiding page section:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

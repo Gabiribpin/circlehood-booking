@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ testimonials: testimonials || [] });
   } catch (error) {
-    console.error('Error fetching testimonials:', error);
+    logger.error('Error fetching testimonials:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ testimonial }, { status: 201 });
     } catch (error) {
-      console.error('Error creating public testimonial:', error);
+      logger.error('Error creating public testimonial:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ testimonial });
   } catch (error) {
-    console.error('Error creating testimonial:', error);
+    logger.error('Error creating testimonial:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -242,7 +243,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ testimonial });
   } catch (error) {
-    console.error('Error updating testimonial:', error);
+    logger.error('Error updating testimonial:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -289,7 +290,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting testimonial:', error);
+    logger.error('Error deleting testimonial:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

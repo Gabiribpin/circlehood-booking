@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
@@ -34,7 +35,7 @@ export async function GET() {
 
     return NextResponse.json({ cards: cards || [] });
   } catch (error: any) {
-    console.error('Error fetching loyalty cards:', error);
+    logger.error('Error fetching loyalty cards:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }

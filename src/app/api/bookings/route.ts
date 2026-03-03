@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmationEmail } from '@/lib/resend';
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
           .update({ booking_id: booking.id })
           .eq('stripe_payment_intent_id', payment_intent_id);
       } catch (err) {
-        console.error('[Booking] Payment link failed:', err);
+        logger.error('[Booking] Payment link failed:', err);
       }
     })();
   }
@@ -214,7 +215,7 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (err) {
-      console.error('[Booking] Contact auto-save failed:', err);
+      logger.error('[Booking] Contact auto-save failed:', err);
     }
   })();
 

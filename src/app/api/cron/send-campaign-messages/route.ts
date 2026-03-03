@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       .limit(BATCH_SIZE);
 
     if (fetchError) {
-      console.error('[campaign-cron] Erro ao buscar envios:', fetchError.message);
+      logger.error('[campaign-cron] Erro ao buscar envios:', fetchError.message);
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
         if (!campaignCounters[send.campaign_id]) campaignCounters[send.campaign_id] = { sent: 0, failed: 0 };
         campaignCounters[send.campaign_id].sent++;
       } catch (sendErr: any) {
-        console.error(`[campaign-cron] Erro ao enviar para ${send.phone}:`, sendErr.message);
+        logger.error(`[campaign-cron] Erro ao enviar para ${send.phone}:`, sendErr.message);
         await supabase.from('campaign_sends')
           .update({ status: 'failed', error: sendErr.message, sent_at: new Date().toISOString() })
           .eq('id', send.id);
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ sent, failed });
   } catch (error: any) {
-    console.error('[campaign-cron] Erro fatal:', error);
+    logger.error('[campaign-cron] Erro fatal:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

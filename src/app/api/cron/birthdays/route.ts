@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         .not('birthday', 'is', null);
 
       if (contactsError) {
-        console.error(`Error fetching contacts for ${professional.business_name}:`, contactsError);
+        logger.error(`Error fetching contacts for ${professional.business_name}:`, contactsError);
         continue;
       }
 
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError) {
-          console.error(`Error inserting birthday notification for ${contact.name}:`, insertError);
+          logger.error(`Error inserting birthday notification for ${contact.name}:`, insertError);
           continue;
         }
 
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ created, skipped });
   } catch (error: any) {
-    console.error('Fatal error in birthdays cron:', error);
+    logger.error('Fatal error in birthdays cron:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error.message },
       { status: 500 }
