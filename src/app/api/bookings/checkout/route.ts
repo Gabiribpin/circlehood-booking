@@ -177,6 +177,17 @@ export async function POST(request: NextRequest) {
     prof.deposit_type as 'percentage' | 'fixed',
     prof.deposit_value as number
   );
+
+  if (depositAmount <= 0) {
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+    return NextResponse.json({ error: 'Valor do sinal deve ser maior que zero.' }, { status: 400 });
+  }
+
+  if (depositAmount > service.price) {
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+    return NextResponse.json({ error: 'Valor do sinal não pode exceder o preço do serviço.' }, { status: 400 });
+  }
+
   const depositCents = toCents(depositAmount);
   const applicationFeeCents = Math.round(depositCents * 0.05);
 
