@@ -132,7 +132,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ─── 9. Check double-booking ──────────────────────────────────────────
+  // ─── 9a. Expirar pending_payment antigos (>30min) antes do conflict check ──
+  // Libera slots abandonados em tempo real, sem depender de cron.
+  const paymentCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  await supabase
+    .from('bookings')
+    .update({ status: 'expired' })
+    .eq('professional_id', professional_id)
+    .eq('booking_date', booking_date)
+    .eq('status', 'pending_payment')
+    .lt('created_at', paymentCutoff);
+
+  // ─── 9b. Check double-booking ──────────────────────────────────────────
   const { data: conflicts } = await supabase
     .from('bookings')
     .select('id')

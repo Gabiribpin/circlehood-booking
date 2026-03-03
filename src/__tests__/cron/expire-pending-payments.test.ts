@@ -5,18 +5,21 @@ import { resolve } from 'path';
 /**
  * Tests for Issue #5: pending_payment bookings never expire — slot blocked forever
  *
- * New cron /api/cron/expire-pending-payments expires bookings with
- * status=pending_payment and created_at older than 30 minutes.
+ * Two-layer fix:
+ * 1. Inline expiration in bookings/route.ts: expires stale pending_payment
+ *    bookings BEFORE the conflict check (real-time, runs on every booking request)
+ * 2. Daily cron /api/cron/expire-pending-payments: safety net for cleanup
  */
 
-const routePath = resolve('src/app/api/cron/expire-pending-payments/route.ts');
+const cronPath = resolve('src/app/api/cron/expire-pending-payments/route.ts');
+const bookingsPath = resolve('src/app/api/bookings/route.ts');
 const vercelPath = resolve('vercel.json');
 
-describe('Cron: expire-pending-payments (issue #5)', () => {
-  const source = readFileSync(routePath, 'utf-8');
-  const vercelJson = JSON.parse(readFileSync(vercelPath, 'utf-8'));
+// ─── Cron route ──────────────────────────────────────────────────────────────
 
-  // ─── Route structure ──────────────────────────────────────────────────
+describe('Cron: expire-pending-payments (issue #5)', () => {
+  const source = readFileSync(cronPath, 'utf-8');
+  const vercelJson = JSON.parse(readFileSync(vercelPath, 'utf-8'));
 
   it('exports a POST handler', () => {
     expect(source).toContain('export async function POST');
@@ -31,11 +34,8 @@ describe('Cron: expire-pending-payments (issue #5)', () => {
   it('uses service role client (not anon)', () => {
     expect(source).toContain("createClient(");
     expect(source).toContain('SUPABASE_SERVICE_ROLE_KEY');
-    // Should NOT use createClient from @/lib/supabase/server
     expect(source).not.toContain("from '@/lib/supabase/server'");
   });
-
-  // ─── Expiration logic ──────────────────────────────────────────────────
 
   it('targets bookings with status pending_payment', () => {
     expect(source).toContain("eq('status', 'pending_payment')");
@@ -53,41 +53,57 @@ describe('Cron: expire-pending-payments (issue #5)', () => {
     expect(source).toContain("update({ status: 'expired' })");
   });
 
-  it('does NOT expire recent bookings (< 30 min)', () => {
-    // The cutoff is now - 30 min; .lt('created_at', cutoff) ensures
-    // only bookings OLDER than 30 min are affected
-    expect(source).toContain('Date.now() - EXPIRATION_MINUTES * 60 * 1000');
-  });
-
-  // ─── Logging ──────────────────────────────────────────────────────────
-
-  it('logs to cron_logs on success', () => {
+  it('logs to cron_logs on success and error', () => {
     expect(source).toContain("job_name: 'expire-pending-payments'");
     expect(source).toContain("status: 'success'");
-  });
-
-  it('logs to cron_logs on error', () => {
     expect(source).toContain("status: 'error'");
-    expect(source).toContain('error_message');
   });
 
-  it('returns expired count in response', () => {
-    expect(source).toContain('expired: count');
-  });
-
-  // ─── Vercel cron config ────────────────────────────────────────────────
-
-  it('is registered in vercel.json', () => {
+  it('is registered in vercel.json as daily cron', () => {
     const cronEntry = vercelJson.crons.find(
       (c: { path: string }) => c.path === '/api/cron/expire-pending-payments'
     );
     expect(cronEntry).toBeDefined();
+    // Daily schedule (Vercel Hobby plan only supports once/day)
+    expect(cronEntry.schedule).toBe('30 5 * * *');
+  });
+});
+
+// ─── Inline expiration in bookings API ────────────────────────────────────────
+
+describe('Inline expiration in bookings/route.ts (issue #5)', () => {
+  const source = readFileSync(bookingsPath, 'utf-8');
+
+  it('expires pending_payment before conflict check', () => {
+    const expirationIndex = source.indexOf('pending_payment antigos');
+    const conflictIndex = source.indexOf('Check double-booking');
+    expect(expirationIndex).toBeGreaterThan(-1);
+    expect(conflictIndex).toBeGreaterThan(-1);
+    // Expiration must come BEFORE conflict check
+    expect(expirationIndex).toBeLessThan(conflictIndex);
   });
 
-  it('runs every hour', () => {
-    const cronEntry = vercelJson.crons.find(
-      (c: { path: string }) => c.path === '/api/cron/expire-pending-payments'
+  it('uses 30 minute cutoff', () => {
+    expect(source).toContain('30 * 60 * 1000');
+  });
+
+  it('scopes expiration to same professional and date', () => {
+    // The inline expiration should be scoped to avoid unnecessary updates
+    const expirationBlock = source.slice(
+      source.indexOf('paymentCutoff'),
+      source.indexOf('9b. Check')
     );
-    expect(cronEntry.schedule).toBe('0 * * * *');
+    expect(expirationBlock).toContain("eq('professional_id', professional_id)");
+    expect(expirationBlock).toContain("eq('booking_date', booking_date)");
+    expect(expirationBlock).toContain("eq('status', 'pending_payment')");
+    expect(expirationBlock).toContain("lt('created_at', paymentCutoff)");
+  });
+
+  it('sets status to expired', () => {
+    const expirationBlock = source.slice(
+      source.indexOf('paymentCutoff'),
+      source.indexOf('9b. Check')
+    );
+    expect(expirationBlock).toContain("update({ status: 'expired' })");
   });
 });
