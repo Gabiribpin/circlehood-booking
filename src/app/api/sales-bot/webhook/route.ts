@@ -234,6 +234,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // ─── Signature validation (Evolution API apikey header) ─────────────
+    const { validateEvolutionWebhook } = await import('@/lib/webhooks/signature');
+    const apikeyHeader = request.headers.get('apikey');
+    if (!validateEvolutionWebhook(apikeyHeader, process.env.SALES_WEBHOOK_SECRET)) {
+      logger.warn('[sales-bot/webhook] Invalid or missing apikey header');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Verificar formato Evolution API
