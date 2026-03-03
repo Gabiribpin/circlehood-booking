@@ -109,21 +109,20 @@ export async function POST(request: NextRequest) {
       const bookingId = session.metadata.booking_id;
       if (!bookingId) break;
 
-      // Confirmar booking
-      await supabase
-        .from('bookings')
-        .update({ status: 'confirmed' })
-        .eq('id', bookingId)
-        .eq('status', 'pending_payment');
+      // Confirmar booking + atualizar payment atomicamente (transação DB)
+      const { error: rpcError } = await supabase.rpc(
+        'confirm_booking_payment' as never,
+        {
+          p_booking_id: bookingId,
+          p_checkout_session_id: session.id,
+          p_payment_intent_id: (session.payment_intent as string) || null,
+        } as never,
+      );
 
-      // Atualizar payment
-      await supabase
-        .from('payments')
-        .update({
-          status: 'succeeded',
-          stripe_payment_intent_id: session.payment_intent as string | null,
-        })
-        .eq('stripe_checkout_session_id', session.id);
+      if (rpcError) {
+        console.error('[Webhook] confirm_booking_payment RPC failed:', rpcError);
+        return NextResponse.json({ error: 'Transaction failed' }, { status: 500 });
+      }
 
       // Disparar notificações (fire-and-forget)
       void (async () => {

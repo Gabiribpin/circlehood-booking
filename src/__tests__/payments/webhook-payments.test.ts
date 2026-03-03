@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockSupabaseFrom = vi.fn();
+const mockSupabaseRpc = vi.fn();
 const mockConstructEvent = vi.fn();
 
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: vi.fn(() => ({
     from: mockSupabaseFrom,
+    rpc: mockSupabaseRpc,
     auth: {
       admin: {
         getUserById: vi.fn().mockResolvedValue({ data: { user: { email: 'pro@test.com' } } }),
@@ -68,7 +70,7 @@ describe('stripe-deposit webhook: checkout.session.completed', () => {
     process.env.STRIPE_DEPOSIT_WEBHOOK_SECRET = 'whsec_test';
   });
 
-  it('confirma booking e atualiza payment', async () => {
+  it('confirma booking e atualiza payment atomicamente via RPC', async () => {
     const bookingId = '00000000-0000-4000-a000-000000000001';
 
     const sessionEvent = {
@@ -84,8 +86,12 @@ describe('stripe-deposit webhook: checkout.session.completed', () => {
 
     mockConstructEvent.mockReturnValue(sessionEvent);
 
-    const bookingUpdateChain = makeChain({ data: { id: bookingId }, error: null });
-    const paymentUpdateChain = makeChain({ data: {}, error: null });
+    // RPC succeeds
+    mockSupabaseRpc.mockResolvedValue({
+      data: { booking_updated: true, payment_updated: true },
+      error: null,
+    });
+
     const bookingSelectChain = makeChain({
       data: {
         id: bookingId,
@@ -106,18 +112,8 @@ describe('stripe-deposit webhook: checkout.session.completed', () => {
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === 'bookings') {
         return {
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: {}, error: null }) }),
-          }),
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue(bookingSelectChain) }),
-          }),
-        };
-      }
-      if (table === 'payments') {
-        return {
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: {}, error: null }),
           }),
         };
       }
@@ -138,6 +134,47 @@ describe('stripe-deposit webhook: checkout.session.completed', () => {
 
     expect(res.status).toBe(200);
     expect(json.received).toBe(true);
+
+    // Verify RPC was called with correct args
+    expect(mockSupabaseRpc).toHaveBeenCalledWith(
+      'confirm_booking_payment',
+      {
+        p_booking_id: bookingId,
+        p_checkout_session_id: 'cs_test_123',
+        p_payment_intent_id: 'pi_test_456',
+      },
+    );
+  });
+
+  it('returns 500 when RPC transaction fails (Stripe will retry)', async () => {
+    const bookingId = '00000000-0000-4000-a000-000000000002';
+
+    const sessionEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_fail',
+          payment_intent: 'pi_test_fail',
+          metadata: { type: 'deposit', booking_id: bookingId },
+        },
+      },
+    };
+
+    mockConstructEvent.mockReturnValue(sessionEvent);
+
+    // RPC fails — simulates DB error
+    mockSupabaseRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'connection timeout', code: 'PGRST301' },
+    });
+
+    const { POST } = await import('@/app/api/webhooks/stripe-deposit/route');
+    const req = makeRequest('{}', 'sig_test');
+    const res = await POST(req as any);
+
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe('Transaction failed');
   });
 
   it('rejeita assinatura inválida', async () => {
