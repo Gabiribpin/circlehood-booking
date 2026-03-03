@@ -62,6 +62,10 @@
     {
       "path": "/api/cron/send-trial-expiration-notifications",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/expire-pending-payments",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
