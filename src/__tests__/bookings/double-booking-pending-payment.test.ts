@@ -95,13 +95,19 @@ function mockSupabase({
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
         });
       }
-      // Call 2: conflict check (select('id')...gt())
+      // Call 2: expire pending_payment (update...lt())
       if (callNum === 2) {
+        return chainable({
+          lt: vi.fn().mockResolvedValue({ data: [], error: null }),
+        });
+      }
+      // Call 3: conflict check (select('id')...gt())
+      if (callNum === 3) {
         return chainable({
           gt: vi.fn().mockResolvedValue({ data: conflictData, error: null }),
         });
       }
-      // Call 3: insert
+      // Call 4: insert
       return chainable({
         single: vi.fn().mockResolvedValue({
           data: { id: 'new-booking-123' },
