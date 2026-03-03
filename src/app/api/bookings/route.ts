@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     .select('id')
     .eq('professional_id', professional_id)
     .eq('booking_date', booking_date)
-    .eq('status', 'confirmed')
+    .in('status', ['confirmed', 'pending_payment'])
     .lt('start_time', `${end_time}:00`)
     .gt('end_time', `${start_time}:00`);
 
