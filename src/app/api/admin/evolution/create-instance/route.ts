@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { evolutionConfig } from '@/lib/evolution/config';
+import { validateAdminToken } from '@/lib/admin/session';
 
 const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 const SYSTEM_USER_ID = '00000000-0000-4000-a000-000000000000';
@@ -10,7 +11,7 @@ const SYSTEM_USER_ID = '00000000-0000-4000-a000-000000000000';
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    if (cookieStore.get('admin_session')?.value !== '1') {
+    if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

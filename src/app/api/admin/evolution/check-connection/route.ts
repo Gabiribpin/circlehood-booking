@@ -3,13 +3,14 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { evolutionConfig } from '@/lib/evolution/config';
+import { validateAdminToken } from '@/lib/admin/session';
 
 const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    if (cookieStore.get('admin_session')?.value !== '1') {
+    if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
