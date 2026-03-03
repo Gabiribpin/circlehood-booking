@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Copy, Download, Check, Share2 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { useTranslations } from 'next-intl';
 
 interface ShareLinkCardProps {
   slug: string;
@@ -13,6 +14,7 @@ interface ShareLinkCardProps {
 }
 
 export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
+  const t = useTranslations('marketing');
   const [copied, setCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,7 +71,7 @@ export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
 
       ctx.font = '14px Arial';
       ctx.fillStyle = '#666666';
-      ctx.fillText('Escaneie para agendar', canvas.width / 2, 285);
+      ctx.fillText(t('ctaBooking'), canvas.width / 2, 285);
 
       ctx.font = '12px monospace';
       ctx.fillStyle = '#999999';
@@ -90,13 +92,13 @@ export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Share2 className="h-4 w-4" />
-          Compartilhe sua página
+          {t('shareTitle')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Link */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Seu link:</p>
+          <p className="text-sm font-medium">{t('yourLink')}</p>
           <div className="flex gap-2">
             <code className="flex-1 text-sm bg-muted px-3 py-2 rounded-md break-all">
               {fullUrl}
@@ -116,14 +118,14 @@ export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
           </div>
           {copied && (
             <p className="text-xs text-green-600 dark:text-green-400">
-              ✓ Link copiado!
+              ✓ {t('linkCopied')}
             </p>
           )}
         </div>
 
         {/* QR Code */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">QR Code:</p>
+          <p className="text-sm font-medium">{t('qrCodeLabel')}</p>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             {qrCodeUrl && (
               <div className="p-3 bg-white rounded-lg border">
@@ -136,7 +138,7 @@ export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
             )}
             <div className="flex-1 space-y-2">
               <p className="text-xs text-muted-foreground">
-                Clientes podem escanear para agendar direto no celular
+                {t('scanDesc')}
               </p>
               <Button
                 variant="outline"
@@ -145,7 +147,7 @@ export function ShareLinkCard({ slug, businessName }: ShareLinkCardProps) {
                 className="w-full sm:w-auto"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Baixar QR Code
+                {t('downloadQR')}
               </Button>
             </div>
           </div>

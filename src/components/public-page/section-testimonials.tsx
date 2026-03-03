@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { TestimonialsData } from '@/lib/page-sections/types';
 import { Star, MessageSquarePlus, Send, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface SectionTestimonialsProps {
   data: TestimonialsData;
@@ -12,6 +13,7 @@ interface SectionTestimonialsProps {
 }
 
 export function SectionTestimonials({ data, professionalId, theme = 'default' }: SectionTestimonialsProps) {
+  const t = useTranslations('testimonials');
   const [testimonials, setTestimonials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -70,7 +72,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
     return (
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <p className="text-gray-500">Carregando depoimentos...</p>
+          <p className="text-gray-500">{t('loadingPublic')}</p>
         </div>
       </section>
     );
@@ -154,7 +156,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
             >
               <MessageSquarePlus className="w-5 h-5" />
-              Deixar um depoimento
+              {t('leaveTestimonial')}
             </button>
           </div>
         )}
@@ -163,7 +165,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
         {submitted && (
           <div className="text-center mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-700 font-medium">
-              Obrigado! Seu depoimento será avaliado pelo profissional.
+              {t('thankYou')}
             </p>
           </div>
         )}
@@ -172,7 +174,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
         {showForm && (
           <div className="mt-8 max-w-lg mx-auto bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Deixar um depoimento</h3>
+              <h3 className="text-xl font-semibold">{t('leaveTestimonial')}</h3>
               <button
                 onClick={() => setShowForm(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -181,13 +183,13 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
               </button>
             </div>
             <p className="text-gray-500 text-sm mb-6">
-              Compartilhe sua experiência. Seu depoimento será publicado após aprovação.
+              {t('formDesc')}
             </p>
 
             <form onSubmit={handlePublicSubmit} className="space-y-4">
               <div>
                 <label htmlFor="public_client_name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Seu nome *
+                  {t('yourNameLabel')}
                 </label>
                 <input
                   id="public_client_name"
@@ -195,20 +197,20 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
                   type="text"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  placeholder="Ex: Maria Silva"
+                  placeholder={t('clientNamePlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Avaliação *
+                  {t('ratingPublicLabel')}
                 </label>
                 {renderStars(selectedRating, true)}
               </div>
 
               <div>
                 <label htmlFor="public_testimonial_text" className="block text-sm font-medium text-gray-700 mb-1">
-                  Seu depoimento *
+                  {t('yourTestimonialLabel')}
                 </label>
                 <textarea
                   id="public_testimonial_text"
@@ -216,20 +218,20 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
                   required
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none"
-                  placeholder="Conte como foi sua experiência..."
+                  placeholder={t('testimonialPublicPlaceholder')}
                 />
               </div>
 
               <div>
                 <label htmlFor="public_service_name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Serviço (opcional)
+                  {t('serviceOptionalLabel')}
                 </label>
                 <input
                   id="public_service_name"
                   name="service_name"
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  placeholder="Ex: Corte e Escova"
+                  placeholder={t('servicePlaceholder')}
                 />
               </div>
 
@@ -239,7 +241,7 @@ export function SectionTestimonials({ data, professionalId, theme = 'default' }:
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
-                {submitting ? 'Enviando...' : 'Enviar depoimento'}
+                {submitting ? t('sending') : t('sendTestimonial')}
               </button>
             </form>
           </div>
