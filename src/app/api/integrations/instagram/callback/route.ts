@@ -12,6 +12,19 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Buscar professional_id (consistente com Google Calendar callback)
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!professional) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/onboarding?redirect=/integrations`
+    )
+  }
+
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const error = searchParams.get('error')
@@ -55,7 +68,7 @@ export async function GET(request: NextRequest) {
     const { error: dbError } = await supabase
       .from('integrations')
       .upsert({
-        professional_id: user.id,
+        professional_id: professional.id,
         type: 'instagram',
         access_token: longToken,
         refresh_token: null,
