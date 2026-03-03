@@ -3,6 +3,7 @@ import { WhatsAppClient } from './client';
 import { sendEvolutionMessage } from './evolution';
 import { createClient } from '@supabase/supabase-js';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
+import { WhatsAppRateLimiter } from './rate-limiter';
 import type { WhatsAppProvider } from './types';
 
 export async function processWhatsAppMessage(
@@ -69,9 +70,19 @@ export async function processWhatsAppMessage(
       }
     }
 
+    // Rate limit por telefone — proteção contra DoS no Claude API
+    const rateCheck = WhatsAppRateLimiter.check(from);
+    if (!rateCheck.allowed) {
+      console.warn(`🚦 Rate limit atingido para ${from}: ${rateCheck.reason}`);
+      return;
+    }
+
     // Processar mensagem com IA
     const bot = new AIBot();
     const response = await bot.processMessage(from, text, config.user_id);
+
+    // Incrementar contador após processamento bem-sucedido
+    WhatsAppRateLimiter.increment(from);
 
     // Enviar resposta pelo provider correto
     if (provider === 'evolution') {
