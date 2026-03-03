@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     const userIds = (professionals ?? []).map((p) => p.user_id).filter(Boolean);
     const { data: whatsappConfigs } = await supabase
       .from('whatsapp_config')
-      .select('user_id, provider, evolution_api_url, evolution_api_key, evolution_instance, phone_number_id, access_token, is_active')
+      .select('user_id, evolution_api_url, evolution_api_key, evolution_instance, is_active')
       .in('user_id', userIds)
       .eq('is_active', true);
 
@@ -187,50 +187,23 @@ export async function POST(request: NextRequest) {
 
         let sent = false;
 
-        if (booking.client_phone && wc) {
-          if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
-            const normalized = normalizePhoneForWhatsApp(booking.client_phone);
-            try {
-              const res = await fetch(
-                `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,
-                {
-                  method: 'POST',
-                  headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ number: normalized, text: message }),
-                }
-              );
-              sent = res.ok;
-              if (!sent) {
-                logger.error('[send-reminders] Evolution error:', res.status, await res.text());
+        if (booking.client_phone && wc && wc.evolution_api_url && wc.evolution_instance) {
+          const normalized = normalizePhoneForWhatsApp(booking.client_phone);
+          try {
+            const res = await fetch(
+              `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,
+              {
+                method: 'POST',
+                headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: normalized, text: message }),
               }
-            } catch (sendErr: any) {
-              logger.error('[send-reminders] Evolution fetch error:', sendErr.message);
+            );
+            sent = res.ok;
+            if (!sent) {
+              logger.error('[send-reminders] Evolution error:', res.status, await res.text());
             }
-          } else if (wc.provider === 'meta' && wc.phone_number_id) {
-            try {
-              const res = await fetch(
-                `https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${wc.access_token}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    messaging_product: 'whatsapp',
-                    to: booking.client_phone,
-                    type: 'text',
-                    text: { body: message },
-                  }),
-                }
-              );
-              sent = res.ok;
-              if (!sent) {
-                logger.error('[send-reminders] Meta error:', res.status, await res.text());
-              }
-            } catch (sendErr: any) {
-              logger.error('[send-reminders] Meta fetch error:', sendErr.message);
-            }
+          } catch (sendErr: any) {
+            logger.error('[send-reminders] Evolution fetch error:', sendErr.message);
           }
         }
 
