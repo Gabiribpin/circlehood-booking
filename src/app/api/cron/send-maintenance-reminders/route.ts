@@ -285,10 +285,11 @@ export async function POST(request: NextRequest) {
       execution_time_ms: Date.now() - startTime,
       metadata: {
         date: today,
+        professional_ids: professionalIds,
         reminders_sent: remindersSent,
         errors,
       },
-    });
+    } as never);
 
     return NextResponse.json({
       success: true,
