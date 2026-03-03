@@ -638,11 +638,13 @@ NUNCA chame cancel_appointment + create_appointment separadamente para reagendar
       }
 
       // 1. Buscar serviço por nome (parcial)
+      // Escape SQL wildcards to prevent wildcard injection (% matches all)
+      const safeName = data.service_name.replace(/[%_\\]/g, '\\$&');
       const { data: service, error: serviceError } = await this.supabase
         .from('services')
         .select('id, name, price, duration_minutes')
         .eq('professional_id', professionalId)
-        .ilike('name', `%${data.service_name}%`)
+        .ilike('name', `%${safeName}%`)
         .limit(1)
         .maybeSingle();
 
