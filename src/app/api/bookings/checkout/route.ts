@@ -190,35 +190,41 @@ export async function POST(request: NextRequest) {
 
   const currencyCode = (prof.currency as string)?.toLowerCase() || 'eur';
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [
-      {
-        price_data: {
-          currency: currencyCode,
-          product_data: {
-            name: `Sinal — ${service.name}`,
-            description: `Agendamento ${booking_date} às ${start_time}`,
+  // Idempotency key baseada no booking.id: retry-safe (mesmo booking = mesma session)
+  const idempotencyKey = `cs:${booking.id}`;
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: currencyCode,
+            product_data: {
+              name: `Sinal — ${service.name}`,
+              description: `Agendamento ${booking_date} às ${start_time}`,
+            },
+            unit_amount: depositCents,
           },
-          unit_amount: depositCents,
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      payment_intent_data: {
+        application_fee_amount: applicationFeeCents,
+        transfer_data: {
+          destination: prof.stripe_account_id as string,
+        },
       },
-    ],
-    payment_intent_data: {
-      application_fee_amount: applicationFeeCents,
-      transfer_data: {
-        destination: prof.stripe_account_id as string,
+      metadata: {
+        booking_id: booking.id,
+        type: 'deposit',
       },
+      customer_email: client_email,
+      success_url: `${BASE_URL}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${BASE_URL}/booking/cancel`,
     },
-    metadata: {
-      booking_id: booking.id,
-      type: 'deposit',
-    },
-    customer_email: client_email,
-    success_url: `${BASE_URL}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${BASE_URL}/booking/cancel`,
-  });
+    { idempotencyKey }
+  );
 
   // ─── 12. INSERT payment ──────────────────────────────────────────────────
   await supabase.from('payments').insert({
