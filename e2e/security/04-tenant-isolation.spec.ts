@@ -93,7 +93,8 @@ test.describe('Isolamento Multi-tenant', () => {
   });
 
   // ── 1: Bot de A não cancela agendamento de B ─────────────────────────────
-  test('bot de A não afeta booking de B com mesmo phone', async ({ request }) => {
+  test('bot de A não afeta booking de B com mesmo phone @bot', async ({ request }) => {
+    test.skip(!process.env.ANTHROPIC_API_KEY, 'Requer ANTHROPIC_API_KEY (bot test)');
     test.setTimeout(90_000);
 
     const monday = nextWeekday(1);
@@ -133,7 +134,8 @@ test.describe('Isolamento Multi-tenant', () => {
   });
 
   // ── 2: Bot de A não lista agendamentos de B ──────────────────────────────
-  test('get_my_appointments de A não retorna dados de B', async ({ request }) => {
+  test('get_my_appointments de A não retorna dados de B @bot', async ({ request }) => {
+    test.skip(!process.env.ANTHROPIC_API_KEY, 'Requer ANTHROPIC_API_KEY (bot test)');
     test.setTimeout(90_000);
 
     const thursday = nextWeekday(4);
