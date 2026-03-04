@@ -5,6 +5,38 @@ import { NextRequest, NextResponse } from 'next/server';
 const MAX_REQUEST_SIZE = 50 * 1024 * 1024; // 50 MB total
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB per file
 
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+// Magic bytes for supported image formats
+const MAGIC_BYTES: [string, number[]][] = [
+  ['image/jpeg', [0xFF, 0xD8, 0xFF]],
+  ['image/png', [0x89, 0x50, 0x4E, 0x47]],
+  ['image/webp', [0x52, 0x49, 0x46, 0x46]], // RIFF
+  ['image/gif', [0x47, 0x49, 0x46]],         // GIF
+];
+
+async function validateImageFile(file: File): Promise<string | null> {
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return `Tipo de arquivo não permitido: ${file.type}. Use JPEG, PNG, WebP ou GIF.`;
+  }
+
+  const buffer = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const matchesMagic = MAGIC_BYTES.some(([, bytes]) =>
+    bytes.every((b, i) => buffer[i] === b)
+  );
+
+  if (!matchesMagic) {
+    return 'Arquivo não é uma imagem válida.';
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   // Validate content-length before parsing body
   const contentLength = request.headers.get('content-length');
@@ -48,7 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate individual file sizes
+    // Validate individual file sizes and MIME types
     const filesToCheck = [file, beforeFile, afterFile].filter(Boolean) as File[];
     for (const f of filesToCheck) {
       if (f.size > MAX_FILE_SIZE) {
@@ -56,6 +88,10 @@ export async function POST(request: NextRequest) {
           { error: 'File too large. Maximum size is 5MB per file.' },
           { status: 413 }
         );
+      }
+      const validationError = await validateImageFile(f);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
       }
     }
 
