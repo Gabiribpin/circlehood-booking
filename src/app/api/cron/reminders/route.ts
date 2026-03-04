@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Fatal error in reminders cron:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

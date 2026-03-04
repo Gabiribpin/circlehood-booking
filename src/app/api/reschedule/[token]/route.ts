@@ -63,7 +63,7 @@ export async function GET(
   } catch (error: any) {
     logger.error('Error validating token:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

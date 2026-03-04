@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error processing Resend webhook:', error)
     return NextResponse.json(
-      { error: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

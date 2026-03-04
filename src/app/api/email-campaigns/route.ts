@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     logger.error('Error fetching campaigns:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json({ campaigns })
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     logger.error('Error creating campaign:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json({ campaign }, { status: 201 })

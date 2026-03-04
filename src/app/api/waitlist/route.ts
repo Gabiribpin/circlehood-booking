@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error fetching waitlist:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error adding to waitlist:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -149,7 +149,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error removing from waitlist:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

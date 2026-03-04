@@ -37,7 +37,7 @@ export async function GET() {
   } catch (error: any) {
     logger.error('Error fetching loyalty cards:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

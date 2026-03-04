@@ -33,7 +33,7 @@ export async function POST() {
 
     if (error) {
       logger.error('[resend-verification] error:', error);
-      return NextResponse.json({ error: error.message }, { status: 429 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 429 });
     }
 
     return NextResponse.json({ success: true });
