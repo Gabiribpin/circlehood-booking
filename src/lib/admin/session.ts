@@ -73,24 +73,59 @@ export function validateAdminToken(token: string | undefined): boolean {
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
 
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+import Redis from 'ioredis';
 
-const attempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_SECONDS = 15 * 60; // 15 minutes
+
+const REDIS_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!REDIS_URL) return null;
+  if (redis) return redis;
+  redis = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3000,
+    commandTimeout: 3000,
+    lazyConnect: true,
+  });
+  return redis;
+}
+
+// In-memory fallback when Redis is not available
+const memoryAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimitedMemory(ip: string): boolean {
+  const now = Date.now();
+  const entry = memoryAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    memoryAttempts.set(ip, { count: 1, resetAt: now + WINDOW_SECONDS * 1000 });
+    return false;
+  }
+  entry.count++;
+  return entry.count > MAX_ATTEMPTS;
+}
 
 /**
  * Checks if an IP has exceeded the login rate limit.
+ * Uses Redis when available (persists across deploys); falls back to in-memory.
  * Returns true if the request should be BLOCKED.
  */
-export function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
+export async function isRateLimited(ip: string): Promise<boolean> {
+  const client = getRedis();
+  if (!client) return isRateLimitedMemory(ip);
 
-  if (!entry || now > entry.resetAt) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
+  try {
+    const key = `admin_rate_limit:${ip}`;
+    const count = await client.incr(key);
+    if (count === 1) {
+      await client.expire(key, WINDOW_SECONDS);
+    }
+    return count > MAX_ATTEMPTS;
+  } catch {
+    // Redis failure → fall back to in-memory
+    return isRateLimitedMemory(ip);
   }
-
-  entry.count++;
-  return entry.count > MAX_ATTEMPTS;
 }

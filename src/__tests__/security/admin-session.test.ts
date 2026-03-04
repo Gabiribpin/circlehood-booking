@@ -92,7 +92,7 @@ describe('Admin rate limiting (issue #19)', () => {
     const { isRateLimited } = await import('@/lib/admin/session');
     const testIp = `rate-test-${Date.now()}`;
     for (let i = 0; i < 5; i++) {
-      expect(isRateLimited(testIp)).toBe(false);
+      expect(await isRateLimited(testIp)).toBe(false);
     }
   });
 
@@ -101,18 +101,18 @@ describe('Admin rate limiting (issue #19)', () => {
     const { isRateLimited } = await import('@/lib/admin/session');
     const testIp = `rate-block-${Date.now()}`;
     for (let i = 0; i < 5; i++) {
-      isRateLimited(testIp);
+      await isRateLimited(testIp);
     }
-    expect(isRateLimited(testIp)).toBe(true);
+    expect(await isRateLimited(testIp)).toBe(true);
   });
 
   it('allows attempts from different IPs', async () => {
     vi.resetModules();
     const { isRateLimited } = await import('@/lib/admin/session');
     const ts = Date.now();
-    expect(isRateLimited(`ip-a-${ts}`)).toBe(false);
-    expect(isRateLimited(`ip-b-${ts}`)).toBe(false);
-    expect(isRateLimited(`ip-c-${ts}`)).toBe(false);
+    expect(await isRateLimited(`ip-a-${ts}`)).toBe(false);
+    expect(await isRateLimited(`ip-b-${ts}`)).toBe(false);
+    expect(await isRateLimited(`ip-c-${ts}`)).toBe(false);
   });
 });
 
