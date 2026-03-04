@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 
 import { useEffect, useRef, useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface GoogleMapProps {
   latitude: number
@@ -21,6 +22,7 @@ export function GoogleMap({
   zoom = 15,
   height = '400px'
 }: GoogleMapProps) {
+  const t = useTranslations('public')
   const mapRef = useRef<HTMLDivElement>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +46,7 @@ export function GoogleMap({
     setTimeout(() => {
       clearInterval(checkGoogleMaps)
       if (!window.google?.maps) {
-        setError('Falha ao carregar Google Maps')
+        setError(t('mapLoadError'))
       }
     }, 10000)
 
@@ -143,7 +145,7 @@ export function GoogleMap({
           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-3"></div>
-              <p className="text-gray-600">Carregando mapa...</p>
+              <p className="text-gray-600">{t('loadingMap')}</p>
             </div>
           </div>
         )}
@@ -168,7 +170,7 @@ export function GoogleMap({
             className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm"
           >
             <Navigation className="w-4 h-4" />
-            Como Chegar
+            {t('getDirections')}
           </a>
         </div>
       )}

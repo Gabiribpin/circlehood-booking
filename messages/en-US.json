@@ -215,7 +215,12 @@
     "phoneHelp": "Required to confirm your booking",
     "notesLabel": "Notes",
     "notesPlaceholder": "Any additional information?",
-    "noSlotsDate": "No slots available for this date."
+    "noSlotsDate": "No slots available for this date.",
+    "loadingMap": "Loading map...",
+    "mapLoadError": "Failed to load Google Maps",
+    "getDirections": "Get Directions",
+    "loadingGallery": "Loading gallery...",
+    "allCategories": "All"
   },
   "whatsapp": {
     "usageTitle": "WhatsApp Usage (Today)",
@@ -666,7 +671,6 @@
     "importedCount": "{count} contacts imported",
     "importContactsError": "Error importing contacts",
     "importWhatsAppBtn": "Import from WhatsApp",
-    "importing": "Importing...",
     "importWhatsAppSuccess": "WhatsApp import complete!",
     "importWhatsAppDesc": "{imported} contacts imported, {skipped} already existed."
   },

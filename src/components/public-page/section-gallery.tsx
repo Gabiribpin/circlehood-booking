@@ -2,6 +2,7 @@
 import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { GalleryData } from '@/lib/page-sections/types';
 import { BeforeAfterSlider } from './before-after-slider';
 
@@ -12,6 +13,7 @@ interface SectionGalleryProps {
 }
 
 export function SectionGallery({ data, professionalId, theme = 'default' }: SectionGalleryProps) {
+  const t = useTranslations('public');
   const [images, setImages] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export function SectionGallery({ data, professionalId, theme = 'default' }: Sect
     return (
       <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <p className="text-gray-500">Carregando galeria...</p>
+          <p className="text-gray-500">{t('loadingGallery')}</p>
         </div>
       </section>
     );
@@ -75,7 +77,7 @@ export function SectionGallery({ data, professionalId, theme = 'default' }: Sect
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
-              Todos
+              {t('allCategories')}
             </button>
             {data.categories.map((category) => (
               <button
