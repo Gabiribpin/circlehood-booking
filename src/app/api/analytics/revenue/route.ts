@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Buscar agendamentos do período
+    // Buscar agendamentos com preço do serviço via JOIN (single query)
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('booking_date, status, client_phone, service_id')
+      .select('booking_date, status, client_phone, service_id, services(price)')
       .eq('professional_id', professional.id)
       .gte('booking_date', start)
       .lte('booking_date', end);
@@ -47,20 +47,6 @@ export async function GET(request: NextRequest) {
     if (bookingsError) throw bookingsError;
 
     const all = bookings ?? [];
-
-    // Buscar preços dos serviços
-    const serviceIds = [...new Set(all.map((b) => b.service_id).filter(Boolean))];
-    const priceMap: Record<string, number> = {};
-
-    if (serviceIds.length > 0) {
-      const { data: services } = await supabase
-        .from('services')
-        .select('id, price')
-        .in('id', serviceIds);
-      for (const s of services ?? []) {
-        priceMap[s.id] = Number(s.price ?? 0);
-      }
-    }
 
     // Agrupar por período (dia/semana/mês) em JS
     const groups = new Map<
@@ -76,7 +62,8 @@ export async function GET(request: NextRequest) {
       const g = groups.get(key)!;
       g.bookings++;
       if (booking.status === 'confirmed' || booking.status === 'completed') {
-        g.revenue += priceMap[booking.service_id] ?? 0;
+        const svc = booking.services as { price: number } | null;
+        g.revenue += Number(svc?.price ?? 0);
         if (booking.client_phone) g.clients.add(booking.client_phone);
       }
       if (booking.status === 'cancelled') g.cancelled++;

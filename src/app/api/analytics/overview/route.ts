@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Buscar todos os agendamentos do período com o service_id
+    // Buscar agendamentos com preço do serviço via JOIN (single query)
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('id, status, client_phone, service_id')
+      .select('id, status, client_phone, service_id, services(price)')
       .eq('professional_id', professional.id)
       .gte('booking_date', start)
       .lte('booking_date', end);
@@ -43,24 +43,13 @@ export async function GET(request: NextRequest) {
 
     const all = bookings ?? [];
 
-    // Buscar preços dos serviços utilizados
-    const serviceIds = [...new Set(all.map((b) => b.service_id).filter(Boolean))];
-    const priceMap: Record<string, number> = {};
-
-    if (serviceIds.length > 0) {
-      const { data: services } = await supabase
-        .from('services')
-        .select('id, price')
-        .in('id', serviceIds);
-      for (const s of services ?? []) {
-        priceMap[s.id] = Number(s.price ?? 0);
-      }
-    }
-
     const confirmed = all.filter((b) => b.status === 'confirmed' || b.status === 'completed');
     const cancelled = all.filter((b) => b.status === 'cancelled');
 
-    const totalRevenue = confirmed.reduce((sum, b) => sum + (priceMap[b.service_id] ?? 0), 0);
+    const totalRevenue = confirmed.reduce((sum, b) => {
+      const svc = b.services as { price: number } | null;
+      return sum + Number(svc?.price ?? 0);
+    }, 0);
     const confirmedCount = confirmed.length;
     const uniqueClients = new Set(confirmed.map((b) => b.client_phone).filter(Boolean)).size;
     const averageTicket = confirmedCount > 0 ? totalRevenue / confirmedCount : 0;
