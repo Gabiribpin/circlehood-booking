@@ -78,7 +78,8 @@ test.describe('Botão "Importar do WhatsApp"', () => {
     });
 
     // Aguardar que o useEffect termine de buscar a config (pode demorar até 3s)
-    await page.waitForTimeout(3000);
+    // Wait for useEffect init to complete (fetches professional + whatsapp_config + contacts)
+    await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
     const whatsappBtn = page.getByRole('button', { name: /importar do whatsapp/i });
 
@@ -113,7 +114,8 @@ test.describe('Botão "Importar do WhatsApp"', () => {
     await expect(page.getByRole('heading', { name: /importar contatos/i }).first()).toBeVisible({
       timeout: 15_000,
     });
-    await page.waitForTimeout(3000);
+    // Wait for useEffect init to complete (fetches professional + whatsapp_config + contacts)
+    await page.waitForLoadState('networkidle', { timeout: 15_000 });
 
     // Botão NÃO deve existir na página
     const count = await page.getByRole('button', { name: /importar do whatsapp/i }).count();
