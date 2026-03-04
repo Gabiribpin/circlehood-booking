@@ -22,8 +22,13 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!ALLOWED_ENVS.includes(process.env.NODE_ENV ?? '')) {
-    return NextResponse.json({ error: 'Not available in this environment' }, { status: 403 });
+  const testSecret = process.env.E2E_TEST_SECRET;
+  if (
+    !ALLOWED_ENVS.includes(process.env.NODE_ENV ?? '') ||
+    !testSecret ||
+    _request.headers.get('x-test-secret') !== testSecret
+  ) {
+    return NextResponse.json({ error: 'Not available' }, { status: 403 });
   }
 
   const { id: professionalId } = await params;
@@ -55,6 +60,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err: any) {
     logger.error('[test/cleanup-professional]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

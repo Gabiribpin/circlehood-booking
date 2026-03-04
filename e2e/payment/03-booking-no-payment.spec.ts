@@ -101,6 +101,7 @@ test.describe('Página pública sem sinal', () => {
   test.beforeAll(async ({ request }) => {
     // Criar profissional efémero via test API (apenas em dev/test)
     const res = await request.post(`${BASE}/api/test/setup-professional`, {
+      headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
       data: {
         name: 'Ana Sem Sinal',
         email: `ana-no-deposit-${Date.now()}@test.com`,
@@ -124,7 +125,9 @@ test.describe('Página pública sem sinal', () => {
 
   test.afterAll(async ({ request }) => {
     if (cleanupId) {
-      await request.delete(`${BASE}/api/test/cleanup-professional/${cleanupId}`);
+      await request.delete(`${BASE}/api/test/cleanup-professional/${cleanupId}`, {
+        headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
+      });
     }
   });
 

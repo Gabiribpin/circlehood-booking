@@ -28,6 +28,7 @@ test.describe('API bookings/checkout', () => {
     if (!HAS_STRIPE) return;
 
     const res = await request.post(`${BASE}/api/test/setup-professional`, {
+      headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
       data: {
         name: 'Rita Stripe Teste',
         email: `rita-stripe-${Date.now()}@test.com`,
@@ -49,7 +50,9 @@ test.describe('API bookings/checkout', () => {
 
   test.afterAll(async ({ request }) => {
     if (ephemeralProfId) {
-      await request.delete(`${BASE}/api/test/cleanup-professional/${ephemeralProfId}`);
+      await request.delete(`${BASE}/api/test/cleanup-professional/${ephemeralProfId}`, {
+        headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
+      });
     }
   });
 
@@ -100,6 +103,7 @@ test.describe('Página pública COM sinal (ephemeral)', () => {
     if (!HAS_STRIPE) return;
 
     const res = await request.post(`${BASE}/api/test/setup-professional`, {
+      headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
       data: {
         name: 'Prof Com Sinal',
         email: `with-deposit-${Date.now()}@test.com`,
@@ -120,7 +124,9 @@ test.describe('Página pública COM sinal (ephemeral)', () => {
 
   test.afterAll(async ({ request }) => {
     if (cleanupId) {
-      await request.delete(`${BASE}/api/test/cleanup-professional/${cleanupId}`);
+      await request.delete(`${BASE}/api/test/cleanup-professional/${cleanupId}`, {
+        headers: { 'x-test-secret': TEST.E2E_TEST_SECRET },
+      });
     }
   });
 
