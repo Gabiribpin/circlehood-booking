@@ -3,6 +3,14 @@ import { createHmac, randomUUID } from 'crypto';
 const SESSION_EXPIRY_HOURS = 8;
 
 /**
+ * Returns the HMAC signing secret for admin session tokens.
+ * Prefers ADMIN_SESSION_SECRET (dedicated); falls back to ADMIN_PASSWORD.
+ */
+function getSigningSecret(): string | undefined {
+  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
+}
+
+/**
  * Generates a signed admin session token.
  * Format: `${sessionId}.${timestamp}.${signature}`
  *
@@ -10,8 +18,8 @@ const SESSION_EXPIRY_HOURS = 8;
  * Each login generates a unique token (randomUUID).
  */
 export function generateAdminToken(): { token: string; expires: Date } {
-  const secret = process.env.ADMIN_PASSWORD;
-  if (!secret) throw new Error('ADMIN_PASSWORD not configured');
+  const secret = getSigningSecret();
+  if (!secret) throw new Error('ADMIN_SESSION_SECRET (or ADMIN_PASSWORD) not configured');
 
   const sessionId = randomUUID();
   const timestamp = Date.now().toString();
@@ -33,7 +41,7 @@ export function generateAdminToken(): { token: string; expires: Date } {
 export function validateAdminToken(token: string | undefined): boolean {
   if (!token) return false;
 
-  const secret = process.env.ADMIN_PASSWORD;
+  const secret = getSigningSecret();
   if (!secret) return false;
 
   const parts = token.split('.');
