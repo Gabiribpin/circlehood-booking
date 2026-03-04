@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { parseCSVLine } from '@/lib/csv-parser';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +39,8 @@ export async function POST(request: NextRequest) {
     const dataLines = lines.slice(1);
 
     const contacts = dataLines.map(line => {
-      const [name, email, phone, notes] = line.split(',').map(s => s.trim());
+      const fields = parseCSVLine(line);
+      const [name, email, phone, notes] = fields.map(s => s.trim());
       return {
         professional_id: professional.id,
         name,
