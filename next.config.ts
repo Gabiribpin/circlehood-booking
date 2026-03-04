@@ -3,13 +3,17 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
+// Extract project-specific Supabase hostname from env (e.g. "abcdef.supabase.co")
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : '';
+
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
+  `img-src 'self' data: blob: ${supabaseHostname ? `https://${supabaseHostname}` : 'https://*.supabase.co'}`,
   "font-src 'self'",
-  "connect-src 'self' https://*.supabase.co https://api.stripe.com",
+  `connect-src 'self' ${supabaseHostname ? `https://${supabaseHostname}` : 'https://*.supabase.co'} https://api.stripe.com`,
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -27,19 +31,22 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      // Supabase Storage (avatars, covers, gallery)
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/**',
-      },
-      // Supabase Storage via project URL
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-    ],
+    remotePatterns: supabaseHostname
+      ? [
+          {
+            protocol: 'https',
+            hostname: supabaseHostname,
+            pathname: '/storage/v1/object/**',
+          },
+        ]
+      : [
+          // Fallback: accept any Supabase project if env not set (dev only)
+          {
+            protocol: 'https',
+            hostname: '*.supabase.co',
+            pathname: '/storage/v1/object/**',
+          },
+        ],
   },
   async headers() {
     return [
