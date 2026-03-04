@@ -30,30 +30,14 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get('offset') || '0', 10);
 
   try {
-    // Buscar todos os agendamentos confirmados com preço do serviço
+    // Buscar agendamentos com preço do serviço via JOIN (single query)
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('client_phone, client_name, booking_date, status, service_id')
+      .select('client_phone, client_name, booking_date, status, service_id, services(price)')
       .eq('professional_id', professional.id)
       .neq('status', 'cancelled');
 
     if (bookingsError) throw bookingsError;
-
-    // Buscar preços dos serviços
-    const serviceIds = [
-      ...new Set((bookings ?? []).map((b) => b.service_id).filter(Boolean)),
-    ];
-    const priceMap: Record<string, number> = {};
-
-    if (serviceIds.length > 0) {
-      const { data: services } = await supabase
-        .from('services')
-        .select('id, price')
-        .in('id', serviceIds);
-      for (const s of services ?? []) {
-        priceMap[s.id] = Number(s.price ?? 0);
-      }
-    }
 
     // Agregar por cliente
     const clientMap = new Map<
@@ -72,7 +56,8 @@ export async function GET(request: NextRequest) {
 
     for (const b of bookings ?? []) {
       const phone = b.client_phone ?? 'unknown';
-      const price = priceMap[b.service_id] ?? 0;
+      const svc = b.services as { price: number } | null;
+      const price = Number(svc?.price ?? 0);
 
       if (!clientMap.has(phone)) {
         clientMap.set(phone, {

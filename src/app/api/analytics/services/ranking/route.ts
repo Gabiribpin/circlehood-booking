@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
   const { start, end } = getDateRange(period, startDate, endDate);
 
   try {
-    // Agendamentos confirmados no período
+    // Agendamentos confirmados com dados do serviço via JOIN (single query)
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('service_id')
+      .select('service_id, services(id, name, price)')
       .eq('professional_id', professional.id)
       .gte('booking_date', start)
       .lte('booking_date', end)
@@ -43,19 +43,17 @@ export async function GET(request: NextRequest) {
 
     if (bookingsError) throw bookingsError;
 
-    // Serviços ativos do profissional
-    const { data: services, error: servicesError } = await supabase
-      .from('services')
-      .select('id, name, price')
-      .eq('professional_id', professional.id)
-      .eq('is_active', true);
-
-    if (servicesError) throw servicesError;
-
-    // Contar agendamentos por serviço
-    const counts: Record<string, number> = {};
+    // Contar agendamentos por serviço e coletar info
+    const serviceMap = new Map<string, { name: string; price: number; count: number }>();
     for (const b of bookings ?? []) {
-      if (b.service_id) counts[b.service_id] = (counts[b.service_id] ?? 0) + 1;
+      const svc = b.services as { id: string; name: string; price: number } | null;
+      if (!b.service_id || !svc) continue;
+      const existing = serviceMap.get(b.service_id);
+      if (existing) {
+        existing.count++;
+      } else {
+        serviceMap.set(b.service_id, { name: svc.name, price: Number(svc.price), count: 1 });
+      }
     }
 
     const days = Math.max(
@@ -63,15 +61,14 @@ export async function GET(request: NextRequest) {
       Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000),
     );
 
-    const ranking = (services ?? [])
-      .filter((s) => counts[s.id] > 0)
-      .map((s) => ({
-        service_id: s.id,
+    const ranking = Array.from(serviceMap.entries())
+      .map(([id, s]) => ({
+        service_id: id,
         service_name: s.name,
-        service_price: Number(s.price),
-        total_bookings: counts[s.id],
-        total_revenue: counts[s.id] * Number(s.price),
-        avg_bookings_per_day: counts[s.id] / days,
+        service_price: s.price,
+        total_bookings: s.count,
+        total_revenue: s.count * s.price,
+        avg_bookings_per_day: s.count / days,
       }))
       .sort((a, b) => b.total_revenue - a.total_revenue)
       .slice(0, limit);
