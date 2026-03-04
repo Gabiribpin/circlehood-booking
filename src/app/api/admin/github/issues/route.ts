@@ -43,6 +43,15 @@ export async function GET(req: NextRequest) {
   const action = url.searchParams.get('action') || 'list';
 
   try {
+    if (action === 'get') {
+      const number = url.searchParams.get('number');
+      if (!number) {
+        return NextResponse.json({ error: 'number parameter required' }, { status: 400 });
+      }
+      const issue = await ghFetch(`/repos/${REPO}/issues/${number}`, token);
+      return NextResponse.json({ body: issue.body || '' });
+    }
+
     if (action === 'search') {
       const q = url.searchParams.get('q') || '';
       if (!q) {

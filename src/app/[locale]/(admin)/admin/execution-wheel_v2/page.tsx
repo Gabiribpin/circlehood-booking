@@ -70,6 +70,7 @@ interface Focus {
 
 const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
 const LS_FOCUS_V2 = 'wheel_v2.focus';
+const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,13 @@ function getSeverity(labels: string[]): string {
 function severityScore(sev: string): number {
   const idx = PRIORITY.indexOf(sev as (typeof PRIORITY)[number]);
   return idx === -1 ? 999 : idx;
+}
+
+function getEffortScore(labels: string[]): number {
+  const s = new Set(labels);
+  if (s.has('effort:low') || s.has('size:S')) return 1;
+  if (s.has('effort:high') || s.has('size:L')) return 3;
+  return 2;
 }
 
 function sevColor(sev: string): string {
@@ -141,6 +149,8 @@ function pickNext(issues: GHIssue[]): GHIssue | null {
     const la = labelsOf(a), lb = labelsOf(b);
     const d1 = severityScore(getSeverity(la)) - severityScore(getSeverity(lb));
     if (d1 !== 0) return d1;
+    const d2 = getEffortScore(la) - getEffortScore(lb);
+    if (d2 !== 0) return d2;
     return a.number - b.number;
   });
   return open[0];
@@ -320,6 +330,25 @@ export default function ExecutionWheelV2Page() {
       const issues = await apiFetch('/api/admin/github/issues?action=list');
       setGhIssues(issues);
       log(`Launch Gate: ${issues.length} issues abertas`);
+
+      // Auto-recalculate focus if current issue was closed externally
+      setFocus((currentFocus) => {
+        if (!currentFocus) return null;
+        const stillOpen = issues.find((i: GHIssue) => i.number === currentFocus.number && !i.pull_request);
+        if (stillOpen) {
+          // Update labels in case they changed
+          return { ...currentFocus, labels: labelsOf(stillOpen) };
+        }
+        // Issue was closed — recalculate
+        log('Issue focada foi fechada. Recalculando...');
+        const next = pickNext(issues);
+        if (next) {
+          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+          log(`Novo foco: #${next.number} — ${next.title}`);
+          return f;
+        }
+        return null;
+      });
     } catch (e) {
       const msg = (e as Error).message;
       setGhError(msg);
@@ -388,11 +417,21 @@ export default function ExecutionWheelV2Page() {
     let text = '';
 
     if (type === 'execution') {
+      // Fetch issue body server-side
+      let issueBody = '(sem descricao)';
+      try {
+        const data = await apiFetch(`/api/admin/github/issues?action=get&number=${focus.number}`);
+        if (data.body) issueBody = data.body;
+      } catch { /* use fallback */ }
+
       text = [
         'MODO EXECUCAO CONTROLADA — Issue #' + focus.number,
         'Titulo: ' + focus.title,
         'Link: ' + focus.url,
         'Labels: ' + (focus.labels.join(', ') || '(nenhuma)'),
+        '',
+        'Contexto da issue:',
+        issueBody,
         '',
         'REGRAS OBRIGATORIAS:',
         '- NAO usar "Closes #X" em commits (falso-fechamento)',
@@ -481,6 +520,47 @@ export default function ExecutionWheelV2Page() {
     }
   }
 
+  async function handleAuditPrompt() {
+    const today = new Date().toISOString().slice(0, 10);
+    const prompt = [
+      'MODO AUDITORIA COMPLETA — EXECUCAO TRANSPARENTE',
+      '',
+      'Executar varredura tecnica completa.',
+      '',
+      'Analisar:',
+      '- API routes',
+      '- Banco de dados',
+      '- Pagamentos',
+      '- Seguranca',
+      '- Frontend',
+      '- Build e dependencias',
+      '',
+      'Classificar em:',
+      'BLOCKER / CRITICAL / HIGH / MEDIUM / LOW / ENHANCEMENT',
+      '',
+      'Para cada problema:',
+      '- Evidencia (arquivo/linha)',
+      '- Impacto real',
+      '- Correcao minima',
+      '- Estimativa de esforco',
+      '',
+      'Gerar:',
+      `- docs/AUDIT_${today}.md`,
+      '- Criar issues no GitHub com labels corretas',
+      '- Atualizar Project',
+      '',
+      'Mostrar resumo final com veredito:',
+      'PRONTO ou NAO PRONTO.',
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(prompt);
+      log('Prompt de auditoria copiado');
+    } catch {
+      log('ERRO: falha ao copiar para clipboard.');
+    }
+  }
+
   // ─── Dedup search on capture text change (debounced) ─────────────────
 
   useEffect(() => {
@@ -503,19 +583,73 @@ export default function ExecutionWheelV2Page() {
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
+  const openCount = ghIssues.filter((i) => !i.pull_request).length;
   const sev = focus ? getSeverity(focus.labels) : '';
+  const effort = focus ? getEffortScore(focus.labels) : 2;
+  const effortTxt = effort === 1 ? 'Baixo' : effort === 2 ? 'Medio' : 'Alto';
+
+  // Severity stats
+  const stats = PRIORITY.map((p) => ({
+    label: p.toUpperCase(),
+    count: ghIssues.filter((i) => !i.pull_request && getSeverity(labelsOf(i)) === p).length,
+    color: sevColor(p),
+  }));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Roda V2 (Anti-Caos)
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Inbox persistente + triagem + foco — sem perder ideias nem erros
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Roda V2 (Anti-Caos)
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Inbox persistente + triagem + foco — sem perder ideias nem erros
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.open(PROJECT_URL, '_blank')}
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5 inline mr-1" />
+            Project
+          </button>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+            openCount > 0
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+          }`}>
+            {openCount} issues
+          </span>
+        </div>
       </div>
+
+      {/* Severity stats bar */}
+      {openCount > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {stats.filter((s) => s.count > 0).map((s) => (
+            <span key={s.label} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${s.color}`}>
+              {s.label}: {s.count}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Audit prompt — motor da roda: aparece quando não há issues */}
+      {openCount === 0 && !ghLoading && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
+            Sem issues abertas. Projeto aparentemente estavel.
+          </p>
+          <button
+            onClick={handleAuditPrompt}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+          >
+            Gerar Prompt Nova Auditoria
+          </button>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -945,6 +1079,9 @@ export default function ExecutionWheelV2Page() {
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${sevColor(sev)}`}>
                         {sev.toUpperCase()}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 text-[11px] font-bold">
+                        Esforco: {effortTxt}
                       </span>
                       {focus.labels
                         .filter((l) => !PRIORITY.includes(l as (typeof PRIORITY)[number]))
