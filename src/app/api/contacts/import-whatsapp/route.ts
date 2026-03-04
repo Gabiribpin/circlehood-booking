@@ -210,7 +210,7 @@ export async function POST(_request: NextRequest) {
   } catch (error: any) {
     logger.error('[import-whatsapp] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

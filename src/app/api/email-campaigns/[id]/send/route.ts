@@ -160,7 +160,7 @@ export async function POST(
       .eq('id', id)
 
     return NextResponse.json(
-      { error: error.message || 'Failed to send campaign' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

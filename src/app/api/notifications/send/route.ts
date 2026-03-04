@@ -109,7 +109,7 @@ export async function POST(request: Request) {
           })
           .eq('id', notification.id);
 
-        results.push({ id: notification.id, status: 'failed', error: error.message });
+        results.push({ id: notification.id, status: 'failed', error: 'Send failed' });
       }
     }
 
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     logger.error('Error in notification sender:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

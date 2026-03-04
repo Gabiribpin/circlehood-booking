@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Revolut API error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create Revolut order' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

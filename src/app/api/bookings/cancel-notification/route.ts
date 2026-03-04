@@ -135,6 +135,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, whatsappSent, emailSent });
   } catch (error: any) {
     logger.error('[cancel-notification] Erro:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

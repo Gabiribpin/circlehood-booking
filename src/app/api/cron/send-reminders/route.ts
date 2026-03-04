@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
         logger.error(`Error processing booking ${booking.id}:`, error);
         errors.push({
           booking_id: booking.id,
-          error: error.message,
+          error: 'Processing failed',
         });
       }
     }
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

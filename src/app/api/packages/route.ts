@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error fetching packages:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Error creating package:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

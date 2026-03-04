@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     logger.error('[send-trial-expiration-notifications] query error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
   if (!professionals || professionals.length === 0) {

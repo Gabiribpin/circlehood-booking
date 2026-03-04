@@ -37,7 +37,7 @@ export async function POST(
     message: message.trim(),
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 
   // Update status to in_progress if was still open
   if (ticket.status === 'open') {

@@ -62,7 +62,6 @@ export async function POST() {
     return NextResponse.json(
       {
         error: 'Synchronization failed',
-        message: error.message,
       },
       { status: 500 }
     );

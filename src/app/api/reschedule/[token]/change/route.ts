@@ -85,7 +85,7 @@ export async function POST(
   } catch (error: any) {
     logger.error('Error rescheduling booking:', error);
     return NextResponse.json(
-      { error: 'Internal server error', message: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
