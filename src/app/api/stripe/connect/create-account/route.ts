@@ -106,7 +106,7 @@ export async function POST(_request: NextRequest) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('[stripe/connect/create-account] error:', message);
     return NextResponse.json(
-      { error: 'Failed to create Stripe Connect account', detail: message },
+      { error: 'Failed to create Stripe Connect account' },
       { status: 500 }
     );
   }
