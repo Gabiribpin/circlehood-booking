@@ -55,7 +55,7 @@ export function PaymentsHealthChart({ data }: PaymentsHealthChartProps) {
             borderRadius: '8px',
             color: '#f1f5f9',
           }}
-          formatter={(value: number) => [`€${value.toFixed(2)}`, undefined]}
+          formatter={(value) => [`€${Number(value).toFixed(2)}`]}
         />
         <Legend
           wrapperStyle={{ fontSize: 12, color: '#94a3b8' }}
