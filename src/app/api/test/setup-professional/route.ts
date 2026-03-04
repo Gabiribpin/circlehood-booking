@@ -26,8 +26,13 @@ function serviceRoleClient() {
 }
 
 export async function POST(request: Request) {
-  if (!ALLOWED_ENVS.includes(process.env.NODE_ENV ?? '')) {
-    return NextResponse.json({ error: 'Not available in this environment' }, { status: 403 });
+  const testSecret = process.env.E2E_TEST_SECRET;
+  if (
+    !ALLOWED_ENVS.includes(process.env.NODE_ENV ?? '') ||
+    !testSecret ||
+    request.headers.get('x-test-secret') !== testSecret
+  ) {
+    return NextResponse.json({ error: 'Not available' }, { status: 403 });
   }
 
   const supabase = serviceRoleClient();
@@ -128,6 +133,6 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     logger.error('[test/setup-professional]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -14,4 +14,5 @@ export const TEST = {
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
   SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   REDIS_URL: process.env.REDIS_URL ?? '',
+  E2E_TEST_SECRET: process.env.E2E_TEST_SECRET ?? '',
 };
