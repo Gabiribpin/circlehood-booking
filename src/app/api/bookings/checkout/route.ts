@@ -89,6 +89,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ─── 4b. Verificar charges_enabled / payouts_enabled ──────────────────
+  const stripeCheck = getStripeServer();
+  if (stripeCheck) {
+    try {
+      const account = await stripeCheck.accounts.retrieve(prof.stripe_account_id);
+      if (!account.charges_enabled || !account.payouts_enabled) {
+        return NextResponse.json(
+          { error: 'Conta Stripe do profissional com onboarding incompleto.' },
+          { status: 422 }
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: 'Não foi possível verificar a conta Stripe do profissional.' },
+        { status: 502 }
+      );
+    }
+  }
+
   if (!prof.require_deposit || !prof.deposit_type || prof.deposit_value == null) {
     return NextResponse.json(
       { error: 'Sinal não configurado.' },
