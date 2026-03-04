@@ -78,7 +78,11 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 4. Verificar Connect ───────────────────────────────────────────────
-  if (!prof.stripe_account_id) {
+  if (
+    !prof.stripe_account_id ||
+    typeof prof.stripe_account_id !== 'string' ||
+    !prof.stripe_account_id.startsWith('acct_')
+  ) {
     return NextResponse.json(
       { error: 'Profissional não configurou conta Stripe.' },
       { status: 422 }
