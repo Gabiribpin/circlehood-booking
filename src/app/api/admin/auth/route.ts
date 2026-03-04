@@ -4,7 +4,7 @@ import { generateAdminToken, isRateLimited } from '@/lib/admin/session';
 export async function POST(request: NextRequest) {
   // Rate limiting by IP
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
+  if (await isRateLimited(ip)) {
     return NextResponse.json(
       { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
       { status: 429 }
