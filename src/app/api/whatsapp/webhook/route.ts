@@ -4,6 +4,7 @@ import { processWhatsAppMessage } from '@/lib/whatsapp/processor';
 import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
 import { parseEvolutionPhone, sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { createClient } from '@supabase/supabase-js';
+import { validateEvolutionWebhook } from '@/lib/webhooks/signature';
 
 const AUDIO_REPLY =
   'Desculpe, ainda não consigo ouvir áudios 🎙️ Por favor, envie sua mensagem por texto e ficarei feliz em ajudar! 😊';
@@ -49,6 +50,13 @@ const isNonProduction =
   process.env.NODE_ENV !== 'test';
 
 export async function POST(request: NextRequest) {
+  // ── Validação de assinatura do webhook ──
+  const apikeyHeader = request.headers.get('apikey');
+  if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
+    logger.warn('[whatsapp/webhook] Invalid or missing apikey header');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
 
