@@ -6,8 +6,21 @@ import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { safeSendEmail } from '@/lib/email/safe-send';
 import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
 import { bookingSchema, sanitizeString } from '@/lib/validation/booking-schema';
+import { isRateLimited } from '@/lib/rate-limit';
+
+const BOOKING_RATE_LIMIT = 10; // max bookings per window
+const BOOKING_RATE_WINDOW = 3600; // 1 hour in seconds
 
 export async function POST(request: NextRequest) {
+  // ─── Rate limiting por IP ──────────────────────────────────────────
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (await isRateLimited(`booking:${ip}`, BOOKING_RATE_LIMIT, BOOKING_RATE_WINDOW)) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Tente novamente mais tarde.' },
+      { status: 429 }
+    );
+  }
+
   // ─── 1. Parse + validação Zod ────────────────────────────────────────
   let rawBody: unknown;
   try {
