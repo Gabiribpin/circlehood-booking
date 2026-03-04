@@ -59,12 +59,14 @@ export async function GET(request: NextRequest) {
 
     const confirmed = all.filter((b) => b.status === 'confirmed' || b.status === 'completed');
     const cancelled = all.filter((b) => b.status === 'cancelled');
+    const noShows = all.filter((b) => b.status === 'no_show');
 
     const totalRevenue = confirmed.reduce((sum, b) => sum + (priceMap[b.service_id] ?? 0), 0);
     const confirmedCount = confirmed.length;
     const uniqueClients = new Set(confirmed.map((b) => b.client_phone).filter(Boolean)).size;
     const averageTicket = confirmedCount > 0 ? totalRevenue / confirmedCount : 0;
     const cancelledRate = all.length > 0 ? (cancelled.length / all.length) * 100 : 0;
+    const noShowRate = all.length > 0 ? (noShows.length / all.length) * 100 : 0;
 
     return NextResponse.json({
       period: { startDate: start, endDate: end },
@@ -72,6 +74,8 @@ export async function GET(request: NextRequest) {
       totalBookings: all.length,
       confirmedBookings: confirmedCount,
       cancelledBookings: cancelled.length,
+      noShowCount: noShows.length,
+      noShowRate,
       uniqueClients,
       averageTicket,
       cancelledRate,

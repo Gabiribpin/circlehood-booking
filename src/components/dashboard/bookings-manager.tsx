@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CalendarDays, Phone, Mail, MessageCircle, MapPin, Home, XCircle } from 'lucide-react';
+import { CalendarDays, Phone, Mail, MessageCircle, MapPin, Home, XCircle, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ interface BookingWithService {
   cancelled_by?: string | null;
   cancelled_at?: string | null;
   completed_at?: string | null;
+  no_show_at?: string | null;
   created_at: string;
   services: { name: string; price: number } | null;
 }
@@ -144,6 +145,13 @@ function BookingCard({
               </p>
             )}
 
+            {/* No-show info */}
+            {booking.status === 'no_show' && booking.no_show_at && (
+              <p className="text-xs text-amber-600 mt-1">
+                {t('noShowOn')} {new Date(booking.no_show_at).toLocaleDateString(locale)}
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 mt-2">
               {booking.client_phone && (
                 <>
@@ -190,6 +198,10 @@ function BookingCard({
                   onClick={() => onStatusChange(booking.id, 'completed')}>
                   {t('conclude')}
                 </Button>
+                <Button variant="outline" size="sm" className="text-amber-600"
+                  onClick={() => onStatusChange(booking.id, 'no_show')}>
+                  <UserX className="h-3.5 w-3.5 mr-1" /> {t('markNoShow')}
+                </Button>
                 <Button variant="ghost" size="sm" className="text-destructive"
                   onClick={() => onCancelClick(booking)}>
                   <XCircle className="h-3.5 w-3.5 mr-1" /> {t('cancelBooking')}
@@ -231,6 +243,9 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
     const updateData: Record<string, any> = { status };
     if (status === 'completed') {
       updateData.completed_at = new Date().toISOString();
+    }
+    if (status === 'no_show') {
+      updateData.no_show_at = new Date().toISOString();
     }
     await supabase.from('bookings').update(updateData).eq('id', bookingId);
     router.refresh();
@@ -309,6 +324,7 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
           <TabsTrigger value="confirmed">{t('tabConfirmed')}</TabsTrigger>
           <TabsTrigger value="cancelled">{t('tabCancelled')}</TabsTrigger>
           <TabsTrigger value="completed">{t('tabCompleted')}</TabsTrigger>
+          <TabsTrigger value="no_show">{t('tabNoShow')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">

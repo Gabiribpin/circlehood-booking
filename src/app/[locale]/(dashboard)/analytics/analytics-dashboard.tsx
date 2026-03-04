@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, Download, TrendingUp, Users, DollarSign, Calendar as CalendarDays } from 'lucide-react';
+import { CalendarIcon, Download, TrendingUp, Users, DollarSign, Calendar as CalendarDays, UserX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { exportOverviewToCSV } from '@/lib/analytics/export-csv';
 
@@ -144,7 +144,7 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
       </div>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
@@ -199,6 +199,21 @@ export function AnalyticsDashboard({ professionalId, currency }: AnalyticsDashbo
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {t('cancellationRate', { rate: overview?.cancelledRate?.toFixed(1) || '0' })}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('noShowCard')}</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {overviewLoading ? '...' : overview?.noShowCount || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('noShowRate', { rate: overview?.noShowRate?.toFixed(1) || '0' })}
             </p>
           </CardContent>
         </Card>

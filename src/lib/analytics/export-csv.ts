@@ -53,6 +53,8 @@ export function exportOverviewToCSV(overview: any) {
     ['Total Bookings', overview.totalBookings || 0],
     ['Confirmed Bookings', overview.confirmedBookings || 0],
     ['Cancelled Bookings', overview.cancelledBookings || 0],
+    ['No-Show Bookings', overview.noShowCount || 0],
+    ['No-Show Rate', `${Number(overview.noShowRate || 0).toFixed(2)}%`],
     ['Unique Clients', overview.uniqueClients || 0],
     ['Average Ticket', `R$ ${Number(overview.averageTicket || 0).toFixed(2)}`],
     ['Cancellation Rate', `${Number(overview.cancelledRate || 0).toFixed(2)}%`],
