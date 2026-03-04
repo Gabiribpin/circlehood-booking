@@ -16,6 +16,17 @@ export async function POST(
 
   const { id } = await params
 
+  // Lookup professional_id from auth user
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 })
+  }
+
   // Buscar campanha
   const { data: campaign, error: campaignError } = await supabase
     .from('email_campaigns')
@@ -27,7 +38,7 @@ export async function POST(
       )
     `)
     .eq('id', id)
-    .eq('professional_id', user.id)
+    .eq('professional_id', professional.id)
     .single()
 
   if (campaignError || !campaign) {
@@ -49,7 +60,7 @@ export async function POST(
   const { data: contacts, error: contactsError } = await supabase.rpc(
     'get_contacts_by_segment',
     {
-      p_professional_id: user.id,
+      p_professional_id: professional.id,
       p_segment: campaign.target_segment,
       p_custom_filters: campaign.custom_filters || {}
     }
@@ -99,7 +110,7 @@ export async function POST(
       recipients,
       tags: [
         { name: 'campaign_id', value: campaign.id },
-        { name: 'professional_id', value: user.id }
+        { name: 'professional_id', value: professional.id }
       ]
     })
 
