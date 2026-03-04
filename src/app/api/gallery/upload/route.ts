@@ -2,7 +2,16 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+const MAX_REQUEST_SIZE = 50 * 1024 * 1024; // 50 MB total
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB per file
+
 export async function POST(request: NextRequest) {
+  // Validate content-length before parsing body
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_REQUEST_SIZE) {
+    return NextResponse.json({ error: 'Request too large' }, { status: 413 });
+  }
+
   const supabase = await createClient();
 
   // Auth check
@@ -37,6 +46,17 @@ export async function POST(request: NextRequest) {
 
     if (!file && (!isBeforeAfter || !beforeFile || !afterFile)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Validate individual file sizes
+    const filesToCheck = [file, beforeFile, afterFile].filter(Boolean) as File[];
+    for (const f of filesToCheck) {
+      if (f.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: 'File too large. Maximum size is 5MB per file.' },
+          { status: 413 }
+        );
+      }
     }
 
     // Sanitize file extension to prevent path traversal
