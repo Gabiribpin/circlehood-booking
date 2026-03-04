@@ -70,11 +70,39 @@ export async function POST(request: NextRequest) {
     case 'charge.refunded': {
       const charge = event.data.object as Stripe.Charge;
       if (charge.payment_intent) {
+        const isFullRefund = charge.refunded;
         await supabase
           .from('payments')
-          .update({ status: 'refunded' })
+          .update({
+            status: isFullRefund ? 'refunded' : 'partially_refunded',
+            refunded_amount: charge.amount_refunded / 100,
+          })
           .eq('stripe_payment_intent_id', charge.payment_intent as string);
       }
+      break;
+    }
+
+    case 'charge.dispute.created': {
+      const dispute = event.data.object as Stripe.Dispute;
+      const piId =
+        typeof dispute.payment_intent === 'string'
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id;
+      if (piId) {
+        await supabase
+          .from('payments')
+          .update({ status: 'disputed' })
+          .eq('stripe_payment_intent_id', piId);
+      }
+      break;
+    }
+
+    case 'payment_intent.canceled': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      await supabase
+        .from('payments')
+        .update({ status: 'cancelled' })
+        .eq('stripe_payment_intent_id', pi.id);
       break;
     }
 
