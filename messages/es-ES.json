@@ -215,7 +215,12 @@
     "phoneHelp": "Necesario para confirmar tu reserva",
     "notesLabel": "Notas",
     "notesPlaceholder": "¿Alguna información adicional?",
-    "noSlotsDate": "No hay horarios disponibles para esta fecha."
+    "noSlotsDate": "No hay horarios disponibles para esta fecha.",
+    "loadingMap": "Cargando mapa...",
+    "mapLoadError": "Error al cargar Google Maps",
+    "getDirections": "Cómo Llegar",
+    "loadingGallery": "Cargando galería...",
+    "allCategories": "Todos"
   },
   "whatsapp": {
     "usageTitle": "Uso de WhatsApp (Hoy)",
@@ -666,7 +671,6 @@
     "importedCount": "{count} contactos importados",
     "importContactsError": "Error al importar contactos",
     "importWhatsAppBtn": "Importar de WhatsApp",
-    "importing": "Importando...",
     "importWhatsAppSuccess": "¡Importación de WhatsApp completada!",
     "importWhatsAppDesc": "{imported} contactos importados, {skipped} ya existían."
   },
