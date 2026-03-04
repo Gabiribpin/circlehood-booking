@@ -9,6 +9,7 @@ vi.mock('@/lib/stripe/server', () => ({
   getStripeServer: vi.fn(() => ({
     paymentIntents: { create: mockStripePaymentIntentsCreate },
     checkout: { sessions: { create: mockStripeCheckoutSessionsCreate } },
+    accounts: { retrieve: vi.fn().mockResolvedValue({ charges_enabled: true, payouts_enabled: true }) },
   })),
 }));
 
