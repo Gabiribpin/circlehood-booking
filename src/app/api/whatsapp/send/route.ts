@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const { data: config } = await supabase
       .from('whatsapp_config')
       .select('evolution_api_url, evolution_api_key, evolution_instance, is_active')
-      .eq('professional_id', professional.id)
+      .eq('user_id', user.id)
       .eq('is_active', true)
       .single();
 
