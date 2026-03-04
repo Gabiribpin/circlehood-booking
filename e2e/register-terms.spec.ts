@@ -70,12 +70,19 @@ test.describe('Checkbox de Termos — Validação', () => {
 
     // Preencher campos obrigatórios do step 2
     await page.fill('#businessName', 'Salão Teste Terms');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // Preencher slug com valor único (pode ter verificação async)
     const slug = `test-terms-${Date.now()}`;
     await page.fill('#slug', slug);
-    await page.waitForTimeout(1500);
+    // Poll for slug validation to complete (spinner disappears, check/error icon appears)
+    try {
+      await page.locator('.animate-spin').waitFor({ state: 'visible', timeout: 3000 });
+    } catch { /* spinner may have already gone */ }
+    await page.waitForFunction(
+      () => !document.querySelector('.animate-spin'),
+      { timeout: 25_000 }
+    );
 
     await page.fill('#city', 'Dublin');
 
@@ -98,10 +105,17 @@ test.describe('Checkbox de Termos — Validação', () => {
 
     // Preencher campos
     await page.fill('#businessName', 'Salão Terms OK');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
     const slug = `test-terms-ok-${Date.now()}`;
     await page.fill('#slug', slug);
-    await page.waitForTimeout(1500);
+    // Poll for slug validation to complete (spinner disappears, check/error icon appears)
+    try {
+      await page.locator('.animate-spin').waitFor({ state: 'visible', timeout: 3000 });
+    } catch { /* spinner may have already gone */ }
+    await page.waitForFunction(
+      () => !document.querySelector('.animate-spin'),
+      { timeout: 25_000 }
+    );
     await page.fill('#city', 'Lisboa');
 
     // Submeter SEM checkbox → erro aparece
