@@ -11,11 +11,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Buscar dados do profissional
+  // Buscar dados do profissional (by user_id, not by id)
   const { data: professional, error: profError } = await supabase
     .from('professionals')
-    .select('name, email')
-    .eq('id', user.id)
+    .select('id, name, email')
+    .eq('user_id', user.id)
     .single()
 
   if (profError || !professional) {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     // Criar ordem de assinatura
     const order = await createSubscriptionOrder(
-      user.id,
+      professional.id,
       professional.email,
       professional.name,
       apiKey
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: payment, error: paymentError } = await supabase
       .from('revolut_payments')
       .insert({
-        professional_id: user.id,
+        professional_id: professional.id,
         revolut_order_id: order.id,
         merchant_order_ref: order.merchantOrderExtRef,
         amount: 9.99,
