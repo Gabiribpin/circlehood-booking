@@ -19,7 +19,7 @@ export async function GET(
         bookings (
           id,
           booking_date,
-          booking_time,
+          start_time,
           contact_name,
           contact_phone,
           status,
