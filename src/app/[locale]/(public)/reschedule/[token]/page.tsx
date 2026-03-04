@@ -164,7 +164,7 @@ export default function ReschedulePage() {
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Horário:</span>
-                    <p className="font-semibold">{booking.booking_time.substring(0, 5)}</p>
+                    <p className="font-semibold">{booking.start_time.substring(0, 5)}</p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Local:</span>

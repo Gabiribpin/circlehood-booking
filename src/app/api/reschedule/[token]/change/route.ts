@@ -42,7 +42,7 @@ export async function POST(
       .select('id')
       .eq('professional_id', tokenData.bookings.professional_id)
       .eq('booking_date', new_date)
-      .eq('booking_time', new_time)
+      .eq('start_time', new_time)
       .eq('status', 'confirmed')
       .single();
 
@@ -55,7 +55,7 @@ export async function POST(
       .from('bookings')
       .update({
         booking_date: new_date,
-        booking_time: new_time,
+        start_time: new_time,
       })
       .eq('id', tokenData.bookings.id)
       .select('*, services(name, price), professionals(business_name)')
