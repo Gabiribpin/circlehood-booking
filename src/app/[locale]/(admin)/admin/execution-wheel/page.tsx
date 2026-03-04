@@ -34,7 +34,6 @@ const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
 const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
 const LS_TOKEN = 'wheel.token';
 const LS_CHECKPOINT = 'wheel.checkpoint';
-const ENV_TOKEN = process.env.NEXT_PUBLIC_GH_ISSUES_PAT || '';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -98,9 +97,13 @@ function sevColor(sev: string): string {
   return 'bg-slate-500 text-white';
 }
 
-// ─── GitHub API ──────────────────────────────────────────────────────────────
+// ─── GitHub API (via server proxy or direct with manual PAT) ─────────────────
 
 async function ghFetch(path: string, token: string, opts: RequestInit = {}) {
+  // If token is 'proxy', use server-side route instead of direct GitHub calls
+  if (token === 'proxy') {
+    return proxyFetch(path, opts);
+  }
   const res = await fetch(`https://api.github.com${path}`, {
     ...opts,
     headers: {
@@ -112,6 +115,77 @@ async function ghFetch(path: string, token: string, opts: RequestInit = {}) {
   });
   if (!res.ok) throw new Error(`GitHub ${res.status}`);
   return res.status === 204 ? null : res.json();
+}
+
+async function proxyFetch(path: string, opts: RequestInit = {}) {
+  const method = (opts.method || 'GET').toUpperCase();
+  const body = opts.body ? JSON.parse(opts.body as string) : undefined;
+
+  // Route to the correct proxy action
+  if (method === 'GET') {
+    // /repos/REPO → check connection
+    if (path === `/repos/${REPO}`) {
+      const res = await fetch('/api/admin/github/issues?action=check');
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    // /repos/REPO/issues?state=open → list
+    if (path.includes('/issues?state=open')) {
+      const res = await fetch('/api/admin/github/issues?action=list');
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    // /repos/REPO/issues/:number → get single issue
+    const match = path.match(/\/issues\/(\d+)$/);
+    if (match) {
+      const res = await fetch(`/api/admin/github/issues?action=get&number=${match[1]}`);
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    throw new Error('Unknown proxy path');
+  }
+
+  if (method === 'POST') {
+    // /repos/REPO/issues/:number/comments → comment
+    const commentMatch = path.match(/\/issues\/(\d+)\/comments$/);
+    if (commentMatch) {
+      const res = await fetch('/api/admin/github/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', number: Number(commentMatch[1]), comment: body?.body }),
+      });
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    // /repos/REPO/issues → create issue
+    if (path.endsWith('/issues')) {
+      const res = await fetch('/api/admin/github/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: body?.title, description: body?.body, labels: body?.labels }),
+      });
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    throw new Error('Unknown proxy path');
+  }
+
+  if (method === 'PATCH') {
+    // /repos/REPO/issues/:number → close/update issue
+    const patchMatch = path.match(/\/issues\/(\d+)$/);
+    if (patchMatch) {
+      const res = await fetch('/api/admin/github/issues', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: Number(patchMatch[1]), state: body?.state }),
+      });
+      if (!res.ok) throw new Error(`Proxy ${res.status}`);
+      return res.json();
+    }
+    throw new Error('Unknown proxy path');
+  }
+
+  throw new Error('Unknown method');
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -144,27 +218,32 @@ export default function ExecutionWheelPage() {
     setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 100));
   }, []);
 
-  // Load saved state + auto-connect if env token available
+  // Load saved state + try server proxy first, then manual PAT
   useEffect(() => {
     const savedToken = localStorage.getItem(LS_TOKEN) || '';
-    const initialToken = ENV_TOKEN || savedToken;
-    setToken(initialToken);
+    setToken(savedToken);
     try {
       const cp = localStorage.getItem(LS_CHECKPOINT);
       if (cp) setFocus(JSON.parse(cp));
     } catch { /* ignore */ }
 
-    // Auto-connect if we have a token
-    if (initialToken) {
-      (async () => {
+    // Try server proxy first (GH_PAT_ADMIN configured on server)
+    (async () => {
+      try {
+        await proxyFetch(`/repos/${REPO}`, {});
+        setToken('proxy');
+        setConnected(true);
+        return;
+      } catch { /* proxy not available, try manual token */ }
+
+      // Fallback to saved manual PAT
+      if (savedToken) {
         try {
-          await ghFetch(`/repos/${REPO}`, initialToken);
-          localStorage.setItem(LS_TOKEN, initialToken);
+          await ghFetch(`/repos/${REPO}`, savedToken);
           setConnected(true);
-          // refresh will be triggered by the connected effect below
         } catch { /* silent — user can connect manually */ }
-      })();
-    }
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -264,7 +343,7 @@ export default function ExecutionWheelPage() {
   }, [log, saveFocus]);
 
   async function handleConnect() {
-    if (!token.trim()) return;
+    if (!token.trim() || token === 'proxy') return;
     localStorage.setItem(LS_TOKEN, token);
     setLoading(true);
     try {
@@ -477,7 +556,7 @@ export default function ExecutionWheelPage() {
             connected ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
           }`}
         >
-          {connected ? `Conectado — ${openCount} issues` : 'Desconectado'}
+          {connected ? `Conectado${token === 'proxy' ? ' (server)' : ''} — ${openCount} issues` : 'Desconectado'}
         </span>
       </div>
 
@@ -522,7 +601,7 @@ export default function ExecutionWheelPage() {
             <input
               type="password"
               placeholder="github_pat_..."
-              value={token}
+              value={token === 'proxy' ? '' : token}
               onChange={(e) => setToken(e.target.value)}
               className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />

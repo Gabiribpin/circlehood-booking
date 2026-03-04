@@ -64,6 +64,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data.items || []);
     }
 
+    if (action === 'check') {
+      await ghFetch(`/repos/${REPO}`, token);
+      return NextResponse.json({ connected: true });
+    }
+
     // Default: list open issues
     const data = await ghFetch(
       `/repos/${REPO}/issues?state=open&per_page=100`,
@@ -104,6 +109,20 @@ export async function POST(req: NextRequest) {
       '_Created via Roda V2 (Anti-Caos)_',
     ].join('\n');
 
+    // Comment on existing issue
+    if (body.action === 'comment') {
+      const { number, comment } = body;
+      if (!number || !comment) {
+        return NextResponse.json({ error: 'number and comment required' }, { status: 400 });
+      }
+      await ghFetch(`/repos/${REPO}/issues/${number}/comments`, token, {
+        method: 'POST',
+        body: JSON.stringify({ body: comment }),
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // Create new issue (default)
     const created = await ghFetch(`/repos/${REPO}/issues`, token, {
       method: 'POST',
       body: JSON.stringify({
@@ -118,6 +137,37 @@ export async function POST(req: NextRequest) {
       html_url: created.html_url,
       node_id: created.node_id,
     }, { status: 201 });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = process.env.GH_PAT_ADMIN || process.env.GH_ACTIONS_TOKEN;
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Configure GH_PAT_ADMIN (ou GH_ACTIONS_TOKEN) no env.' },
+      { status: 500 }
+    );
+  }
+
+  const body = await req.json();
+  const { number, state } = body;
+
+  if (!number) {
+    return NextResponse.json({ error: 'number is required' }, { status: 400 });
+  }
+
+  try {
+    await ghFetch(`/repos/${REPO}/issues/${number}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify({ state: state || 'closed' }),
+    });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
