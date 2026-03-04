@@ -15,7 +15,11 @@
     "search": "Buscar",
     "actions": "Ações",
     "optional": "opcional",
-    "required": "obrigatório"
+    "required": "obrigatório",
+    "errorBoundaryTitle": "Algo deu errado",
+    "errorBoundaryDescription": "Ocorreu um erro inesperado. Tente novamente.",
+    "tryAgain": "Tentar novamente",
+    "backToDashboard": "Voltar ao painel"
   },
   "nav": {
     "dashboard": "Painel",
