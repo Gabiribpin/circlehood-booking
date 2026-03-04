@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone, Crosshair, Radar, CircleDot, Activity } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ShieldCheck, LifeBuoy, Trash2, Target, BookOpen, Phone, Crosshair, Radar, CircleDot, Activity, RefreshCw } from 'lucide-react';
 import { AdminLogoutButton } from '@/components/admin/admin-logout-button';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -77,6 +77,13 @@ export default async function AdminLayout({
           >
             <Activity className="h-4 w-4" />
             Saúde Pagamentos
+          </Link>
+          <Link
+            href="/admin/webhook-failures"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Webhook Retries
           </Link>
           <Link
             href="/admin/support"
