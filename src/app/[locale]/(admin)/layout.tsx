@@ -14,7 +14,7 @@ export default async function AdminLayout({
   const { validateAdminToken } = await import('@/lib/admin/session');
   const adminSession = cookieStore.get('admin_session');
 
-  if (!validateAdminToken(adminSession?.value)) {
+  if (!(await validateAdminToken(adminSession?.value))) {
     redirect('/admin-login');
   }
 

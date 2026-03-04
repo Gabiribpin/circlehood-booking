@@ -11,7 +11,7 @@ const SYSTEM_USER_ID = '00000000-0000-4000-a000-000000000000';
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
+    if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

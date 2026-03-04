@@ -21,14 +21,14 @@ describe('Admin session token (issue #19)', () => {
 
   it('generates unique tokens on each call', async () => {
     const { generateAdminToken } = await import('@/lib/admin/session');
-    const t1 = generateAdminToken();
-    const t2 = generateAdminToken();
+    const t1 = await generateAdminToken();
+    const t2 = await generateAdminToken();
     expect(t1.token).not.toBe(t2.token);
   });
 
   it('generated token has 3 parts (sessionId.timestamp.signature)', async () => {
     const { generateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
+    const { token } = await generateAdminToken();
     const parts = token.split('.');
     expect(parts).toHaveLength(3);
     // sessionId is a UUID
@@ -41,41 +41,41 @@ describe('Admin session token (issue #19)', () => {
 
   it('validates a freshly generated token', async () => {
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
-    expect(validateAdminToken(token)).toBe(true);
+    const { token } = await generateAdminToken();
+    expect(await validateAdminToken(token)).toBe(true);
   });
 
   it('rejects undefined/empty tokens', async () => {
     const { validateAdminToken } = await import('@/lib/admin/session');
-    expect(validateAdminToken(undefined)).toBe(false);
-    expect(validateAdminToken('')).toBe(false);
+    expect(await validateAdminToken(undefined)).toBe(false);
+    expect(await validateAdminToken('')).toBe(false);
   });
 
   it('rejects the old static value "1"', async () => {
     const { validateAdminToken } = await import('@/lib/admin/session');
-    expect(validateAdminToken('1')).toBe(false);
+    expect(await validateAdminToken('1')).toBe(false);
   });
 
   it('rejects a forged token with wrong signature', async () => {
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
+    const { token } = await generateAdminToken();
     const parts = token.split('.');
     parts[2] = 'a'.repeat(64); // forged signature
-    expect(validateAdminToken(parts.join('.'))).toBe(false);
+    expect(await validateAdminToken(parts.join('.'))).toBe(false);
   });
 
   it('rejects a token with tampered sessionId', async () => {
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
+    const { token } = await generateAdminToken();
     const parts = token.split('.');
     parts[0] = '00000000-0000-4000-a000-000000000099'; // different UUID
-    expect(validateAdminToken(parts.join('.'))).toBe(false);
+    expect(await validateAdminToken(parts.join('.'))).toBe(false);
   });
 
   it('sets expiration to 8 hours', async () => {
     const { generateAdminToken } = await import('@/lib/admin/session');
     const before = Date.now();
-    const { expires } = generateAdminToken();
+    const { expires } = await generateAdminToken();
     const after = Date.now();
     const eightHoursMs = 8 * 60 * 60 * 1000;
     expect(expires.getTime()).toBeGreaterThanOrEqual(before + eightHoursMs - 100);
