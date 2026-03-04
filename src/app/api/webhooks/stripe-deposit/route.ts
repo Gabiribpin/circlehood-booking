@@ -7,6 +7,7 @@ import { sendBookingConfirmationEmail } from '@/lib/resend';
 import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { safeSendEmail } from '@/lib/email/safe-send';
 import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
+import { isEventProcessed, markEventProcessed } from '@/lib/webhooks/event-dedup';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -31,6 +32,11 @@ export async function POST(request: NextRequest) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  }
+
+  // ─── Dedup: skip if event already processed (Stripe retries) ────────
+  if (await isEventProcessed(event.id)) {
+    return NextResponse.json({ received: true, deduplicated: true });
   }
 
   const supabase = createAdminClient();
@@ -238,6 +244,9 @@ export async function POST(request: NextRequest) {
       break;
     }
   }
+
+  // Mark event as processed AFTER successful handling
+  await markEventProcessed(event.id);
 
   return NextResponse.json({ received: true });
 }
