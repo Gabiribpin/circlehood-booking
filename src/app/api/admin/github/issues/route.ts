@@ -23,7 +23,7 @@ async function ghFetch(path: string, token: string, opts: RequestInit = {}) {
 
 async function checkAuth() {
   const cookieStore = await cookies();
-  return validateAdminToken(cookieStore.get('admin_session')?.value);
+  return await validateAdminToken(cookieStore.get('admin_session')?.value);
 }
 
 export async function GET(req: NextRequest) {

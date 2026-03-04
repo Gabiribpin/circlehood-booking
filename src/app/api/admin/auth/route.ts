@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateAdminToken, isRateLimited } from '@/lib/admin/session';
+import { generateAdminToken, revokeAdminToken, isRateLimited } from '@/lib/admin/session';
 
 export async function POST(request: NextRequest) {
   // Rate limiting by IP
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Senha incorreta' }, { status: 401 });
   }
 
-  const { token, expires } = generateAdminToken();
+  const { token, expires } = await generateAdminToken();
   const response = NextResponse.json({ ok: true });
   response.cookies.set('admin_session', token, {
     httpOnly: true,
@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: Request) {
+  // Revoke session server-side before clearing cookie
+  const cookieHeader = request.headers.get('cookie') || '';
+  const match = cookieHeader.match(/admin_session=([^;]+)/);
+  if (match) {
+    await revokeAdminToken(match[1]);
+  }
+
   const url = new URL('/admin-login', request.url);
   const response = NextResponse.redirect(url);
   response.cookies.delete('admin_session');

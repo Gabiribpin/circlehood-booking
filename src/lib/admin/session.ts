@@ -1,6 +1,8 @@
 import { createHmac, randomUUID } from 'crypto';
+import Redis from 'ioredis';
 
 const SESSION_EXPIRY_HOURS = 8;
+const SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 60 * 60;
 
 /**
  * Returns the HMAC signing secret for admin session tokens.
@@ -10,14 +12,72 @@ function getSigningSecret(): string | undefined {
   return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
 }
 
+// ─── Redis / In-Memory Session Store ─────────────────────────────────────────
+
+const REDIS_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!REDIS_URL) return null;
+  if (redis) return redis;
+  redis = new Redis(REDIS_URL, {
+    maxRetriesPerRequest: 1,
+    connectTimeout: 3000,
+    commandTimeout: 3000,
+    lazyConnect: true,
+  });
+  return redis;
+}
+
+// In-memory fallback for sessions (when Redis unavailable)
+const memorySessions = new Map<string, number>(); // sessionId → expiresAt (ms)
+
+async function storeSession(sessionId: string): Promise<void> {
+  const client = getRedis();
+  if (client) {
+    try {
+      await client.set(`admin_session:${sessionId}`, '1', 'EX', SESSION_EXPIRY_SECONDS);
+      return;
+    } catch { /* fall through to memory */ }
+  }
+  memorySessions.set(sessionId, Date.now() + SESSION_EXPIRY_SECONDS * 1000);
+}
+
+async function sessionExists(sessionId: string): Promise<boolean> {
+  const client = getRedis();
+  if (client) {
+    try {
+      const val = await client.get(`admin_session:${sessionId}`);
+      return val !== null;
+    } catch { /* fall through to memory */ }
+  }
+  const expiresAt = memorySessions.get(sessionId);
+  if (!expiresAt) return false;
+  if (Date.now() > expiresAt) {
+    memorySessions.delete(sessionId);
+    return false;
+  }
+  return true;
+}
+
+async function deleteSession(sessionId: string): Promise<void> {
+  const client = getRedis();
+  if (client) {
+    try {
+      await client.del(`admin_session:${sessionId}`);
+    } catch { /* ignore */ }
+  }
+  memorySessions.delete(sessionId);
+}
+
+// ─── Token Generation ────────────────────────────────────────────────────────
+
 /**
- * Generates a signed admin session token.
+ * Generates a signed admin session token and stores the session server-side.
  * Format: `${sessionId}.${timestamp}.${signature}`
- *
- * Self-validating: no server-side storage needed.
- * Each login generates a unique token (randomUUID).
  */
-export function generateAdminToken(): { token: string; expires: Date } {
+export async function generateAdminToken(): Promise<{ token: string; expires: Date }> {
   const secret = getSigningSecret();
   if (!secret) throw new Error('ADMIN_SESSION_SECRET (or ADMIN_PASSWORD) not configured');
 
@@ -27,9 +87,15 @@ export function generateAdminToken(): { token: string; expires: Date } {
   const signature = createHmac('sha256', secret).update(payload).digest('hex');
   const token = `${payload}.${signature}`;
 
-  const expires = new Date(Date.now() + SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
+  const expires = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000);
+
+  // Store session server-side for revocation support
+  await storeSession(sessionId);
+
   return { token, expires };
 }
+
+// ─── Token Validation ────────────────────────────────────────────────────────
 
 /**
  * Validates an admin session token.
@@ -37,8 +103,9 @@ export function generateAdminToken(): { token: string; expires: Date } {
  * 1. Token has correct format (3 parts)
  * 2. HMAC signature matches
  * 3. Token has not expired (based on embedded timestamp)
+ * 4. Session exists server-side (not revoked)
  */
-export function validateAdminToken(token: string | undefined): boolean {
+export async function validateAdminToken(token: string | undefined): Promise<boolean> {
   if (!token) return false;
 
   const secret = getSigningSecret();
@@ -66,33 +133,53 @@ export function validateAdminToken(token: string | undefined): boolean {
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts)) return false;
   const age = Date.now() - ts;
-  if (age > SESSION_EXPIRY_HOURS * 60 * 60 * 1000) return false;
+  if (age > SESSION_EXPIRY_SECONDS * 1000) return false;
 
-  return true;
+  // Check server-side session store (revocation support)
+  return sessionExists(sessionId);
+}
+
+// ─── Session Revocation ──────────────────────────────────────────────────────
+
+/**
+ * Revokes a specific admin session token.
+ * Extracts sessionId from the token and removes it from the store.
+ */
+export async function revokeAdminToken(token: string | undefined): Promise<void> {
+  if (!token) return;
+  const parts = token.split('.');
+  if (parts.length !== 3) return;
+  const sessionId = parts[0];
+  if (!sessionId) return;
+  await deleteSession(sessionId);
+}
+
+/**
+ * Revokes all active admin sessions.
+ * Redis: uses SCAN to find and delete all admin_session:* keys.
+ * Memory: clears the in-memory map.
+ */
+export async function revokeAllAdminSessions(): Promise<void> {
+  const client = getRedis();
+  if (client) {
+    try {
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await client.scan(cursor, 'MATCH', 'admin_session:*', 'COUNT', 100);
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await client.del(...keys);
+        }
+      } while (cursor !== '0');
+    } catch { /* ignore */ }
+  }
+  memorySessions.clear();
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
 
-import Redis from 'ioredis';
-
 const MAX_ATTEMPTS = 5;
 const WINDOW_SECONDS = 15 * 60; // 15 minutes
-
-const REDIS_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
-
-let redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (!REDIS_URL) return null;
-  if (redis) return redis;
-  redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 1,
-    connectTimeout: 3000,
-    commandTimeout: 3000,
-    lazyConnect: true,
-  });
-  return redis;
-}
 
 // In-memory fallback when Redis is not available
 const memoryAttempts = new Map<string, { count: number; resetAt: number }>();

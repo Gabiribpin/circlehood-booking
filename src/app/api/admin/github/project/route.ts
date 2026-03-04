@@ -4,7 +4,7 @@ import { validateAdminToken } from '@/lib/admin/session';
 
 async function checkAuth() {
   const cookieStore = await cookies();
-  return validateAdminToken(cookieStore.get('admin_session')?.value);
+  return await validateAdminToken(cookieStore.get('admin_session')?.value);
 }
 
 export async function POST(req: NextRequest) {

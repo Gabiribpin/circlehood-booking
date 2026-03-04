@@ -10,7 +10,7 @@ const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
+    if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

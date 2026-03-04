@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 function auth() {
   return async () => {
     const cookieStore = await cookies();
-    if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
+    if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
       return false;
     }
     return true;

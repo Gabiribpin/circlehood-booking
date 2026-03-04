@@ -65,8 +65,8 @@ describe('Admin session token generation and validation', () => {
     delete process.env.ADMIN_PASSWORD;
 
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
-    expect(validateAdminToken(token)).toBe(true);
+    const { token } = await generateAdminToken();
+    expect(await validateAdminToken(token)).toBe(true);
   });
 
   it('falls back to ADMIN_PASSWORD when ADMIN_SESSION_SECRET is not set', async () => {
@@ -74,8 +74,8 @@ describe('Admin session token generation and validation', () => {
     process.env.ADMIN_PASSWORD = 'my-admin-password';
 
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
-    expect(validateAdminToken(token)).toBe(true);
+    const { token } = await generateAdminToken();
+    expect(await validateAdminToken(token)).toBe(true);
   });
 
   it('prefers ADMIN_SESSION_SECRET over ADMIN_PASSWORD', async () => {
@@ -83,18 +83,16 @@ describe('Admin session token generation and validation', () => {
     process.env.ADMIN_PASSWORD = 'password-should-not-be-used';
 
     const { generateAdminToken, validateAdminToken } = await import('@/lib/admin/session');
-    const { token } = generateAdminToken();
+    const { token } = await generateAdminToken();
 
     // Token generated with ADMIN_SESSION_SECRET should validate with it
-    expect(validateAdminToken(token)).toBe(true);
+    expect(await validateAdminToken(token)).toBe(true);
 
     // Now change ADMIN_SESSION_SECRET — token should be invalid
     process.env.ADMIN_SESSION_SECRET = 'different-secret';
-    const { validateAdminToken: validate2 } = await import('@/lib/admin/session');
-    // Need fresh import due to vi.resetModules
     vi.resetModules();
     const mod = await import('@/lib/admin/session');
-    expect(mod.validateAdminToken(token)).toBe(false);
+    expect(await mod.validateAdminToken(token)).toBe(false);
   });
 
   it('throws when neither secret is configured', async () => {
@@ -102,7 +100,7 @@ describe('Admin session token generation and validation', () => {
     delete process.env.ADMIN_PASSWORD;
 
     const { generateAdminToken } = await import('@/lib/admin/session');
-    expect(() => generateAdminToken()).toThrow();
+    await expect(generateAdminToken()).rejects.toThrow();
   });
 
   it('returns false for validation when neither secret is configured', async () => {
@@ -110,6 +108,6 @@ describe('Admin session token generation and validation', () => {
     delete process.env.ADMIN_PASSWORD;
 
     const { validateAdminToken } = await import('@/lib/admin/session');
-    expect(validateAdminToken('some.token.here')).toBe(false);
+    expect(await validateAdminToken('some.token.here')).toBe(false);
   });
 });

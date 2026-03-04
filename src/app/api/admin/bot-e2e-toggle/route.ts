@@ -19,7 +19,7 @@ function ghHeaders(token: string) {
 
 export async function GET() {
   const cookieStore = await cookies();
-  if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
+  if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -54,7 +54,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const cookieStore = await cookies();
-  if (!validateAdminToken(cookieStore.get('admin_session')?.value)) {
+  if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
