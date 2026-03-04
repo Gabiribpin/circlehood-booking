@@ -34,4 +34,29 @@ describe('Security headers (issue #14)', () => {
   it('exports async headers() function in nextConfig', () => {
     expect(configSource).toContain('async headers()');
   });
+
+  it('sets Content-Security-Policy with default-src self', () => {
+    expect(configSource).toContain("key: 'Content-Security-Policy'");
+    expect(configSource).toContain("default-src 'self'");
+  });
+
+  it('CSP allows Stripe scripts and frames', () => {
+    expect(configSource).toContain('https://js.stripe.com');
+    expect(configSource).toContain('https://hooks.stripe.com');
+  });
+
+  it('CSP allows Supabase connections and images', () => {
+    expect(configSource).toContain('https://*.supabase.co');
+  });
+
+  it('CSP sets frame-ancestors none to prevent framing', () => {
+    expect(configSource).toContain("frame-ancestors 'none'");
+  });
+
+  it('sets Strict-Transport-Security with max-age and preload', () => {
+    expect(configSource).toContain("key: 'Strict-Transport-Security'");
+    expect(configSource).toContain('max-age=31536000');
+    expect(configSource).toContain('includeSubDomains');
+    expect(configSource).toContain('preload');
+  });
 });
