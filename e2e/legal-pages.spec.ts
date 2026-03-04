@@ -45,6 +45,12 @@ test.describe('Privacy Policy — EN-US', () => {
     await expect(page.locator('h1').first()).toContainText('Privacy Policy', { timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/500|internal server error/i);
   });
+
+  test('link para Terms of Use visível', async ({ page }) => {
+    await page.goto(`${BASE}/en-US/privacy`);
+    const termsLink = page.locator('a[href*="/terms"]').first();
+    await expect(termsLink).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe('Política de Privacidad — ES-ES', () => {
@@ -52,6 +58,12 @@ test.describe('Política de Privacidad — ES-ES', () => {
     await page.goto(`${BASE}/es-ES/privacy`);
     await expect(page.locator('h1').first()).toContainText('Política de Privacidad', { timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/500|error interno/i);
+  });
+
+  test('link para Términos de Uso visível', async ({ page }) => {
+    await page.goto(`${BASE}/es-ES/privacy`);
+    const termsLink = page.locator('a[href*="/terms"]').first();
+    await expect(termsLink).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -82,6 +94,12 @@ test.describe('Terms of Use — EN-US', () => {
     await expect(page.locator('h1').first()).toContainText('Terms of Use', { timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/500|internal server error/i);
   });
+
+  test('link para Privacy Policy visível', async ({ page }) => {
+    await page.goto(`${BASE}/en-US/terms`);
+    const privacyLink = page.locator('a[href*="/privacy"]').first();
+    await expect(privacyLink).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe('Términos de Uso — ES-ES', () => {
@@ -89,6 +107,12 @@ test.describe('Términos de Uso — ES-ES', () => {
     await page.goto(`${BASE}/es-ES/terms`);
     await expect(page.locator('h1').first()).toContainText('Términos de Uso', { timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/500|error interno/i);
+  });
+
+  test('link para Política de Privacidad visível', async ({ page }) => {
+    await page.goto(`${BASE}/es-ES/terms`);
+    const privacyLink = page.locator('a[href*="/privacy"]').first();
+    await expect(privacyLink).toBeVisible({ timeout: 10_000 });
   });
 });
 
