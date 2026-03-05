@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
 import QRCode from 'qrcode';
 
 export function NextStepsCard() {
+  const t = useTranslations('nextSteps');
   const [copied, setCopied] = useState<'landing' | 'whatsapp' | null>(null);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [landingUrl, setLandingUrl] = useState('');
@@ -82,7 +84,7 @@ export function NextStepsCard() {
       ctx.fillText(businessName, canvas.width / 2, 260);
       ctx.font = '14px Arial';
       ctx.fillStyle = '#666666';
-      ctx.fillText('Escaneie para agendar', canvas.width / 2, 285);
+      ctx.fillText(t('scanToBook'), canvas.width / 2, 285);
       ctx.font = '12px monospace';
       ctx.fillStyle = '#999999';
       ctx.fillText(`circlehood.app/${slug}`, canvas.width / 2, 310);
@@ -93,7 +95,7 @@ export function NextStepsCard() {
       link.click();
     };
     img.src = qrCodeUrl;
-  }, [qrCodeUrl, businessName, slug]);
+  }, [qrCodeUrl, businessName, slug, t]);
 
   function copyToClipboard(text: string, type: 'landing' | 'whatsapp') {
     navigator.clipboard.writeText(text);
@@ -109,10 +111,10 @@ export function NextStepsCard() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-green-900">
-            Parabéns! Você está pronto para receber clientes!
+            {t('title')}
           </h2>
           <p className="text-gray-600 mt-1">
-            Agora é hora de divulgar e começar a lotar sua agenda
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -123,12 +125,12 @@ export function NextStepsCard() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Megaphone className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-sm">1. Crie artes de divulgação</h3>
+              <h3 className="font-semibold text-sm">{t('step1Title')}</h3>
             </div>
-            <Badge variant="secondary" className="text-xs">Recomendado</Badge>
+            <Badge variant="secondary" className="text-xs">{t('step1Badge')}</Badge>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Posts profissionais para Instagram, Stories e WhatsApp Status
+            {t('step1Desc')}
           </p>
           <Button
             variant="outline"
@@ -137,7 +139,7 @@ export function NextStepsCard() {
             onClick={() => { window.location.href = '/marketing'; }}
           >
             <Megaphone className="w-4 h-4 mr-2" />
-            Ir para Marketing
+            {t('step1Action')}
           </Button>
         </div>
 
@@ -146,12 +148,12 @@ export function NextStepsCard() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <QrCode className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-sm">2. Compartilhe sua página</h3>
+              <h3 className="font-semibold text-sm">{t('step2Title')}</h3>
             </div>
-            <Badge variant="secondary" className="text-xs">Essencial</Badge>
+            <Badge variant="secondary" className="text-xs">{t('step2Badge')}</Badge>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Link personalizado para clientes agendarem online 24/7
+            {t('step2Desc')}
           </p>
 
           {landingUrl && (
@@ -196,19 +198,19 @@ export function NextStepsCard() {
                       onClick={handleDownloadQR}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Baixar QR Code
+                      {t('downloadQR')}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="w-full"
                       onClick={() => {
-                        const msg = `Agende seu horário comigo! ✨\n\n${landingUrl}`;
+                        const msg = t('shareMsg', { url: landingUrl });
                         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
                       }}
                     >
                       <Share2 className="w-4 h-4 mr-2" />
-                      Compartilhar no WhatsApp
+                      {t('shareWhatsApp')}
                     </Button>
                   </div>
                 </div>
@@ -222,12 +224,12 @@ export function NextStepsCard() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-green-600" />
-              <h3 className="font-semibold text-sm">3. Divulgue seu WhatsApp Bot</h3>
+              <h3 className="font-semibold text-sm">{t('step3Title')}</h3>
             </div>
-            <Badge variant="secondary" className="text-xs">Importante</Badge>
+            <Badge variant="secondary" className="text-xs">{t('step3Badge')}</Badge>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Clientes podem agendar direto pelo WhatsApp — sem você precisar responder
+            {t('step3Desc')}
           </p>
 
           {whatsappNumber ? (
@@ -255,25 +257,25 @@ export function NextStepsCard() {
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  const msg = `Manda uma mensagem pra mim no WhatsApp para agendar! 💇✨\n\nWhatsApp: ${whatsappNumber}`;
+                  const msg = t('shareBotMsg', { number: whatsappNumber });
                   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
                 }}
               >
                 <Share2 className="w-4 h-4 mr-2" />
-                Compartilhar número do bot
+                {t('shareBotNumber')}
               </Button>
             </div>
           ) : (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-xs text-yellow-800 mb-2">
-                WhatsApp Bot não conectado ainda
+                {t('botNotConnected')}
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => { window.location.href = '/whatsapp-config'; }}
               >
-                Configurar WhatsApp
+                {t('configureWhatsApp')}
               </Button>
             </div>
           )}
@@ -282,14 +284,14 @@ export function NextStepsCard() {
         {/* Dicas */}
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <p className="text-sm font-semibold text-blue-900 mb-2">
-            Onde compartilhar?
+            {t('whereToShare')}
           </p>
           <ul className="text-xs text-blue-800 space-y-1">
-            <li>• Instagram Bio e Stories</li>
-            <li>• Facebook e WhatsApp Status</li>
-            <li>• Google Meu Negócio</li>
-            <li>• Grupos de WhatsApp da sua região</li>
-            <li>• Imprima o QR Code e cole no seu estabelecimento</li>
+            <li>• {t('tip1')}</li>
+            <li>• {t('tip2')}</li>
+            <li>• {t('tip3')}</li>
+            <li>• {t('tip4')}</li>
+            <li>• {t('tip5')}</li>
           </ul>
         </div>
       </div>

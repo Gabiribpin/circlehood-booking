@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ function formatPrice(price: number, currency: string) {
 
 export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   const router = useRouter();
+  const t = useTranslations('pageEditor');
   const supabase = createClient();
 
   const [bio, setBio] = useState(professional.bio || '');
@@ -129,7 +131,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Página Pública</h1>
+        <h1 className="text-2xl font-bold">{t('publicPage')}</h1>
         <Button asChild variant="outline" size="sm" className="gap-2">
           <a
             href={`/${professional.slug}`}
@@ -137,7 +139,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
             rel="noopener noreferrer"
           >
             <ExternalLink className="h-4 w-4" />
-            Ver ao vivo
+            {t('viewLive')}
           </a>
         </Button>
       </div>
@@ -147,14 +149,14 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Informações da página</CardTitle>
+              <CardTitle className="text-base">{t('pageInfo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <Label>Imagens</Label>
+                <Label>{t('images')}</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-2">Foto de perfil</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t('profilePhoto')}</p>
                     <div className="relative w-20 h-20">
                       <Avatar className="w-20 h-20 border-2">
                         <AvatarImage src={profileImageUrl || undefined} />
@@ -179,7 +181,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-2">Imagem de capa</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t('coverImage')}</p>
                     <div className="w-full h-20 border-2 rounded-md overflow-hidden bg-gradient-to-br from-primary/80 to-primary/40">
                       {coverImageUrl && (
                         <img
@@ -213,7 +215,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="bio">Bio</Label>
+                  <Label htmlFor="bio">{t('bio')}</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -226,81 +228,81 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                     ) : (
                       <Sparkles className="h-3 w-3" />
                     )}
-                    Gerar com IA
+                    {t('generateWithAI')}
                   </Button>
                 </div>
                 <Textarea
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Conte um pouco sobre você e seu trabalho..."
+                  placeholder={t('bioPlaceholder')}
                   rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
+                <Label htmlFor="phone">{t('phoneLabel')}</Label>
                 <PhoneInput
                   value={phone}
                   onChange={(value) => setPhone(value || '')}
-                  placeholder="Digite seu telefone"
+                  placeholder={t('phonePlaceholder')}
                   defaultCountry="IE"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Telefone de contato (qualquer país)
+                  {t('phoneHint')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Label htmlFor="whatsapp">{t('whatsappLabel')}</Label>
                 <PhoneInput
                   value={whatsapp}
                   onChange={(value) => setWhatsapp(value || '')}
-                  placeholder="Digite seu WhatsApp"
+                  placeholder={t('whatsappPlaceholder')}
                   defaultCountry="IE"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Para clientes entrarem em contato via WhatsApp
+                  {t('whatsappHint')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="instagram">Instagram</Label>
+                <Label htmlFor="instagram">{t('instagramLabel')}</Label>
                 <Input
                   id="instagram"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="@seuperfil"
+                  placeholder={t('instagramPlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Endereço</Label>
+                <Label htmlFor="address">{t('addressLabel')}</Label>
                 <Input
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Rua e número"
+                  placeholder={t('addressPlaceholder')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addressCity">Cidade</Label>
+                  <Label htmlFor="addressCity">{t('cityLabel')}</Label>
                   <Input
                     id="addressCity"
                     value={addressCity}
                     onChange={(e) => setAddressCity(e.target.value)}
-                    placeholder="Ex: Dublin"
+                    placeholder={t('cityPlaceholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="addressCountry">País</Label>
+                  <Label htmlFor="addressCountry">{t('countryLabel')}</Label>
                   <Input
                     id="addressCountry"
                     value={addressCountry}
                     onChange={(e) => setAddressCountry(e.target.value)}
-                    placeholder="Ex: IE"
+                    placeholder={t('countryPlaceholder')}
                   />
                 </div>
               </div>
@@ -312,7 +314,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                   onCheckedChange={setShowAddressOnPage}
                 />
                 <Label htmlFor="showAddressOnPage" className="cursor-pointer text-sm">
-                  Mostrar endereço na página pública
+                  {t('showAddressOnPage')}
                 </Label>
               </div>
 
@@ -322,7 +324,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                {saved ? 'Salvo!' : 'Salvar alteracoes'}
+                {saved ? t('saved') : t('saveChanges')}
               </Button>
             </CardContent>
           </Card>
@@ -332,7 +334,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Preview</CardTitle>
+              <CardTitle className="text-base">{t('preview')}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="border rounded-lg overflow-hidden bg-background">
@@ -354,7 +356,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                     >
                       <div className="flex items-center gap-2 text-white bg-black/50 px-3 py-2 rounded-md cursor-pointer hover:bg-black/70 transition-colors">
                         <Camera className="h-4 w-4" />
-                        <span className="text-xs font-medium">Alterar capa</span>
+                        <span className="text-xs font-medium">{t('changeCover')}</span>
                       </div>
                     </ImageUpload>
                   </div>
@@ -408,9 +410,9 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
 
                 {/* Mini services */}
                 <div className="p-4">
-                  <h3 className="text-sm font-semibold mb-2">Serviços</h3>
+                  <h3 className="text-sm font-semibold mb-2">{t('servicesTitle')}</h3>
                   {services.filter((s) => s.is_active).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhum servico ativo.</p>
+                    <p className="text-xs text-muted-foreground">{t('noActiveServices')}</p>
                   ) : (
                     <div className="space-y-2">
                       {services
@@ -435,7 +437,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                         ))}
                       {services.filter((s) => s.is_active).length > 3 && (
                         <p className="text-[10px] text-muted-foreground text-center">
-                          +{services.filter((s) => s.is_active).length - 3} serviços
+                          {t('moreServices', { count: services.filter((s) => s.is_active).length - 3 })}
                         </p>
                       )}
                     </div>
@@ -458,7 +460,7 @@ export function MyPageEditor({ professional, services }: MyPageEditorProps) {
                   )}
                   {phone && (
                     <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border rounded px-2 py-1">
-                      <Phone className="h-2.5 w-2.5" /> Telefone
+                      <Phone className="h-2.5 w-2.5" /> {t('phoneLabel')}
                     </span>
                   )}
                 </div>
