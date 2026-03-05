@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripeServer } from '@/lib/stripe/server';
@@ -250,10 +251,11 @@ export async function POST(request: NextRequest) {
       },
       { idempotencyKey }
     );
-  } catch {
+  } catch (err) {
+    logger.error('[bookings/checkout] Stripe session creation failed', err);
     // Rollback: cancelar booking para liberar o slot
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
-    return NextResponse.json({ error: 'Falha ao criar sessão de pagamento.' }, { status: 502 });
+    return NextResponse.json({ error: 'Falha ao criar sessão de pagamento. Tente novamente.' }, { status: 502 });
   }
 
   // ─── 12. INSERT payment ──────────────────────────────────────────────────
