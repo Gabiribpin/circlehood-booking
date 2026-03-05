@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -7,6 +8,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const cookieStore = await cookies();
   if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -40,4 +42,8 @@ export async function POST(
     .eq('id', conversationId);
 
   return NextResponse.json({ success: true, botActive });
+  } catch (err) {
+    logger.error('[admin/leads/toggle-bot]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
@@ -5,6 +6,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params;
 
   const supabase = await createClient();
@@ -29,4 +31,8 @@ export async function GET(
     .order('created_at', { ascending: true });
 
   return NextResponse.json({ replies: replies ?? [] });
+  } catch (err) {
+    logger.error('[support/tickets/replies]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

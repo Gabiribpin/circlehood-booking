@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 // Call: POST /api/admin/setup-storage  { "secret": "<SETUP_SECRET>" }
 
 export async function POST(request: Request) {
+  try {
   const { secret } = await request.json();
 
   if (secret !== process.env.SETUP_SECRET) {
@@ -38,4 +40,8 @@ export async function POST(request: Request) {
   results['buckets_in_db'] = bucketNames.join(', ') || '(none)';
 
   return NextResponse.json({ ok: true, results });
+  } catch (err) {
+    logger.error('[admin/setup-storage]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

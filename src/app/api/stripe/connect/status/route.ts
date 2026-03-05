@@ -1,7 +1,9 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(_request: NextRequest) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -38,4 +40,8 @@ export async function GET(_request: NextRequest) {
     payouts_enabled: connectAccount.payouts_enabled,
     onboarding_complete: connectAccount.onboarding_complete,
   });
+  } catch (err) {
+    logger.error('[stripe/connect/status]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

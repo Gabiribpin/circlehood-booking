@@ -1,8 +1,10 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getStripeServer } from '@/lib/stripe/server';
 
 export async function POST(_request: NextRequest) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -32,4 +34,8 @@ export async function POST(_request: NextRequest) {
   );
 
   return NextResponse.json({ url: loginLink.url });
+  } catch (err) {
+    logger.error('[stripe/connect/dashboard-link]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
