@@ -6,9 +6,11 @@ interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
   title?: string;
+  beforeLabel?: string;
+  afterLabel?: string;
 }
 
-export function BeforeAfterSlider({ beforeImage, afterImage, title }: BeforeAfterSliderProps) {
+export function BeforeAfterSlider({ beforeImage, afterImage, title, beforeLabel = 'Antes', afterLabel = 'Depois' }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -38,7 +40,7 @@ export function BeforeAfterSlider({ beforeImage, afterImage, title }: BeforeAfte
       {/* After Image (Background) */}
       <img
         src={afterImage}
-        alt="After"
+        alt={afterLabel}
         className="absolute inset-0 w-full h-full object-cover"
         draggable={false}
       />
@@ -50,7 +52,7 @@ export function BeforeAfterSlider({ beforeImage, afterImage, title }: BeforeAfte
       >
         <img
           src={beforeImage}
-          alt="Before"
+          alt={beforeLabel}
           className="absolute inset-0 w-full h-full object-cover"
           draggable={false}
         />
@@ -93,10 +95,10 @@ export function BeforeAfterSlider({ beforeImage, afterImage, title }: BeforeAfte
 
       {/* Labels */}
       <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded text-sm font-medium">
-        Antes
+        {beforeLabel}
       </div>
       <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded text-sm font-medium">
-        Depois
+        {afterLabel}
       </div>
 
       {/* Title */}
