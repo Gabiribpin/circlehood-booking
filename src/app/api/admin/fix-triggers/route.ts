@@ -1,8 +1,10 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 // Rota temporária: aplica fix do trigger via pg directo
 // Usa a variável de ambiente DATABASE_URL se disponível, senão usa supabase admin
 export async function POST(request: Request) {
+  try {
   const { secret } = await request.json().catch(() => ({ secret: null }));
   if (!process.env.SETUP_SECRET || secret !== process.env.SETUP_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -116,4 +118,8 @@ $$ LANGUAGE plpgsql;
     ],
     mgmt_response: mgmtError.substring(0, 200),
   }, { status: 503 });
+  } catch (err) {
+    logger.error('[admin/fix-triggers]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

@@ -1,9 +1,11 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmationEmail } from '@/lib/resend';
 
 export async function POST(request: Request) {
+  try {
   // Auth: profissional autenticado
   const supabase = await createClient();
   const {
@@ -95,4 +97,8 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({ success: true, message: 'Reenvio iniciado' });
+  } catch (err) {
+    logger.error('[notifications/retry]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

@@ -1,8 +1,10 @@
+import { logger } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthorizationUrl } from '@/lib/integrations/instagram'
 
 export async function GET(request: NextRequest) {
+  try {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,4 +28,8 @@ export async function GET(request: NextRequest) {
   const authUrl = getAuthorizationUrl(config)
 
   return NextResponse.redirect(authUrl)
+  } catch (err) {
+    logger.error('[integrations/instagram/connect]', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

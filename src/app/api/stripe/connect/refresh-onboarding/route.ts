@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getStripeServer } from '@/lib/stripe/server';
@@ -5,6 +6,7 @@ import { getStripeServer } from '@/lib/stripe/server';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://booking.circlehood-tech.com';
 
 export async function POST(_request: NextRequest) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,4 +39,8 @@ export async function POST(_request: NextRequest) {
   });
 
   return NextResponse.json({ url: accountLink.url });
+  } catch (err) {
+    logger.error('[stripe/connect/refresh-onboarding]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
