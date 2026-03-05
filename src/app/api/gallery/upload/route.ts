@@ -95,9 +95,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sanitize file extension to prevent path traversal
-    const safeExt = (name: string) =>
-      (name.split('.').pop() || 'bin').replace(/[^a-zA-Z0-9]/g, '');
+    // Sanitize and whitelist file extension
+    const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+    const safeExt = (name: string) => {
+      const ext = (name.split('.').pop() || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      return ALLOWED_EXTENSIONS.has(ext) ? ext : 'bin';
+    };
 
     let imageUrl = '';
     let beforeImageUrl = '';
