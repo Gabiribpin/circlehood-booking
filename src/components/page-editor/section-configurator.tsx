@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ interface SectionConfiguratorProps {
 }
 
 export function SectionConfigurator({ section, onSave, onCancel }: SectionConfiguratorProps) {
+  const t = useTranslations('pageEditor');
   const [data, setData] = useState(section.data || {});
   const [isVisible, setIsVisible] = useState(section.is_visible);
 
@@ -48,13 +50,13 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
   };
 
   const sectionTitles: Record<string, string> = {
-    hero: 'Hero / Banner Principal',
-    about: 'Sobre Mim',
-    services: 'Serviços',
-    gallery: 'Galeria',
-    testimonials: 'Depoimentos',
-    faq: 'Perguntas Frequentes',
-    contact: 'Contato',
+    hero: t('sectionTypeHero'),
+    about: t('sectionTypeAbout'),
+    services: t('sectionTypeServices'),
+    gallery: t('sectionTypeGallery'),
+    testimonials: t('sectionTypeTestimonials'),
+    faq: t('sectionTypeFaq'),
+    contact: t('sectionTypeContact'),
   };
 
   return (
@@ -63,7 +65,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         <div className="flex justify-between items-start">
           <div>
             <CardTitle>{sectionTitles[section.section_type] || section.section_type}</CardTitle>
-            <CardDescription>Configure os dados desta seção</CardDescription>
+            <CardDescription>{t('configureSection')}</CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={onCancel}>
             <X className="w-4 h-4" />
@@ -73,7 +75,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
       <CardContent className="space-y-6">
         {/* Visibilidade */}
         <div className="flex items-center justify-between">
-          <Label htmlFor="visible">Seção Visível</Label>
+          <Label htmlFor="visible">{t('sectionVisible')}</Label>
           <Switch id="visible" checked={isVisible} onCheckedChange={setIsVisible} />
         </div>
 
@@ -81,15 +83,15 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'hero' && (
           <>
             <div className="space-y-2">
-              <Label>Texto do Botão</Label>
+              <Label>{t('buttonText')}</Label>
               <Input
                 value={data.ctaText || ''}
                 onChange={(e) => updateData('ctaText', e.target.value)}
-                placeholder="Agendar Agora"
+                placeholder={t('bookNowPlaceholder')}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Mostrar Redes Sociais</Label>
+              <Label>{t('showSocialLinks')}</Label>
               <Switch
                 checked={data.showSocialLinks || false}
                 onCheckedChange={(checked) => updateData('showSocialLinks', checked)}
@@ -101,24 +103,24 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'about' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="Sobre Mim"
+                placeholder={t('aboutMePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Descrição</Label>
+              <Label>{t('descriptionLabel')}</Label>
               <Textarea
                 value={data.description || ''}
                 onChange={(e) => updateData('description', e.target.value)}
-                placeholder="Conte sobre sua experiência..."
+                placeholder={t('descriptionPlaceholder')}
                 rows={5}
               />
             </div>
             <div className="space-y-2">
-              <Label>Anos de Experiência</Label>
+              <Label>{t('yearsExperience')}</Label>
               <Input
                 type="number"
                 value={data.yearsExperience || 0}
@@ -131,15 +133,15 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'services' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="Meus Serviços"
+                placeholder={t('myServicesPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Modo de Exibição</Label>
+              <Label>{t('displayMode')}</Label>
               <Select
                 value={data.displayMode || 'grid'}
                 onValueChange={(value) => updateData('displayMode', value)}
@@ -148,13 +150,13 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="grid">Grade</SelectItem>
-                  <SelectItem value="list">Lista</SelectItem>
+                  <SelectItem value="grid">{t('displayGrid')}</SelectItem>
+                  <SelectItem value="list">{t('displayList')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center justify-between">
-              <Label>Mostrar Preços</Label>
+              <Label>{t('showPrices')}</Label>
               <Switch
                 checked={data.showPrices ?? true}
                 onCheckedChange={(checked) => updateData('showPrices', checked)}
@@ -166,17 +168,17 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'gallery' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="Galeria de Trabalhos"
+                placeholder={t('galleryPlaceholder')}
               />
             </div>
 
             {/* Tipo de Galeria */}
             <div className="space-y-2">
-              <Label>Tipo de Galeria</Label>
+              <Label>{t('galleryType')}</Label>
               <Select
                 value={data.galleryType || 'normal'}
                 onValueChange={(value) => updateData('galleryType', value)}
@@ -185,8 +187,8 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="before-after">Before / After</SelectItem>
+                  <SelectItem value="normal">{t('galleryNormal')}</SelectItem>
+                  <SelectItem value="before-after">{t('galleryBeforeAfter')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -195,20 +197,20 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
             {(data.galleryType || 'normal') === 'normal' && (
               <>
                 <div className="space-y-2">
-                  <Label>Layout</Label>
+                  <Label>{t('layoutLabel')}</Label>
                   <Select value={data.layout || 'grid'} onValueChange={(value) => updateData('layout', value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="grid">Grade</SelectItem>
-                      <SelectItem value="masonry">Masonry</SelectItem>
-                      <SelectItem value="carousel">Carrossel</SelectItem>
+                      <SelectItem value="grid">{t('displayGrid')}</SelectItem>
+                      <SelectItem value="masonry">{t('layoutMasonry')}</SelectItem>
+                      <SelectItem value="carousel">{t('layoutCarousel')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Colunas</Label>
+                  <Label>{t('columnsLabel')}</Label>
                   <Select
                     value={String(data.columns || 3)}
                     onValueChange={(value) => updateData('columns', parseInt(value))}
@@ -217,9 +219,9 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2">2 Colunas</SelectItem>
-                      <SelectItem value="3">3 Colunas</SelectItem>
-                      <SelectItem value="4">4 Colunas</SelectItem>
+                      <SelectItem value="2">{t('columnsN', { n: 2 })}</SelectItem>
+                      <SelectItem value="3">{t('columnsN', { n: 3 })}</SelectItem>
+                      <SelectItem value="4">{t('columnsN', { n: 4 })}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -230,7 +232,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
             {data.galleryType === 'before-after' && (
               <>
                 <div className="space-y-2">
-                  <Label>Imagem ANTES (URL)</Label>
+                  <Label>{t('beforeImageLabel')}</Label>
                   <Input
                     value={data.beforeImage || ''}
                     onChange={(e) => updateData('beforeImage', e.target.value)}
@@ -238,7 +240,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Imagem DEPOIS (URL)</Label>
+                  <Label>{t('afterImageLabel')}</Label>
                   <Input
                     value={data.afterImage || ''}
                     onChange={(e) => updateData('afterImage', e.target.value)}
@@ -249,7 +251,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                 {/* Preview do slider */}
                 {data.beforeImage && data.afterImage && (
                   <div className="space-y-2">
-                    <Label>Preview</Label>
+                    <Label>{t('preview')}</Label>
                     <BeforeAfterSlider
                       beforeImage={data.beforeImage}
                       afterImage={data.afterImage}
@@ -265,15 +267,15 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'testimonials' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="O que dizem meus clientes"
+                placeholder={t('testimonialsPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Modo de Exibição</Label>
+              <Label>{t('displayMode')}</Label>
               <Select
                 value={data.displayMode || 'grid'}
                 onValueChange={(value) => updateData('displayMode', value)}
@@ -282,13 +284,13 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="grid">Grade</SelectItem>
-                  <SelectItem value="carousel">Carrossel</SelectItem>
+                  <SelectItem value="grid">{t('displayGrid')}</SelectItem>
+                  <SelectItem value="carousel">{t('layoutCarousel')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Máximo a Mostrar</Label>
+              <Label>{t('maxToShow')}</Label>
               <Input
                 type="number"
                 value={data.maxToShow || 6}
@@ -301,29 +303,29 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'contact' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="Entre em Contato"
+                placeholder={t('contactPlaceholder')}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Mostrar Telefone</Label>
+              <Label>{t('showPhone')}</Label>
               <Switch
                 checked={data.showPhone ?? true}
                 onCheckedChange={(checked) => updateData('showPhone', checked)}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Mostrar WhatsApp</Label>
+              <Label>{t('showWhatsApp')}</Label>
               <Switch
                 checked={data.showWhatsApp ?? true}
                 onCheckedChange={(checked) => updateData('showWhatsApp', checked)}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Mostrar Email</Label>
+              <Label>{t('showEmail')}</Label>
               <Switch
                 checked={data.showEmail ?? false}
                 onCheckedChange={(checked) => updateData('showEmail', checked)}
@@ -335,17 +337,17 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {section.section_type === 'faq' && (
           <>
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={data.heading || ''}
                 onChange={(e) => updateData('heading', e.target.value)}
-                placeholder="Perguntas Frequentes"
+                placeholder={t('faqPlaceholder')}
               />
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Perguntas e Respostas</Label>
+                <Label>{t('questionsAnswers')}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -357,13 +359,13 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                   }}
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Adicionar
+                  {t('addButton')}
                 </Button>
               </div>
 
               {(!data.items || data.items.length === 0) && (
                 <p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
-                  Nenhuma pergunta adicionada. Clique em "Adicionar" para começar.
+                  {t('noFaqItems')}
                 </p>
               )}
 
@@ -383,7 +385,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                   <div className="space-y-1 pr-8">
-                    <Label className="text-xs">Pergunta {idx + 1}</Label>
+                    <Label className="text-xs">{t('questionN', { n: idx + 1 })}</Label>
                     <Input
                       value={item.question}
                       onChange={(e) => {
@@ -391,11 +393,11 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                         items[idx] = { ...items[idx], question: e.target.value };
                         updateData('items', items);
                       }}
-                      placeholder="Ex: Preciso agendar com antecedência?"
+                      placeholder={t('questionPlaceholder')}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Resposta</Label>
+                    <Label className="text-xs">{t('answerLabel')}</Label>
                     <Textarea
                       value={item.answer}
                       onChange={(e) => {
@@ -403,7 +405,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
                         items[idx] = { ...items[idx], answer: e.target.value };
                         updateData('items', items);
                       }}
-                      placeholder="Resposta para esta pergunta..."
+                      placeholder={t('answerPlaceholder')}
                       rows={2}
                     />
                   </div>
@@ -417,7 +419,7 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         {getTranslatableContent() && (
           <div className="pt-2 border-t">
             <p className="text-xs text-muted-foreground mb-2">
-              Traduzir conteúdo desta seção para EN, RO, AR, ES
+              {t('translateHint')}
             </p>
             <AutoTranslateButton
               content={getTranslatableContent()}
@@ -430,10 +432,10 @@ export function SectionConfigurator({ section, onSave, onCancel }: SectionConfig
         <div className="flex gap-2 pt-4">
           <Button onClick={handleSave} className="flex-1">
             <Save className="w-4 h-4 mr-2" />
-            Salvar Alterações
+            {t('saveSection')}
           </Button>
           <Button variant="outline" onClick={onCancel}>
-            Cancelar
+            {t('cancelButton')}
           </Button>
         </div>
       </CardContent>
