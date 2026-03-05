@@ -200,7 +200,7 @@ export default function HandbookDiagramaPage() {
                 'Auth — email + Google OAuth',
                 'Storage — avatars + covers',
                 '~30 tabelas (professionals, bookings…)',
-                'ibkkxykcrwhncvqxzynt.supabase.co',
+                '${NEXT_PUBLIC_SUPABASE_URL}',
               ]}
               borderColor="border-emerald-300 dark:border-emerald-700"
               bgColor="bg-emerald-50 dark:bg-emerald-950/30"
@@ -212,7 +212,7 @@ export default function HandbookDiagramaPage() {
                 'Cache de histórico de conversas',
                 'Deduplicação de mensagens do bot',
                 'TTL: 24h por conversa',
-                'redis-15673.c226.eu-west-1-3',
+                '${REDIS_URL} — ver env var',
               ]}
               borderColor="border-red-300 dark:border-red-700"
               bgColor="bg-red-50 dark:bg-red-950/30"
