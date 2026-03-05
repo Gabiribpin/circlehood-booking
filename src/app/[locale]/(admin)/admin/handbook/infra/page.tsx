@@ -32,9 +32,9 @@ const services = [
     color: 'border-emerald-300 dark:border-emerald-800',
     headerBg: 'bg-emerald-50 dark:bg-emerald-950/30',
     items: [
-      { name: 'Supabase DB / Auth',  url: 'https://ibkkxykcrwhncvqxzynt.supabase.co', env: 'prod', note: 'NEXT_PUBLIC_SUPABASE_URL' },
-      { name: 'Supabase Dashboard',  url: 'https://supabase.com/dashboard/project/ibkkxykcrwhncvqxzynt', env: 'admin', note: 'Login com conta Supabase' },
-      { name: 'Supabase Auth users', url: 'https://supabase.com/dashboard/project/ibkkxykcrwhncvqxzynt/auth/users', env: 'admin', note: 'Ver/gerir utilizadores' },
+      { name: 'Supabase DB / Auth',  url: '${NEXT_PUBLIC_SUPABASE_URL}', env: 'prod', note: 'NEXT_PUBLIC_SUPABASE_URL' },
+      { name: 'Supabase Dashboard',  url: 'https://supabase.com/dashboard — ver env NEXT_PUBLIC_SUPABASE_URL para project ref', env: 'admin', note: 'Login com conta Supabase' },
+      { name: 'Supabase Auth users', url: 'https://supabase.com/dashboard → Auth → Users', env: 'admin', note: 'Ver/gerir utilizadores' },
     ],
   },
   {
@@ -42,7 +42,7 @@ const services = [
     color: 'border-red-300 dark:border-red-800',
     headerBg: 'bg-red-50 dark:bg-red-950/30',
     items: [
-      { name: 'Redis (RedisLabs)', url: 'redis://default:***@redis-15673.c226.eu-west-1-3.ec2.cloud.redislabs.com:15673', env: 'prod', note: 'REDIS_URL — conversas do bot' },
+      { name: 'Redis (RedisLabs)', url: '${REDIS_URL} — ver env var', env: 'prod', note: 'REDIS_URL — conversas do bot' },
     ],
   },
   {
@@ -80,7 +80,7 @@ const services = [
     color: 'border-blue-300 dark:border-blue-800',
     headerBg: 'bg-blue-50 dark:bg-blue-950/30',
     items: [
-      { name: 'Resend API',          url: 'https://api.resend.com',                          env: 'prod',    note: 'RESEND_API_KEY (re_iebgvquj_*)' },
+      { name: 'Resend API',          url: 'https://api.resend.com',                          env: 'prod',    note: 'RESEND_API_KEY (re_***)' },
       { name: 'Resend Dashboard',    url: 'https://resend.com/emails',                       env: 'admin',   note: 'Ver logs de email enviados' },
     ],
   },

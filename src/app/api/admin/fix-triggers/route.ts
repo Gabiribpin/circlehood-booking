@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   // Tentar via supabase admin client com rpc exec_sql (não funciona sem a função)
   // Usar fetch directo para o endpoint de management API do Supabase
-  const projectRef = 'ibkkxykcrwhncvqxzynt';
+  const projectRef = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? '';
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   const fixSQL = `
@@ -111,7 +111,7 @@ $$ LANGUAGE plpgsql;
     error: `Management API requer PAT (não service_role): ${mgmtRes.status}`,
     fix_sql: fixSQL,
     instructions: [
-      '1. Abrir: https://supabase.com/dashboard/project/ibkkxykcrwhncvqxzynt/sql/new',
+      `1. Abrir: https://supabase.com/dashboard/project/${projectRef}/sql/new`,
       '2. Colar o conteúdo de fix_sql acima',
       '3. Clicar Run',
       '4. Voltar e re-executar o script de teste',

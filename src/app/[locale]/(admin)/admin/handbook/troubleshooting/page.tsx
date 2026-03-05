@@ -77,7 +77,7 @@ const troubleshootingData = [
       'Reset de senha via painel Supabase Auth',
     ],
     links: [
-      { label: 'Supabase Auth', url: 'https://supabase.com/dashboard/project/ibkkxykcrwhncvqxzynt/auth/users' },
+      { label: 'Supabase Auth', url: 'https://supabase.com/dashboard → Auth → Users' },
     ],
   },
   {
