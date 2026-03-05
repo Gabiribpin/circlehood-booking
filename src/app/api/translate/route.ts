@@ -1,9 +1,26 @@
 import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { isRateLimited } from '@/lib/rate-limit';
 import Anthropic from '@anthropic-ai/sdk';
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 20 translation requests per minute per user
+    const limited = await isRateLimited(`translate:${user.id}`, 20, 60);
+    if (limited) {
+      return Response.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const { text, from, to } = await request.json();
 
     if (!text || !from || !to) {
@@ -51,7 +68,7 @@ Translation:`,
 
     return Response.json(translations);
   } catch (error) {
-    logger.error('Translation error:', error);
+    logger.error('[translate]', error);
     return Response.json({ error: 'Translation failed' }, { status: 500 });
   }
 }
