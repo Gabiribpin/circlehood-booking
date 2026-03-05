@@ -1233,5 +1233,10 @@
     "registerTermsAnd": "y la",
     "registerPrivacyLink": "Política de Privacidad",
     "registerTermsRequired": "Debes aceptar los Términos de Uso para crear una cuenta."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "professionalNotFound": "Este profesional no existe o la página ha sido desactivada.",
+    "backHome": "Volver al inicio"
   }
 }

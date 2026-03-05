@@ -1233,5 +1233,10 @@
     "registerTermsAnd": "and the",
     "registerPrivacyLink": "Privacy Policy",
     "registerTermsRequired": "You must accept the Terms of Use to create an account."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "professionalNotFound": "This professional does not exist or the page has been deactivated.",
+    "backHome": "Back to home"
   }
 }
