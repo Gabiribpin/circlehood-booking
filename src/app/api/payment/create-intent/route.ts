@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripeServer } from '@/lib/stripe/server';
@@ -125,7 +126,17 @@ export async function POST(request: NextRequest) {
       currency: professional.currency ?? 'EUR',
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erro ao criar intenção de pagamento';
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error('[payment/create-intent]', err);
+    const isStripeError = err && typeof err === 'object' && 'type' in err;
+    if (isStripeError && (err as any).type === 'StripeConnectionError') {
+      return NextResponse.json(
+        { error: 'Conexão temporariamente indisponível. Tente novamente em alguns segundos.' },
+        { status: 502 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Erro ao processar pagamento. Tente novamente.' },
+      { status: 500 }
+    );
   }
 }

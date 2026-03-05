@@ -11,7 +11,7 @@ export function getStripeServer(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   if (!_stripe) {
-    _stripe = new Stripe(key);
+    _stripe = new Stripe(key, { maxNetworkRetries: 3 });
   }
   return _stripe;
 }
