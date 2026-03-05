@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,6 @@ export function NextStepsCard() {
         setLandingUrl(url);
         setSlug(professional.slug);
         setBusinessName(professional.business_name ?? '');
-
-        QRCode.toDataURL(url, { width: 200, margin: 2 }).then(setQrCodeUrl);
       }
 
       if (whatsappConfig?.business_phone) {
@@ -53,13 +51,17 @@ export function NextStepsCard() {
     fetchData();
   }, []);
 
-  function copyToClipboard(text: string, type: 'landing' | 'whatsapp') {
-    navigator.clipboard.writeText(text);
-    setCopied(type);
-    setTimeout(() => setCopied(null), 2000);
-  }
+  // Generate QR code only when landingUrl changes (memoized)
+  useEffect(() => {
+    if (!landingUrl) return;
+    let cancelled = false;
+    QRCode.toDataURL(landingUrl, { width: 200, margin: 2 }).then((url) => {
+      if (!cancelled) setQrCodeUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [landingUrl]);
 
-  async function handleDownloadQR() {
+  const handleDownloadQR = useCallback(async () => {
     if (!qrCodeUrl) return;
 
     const canvas = document.createElement('canvas');
@@ -91,6 +93,12 @@ export function NextStepsCard() {
       link.click();
     };
     img.src = qrCodeUrl;
+  }, [qrCodeUrl, businessName, slug]);
+
+  function copyToClipboard(text: string, type: 'landing' | 'whatsapp') {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
   }
 
   return (
