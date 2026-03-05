@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { validateAdminToken } from '@/lib/admin/session';
 import { clearMemoryCache } from '@/lib/ai/chatbot';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-admin-secret');
-  if (secret !== process.env.CRON_SECRET) {
+  const cookieStore = await cookies();
+  if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

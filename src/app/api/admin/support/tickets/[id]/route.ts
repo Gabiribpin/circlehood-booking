@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { validateAdminToken } from '@/lib/admin/session';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // PATCH — admin updates ticket status
@@ -9,13 +10,9 @@ export async function PATCH(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!user || !adminEmail || user.email !== adminEmail) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+  const cookieStore = await cookies();
+  if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { status, priority } = await request.json();
