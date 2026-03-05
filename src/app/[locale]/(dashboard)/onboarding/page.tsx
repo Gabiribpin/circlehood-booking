@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Bot,
   Palette,
+  CreditCard,
 } from 'lucide-react';
 
 // ─── Step definition ────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const STEP_DEFS: StepDef[] = [
   { id: 'schedule', tKey: 'Schedule', icon: <Clock className="h-5 w-5" />,        href: '/schedule',         required: true },
   { id: 'whatsapp', tKey: 'Whatsapp', icon: <MessageSquare className="h-5 w-5" />,href: '/whatsapp-config',  required: true },
   { id: 'botname',  tKey: 'Botname',  icon: <Bot className="h-5 w-5" />,          href: '/whatsapp-config?tab=ai',  required: false },
+  { id: 'payment',  tKey: 'Payment',  icon: <CreditCard className="h-5 w-5" />,   href: '/settings/payment', required: false },
   { id: 'profile',  tKey: 'Profile',  icon: <Palette className="h-5 w-5" />,      href: '/my-page-editor',   required: false },
 ];
 
@@ -55,6 +57,7 @@ export default function OnboardingPage() {
     schedule: false,
     whatsapp: false,
     botname: false,
+    payment: false,
     profile: false,
   });
 
@@ -65,7 +68,7 @@ export default function OnboardingPage() {
 
     const { data: professional } = await supabase
       .from('professionals')
-      .select('id, bio, business_name')
+      .select('id, bio, business_name, payment_method')
       .eq('user_id', user.id)
       .single();
     if (!professional) return;
@@ -96,6 +99,7 @@ export default function OnboardingPage() {
       schedule: (scheduleCount ?? 0) > 0,
       whatsapp: wc?.is_active === true,
       botname: !!(botConfig?.bot_name && botConfig.bot_name.trim().length > 0),
+      payment: !!(professional.payment_method && professional.payment_method !== ''),
       profile: !!(professional.bio && professional.bio.length > 10),
     });
     setLoading(false);
