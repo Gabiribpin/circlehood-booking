@@ -22,6 +22,15 @@ export default async function PaymentSettingsPage() {
 
   if (!professional) redirect('/register');
 
+  // Check if Stripe Connect account is fully onboarded
+  const { data: connectAccount } = await supabase
+    .from('stripe_connect_accounts')
+    .select('charges_enabled')
+    .eq('professional_id', professional.id)
+    .maybeSingle();
+
+  const stripeConnected = connectAccount?.charges_enabled === true;
+
   const t = await getTranslations('payment');
 
   return (
@@ -49,7 +58,7 @@ export default async function PaymentSettingsPage() {
         depositType={(professional.deposit_type as 'percentage' | 'fixed' | null) ?? null}
         depositValue={professional.deposit_value ?? null}
         currency={professional.currency ?? 'EUR'}
-        stripeConnected={false}
+        stripeConnected={stripeConnected}
       />
     </div>
   );

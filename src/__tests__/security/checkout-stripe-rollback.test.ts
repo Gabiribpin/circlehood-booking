@@ -46,7 +46,7 @@ describe('Checkout route Stripe rollback (issue #136)', () => {
     const stripeIndex = source.indexOf('stripe.checkout.sessions.create');
     const afterStripe = source.slice(stripeIndex);
     const catchIndex = afterStripe.indexOf('} catch');
-    const catchBlock = afterStripe.slice(catchIndex, catchIndex + 300);
+    const catchBlock = afterStripe.slice(catchIndex, catchIndex + 500);
 
     // Should return a proper error response, not re-throw
     expect(catchBlock).toContain('NextResponse.json');

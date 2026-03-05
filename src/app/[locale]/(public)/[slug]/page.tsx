@@ -50,6 +50,15 @@ async function getProfessional(slug: string) {
     .eq('is_visible', true)
     .order('order_index', { ascending: true });
 
+  // Check if Stripe Connect onboarding is complete (charges_enabled)
+  const { data: connectAccount } = await supabase
+    .from('stripe_connect_accounts')
+    .select('charges_enabled')
+    .eq('professional_id', professional.id)
+    .maybeSingle();
+
+  const stripeChargesEnabled = connectAccount?.charges_enabled === true;
+
   const pageAvailability = await isPublicPageAvailable(professional.id);
 
   return {
@@ -58,6 +67,7 @@ async function getProfessional(slug: string) {
     workingHours: workingHours || [],
     sections: (sections || []) as PageSection[],
     pageAvailability,
+    stripeChargesEnabled,
   };
 }
 
@@ -172,7 +182,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const { professional, services, workingHours, sections, pageAvailability } = data;
+  const { professional, services, workingHours, sections, pageAvailability, stripeChargesEnabled } = data;
+
+  // Only offer deposit if Stripe Connect is fully onboarded (charges_enabled)
+  const depositReady = (professional.require_deposit ?? false) && stripeChargesEnabled;
 
   // not_found or manually_disabled → hard 404
   if (
@@ -204,7 +217,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 professionalId={professional.id}
                 currency={professional.currency}
                 workingHours={workingHours}
-                requireDeposit={professional.require_deposit ?? false}
+                requireDeposit={depositReady}
                 depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
                 depositValue={professional.deposit_value ?? null}
                 stripeAccountId={(professional as any).stripe_account_id ?? null}
@@ -302,7 +315,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
               professionalId={professional.id}
               currency={professional.currency}
               workingHours={workingHours}
-              requireDeposit={professional.require_deposit ?? false}
+              requireDeposit={depositReady}
               depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
               depositValue={professional.deposit_value ?? null}
               stripeAccountId={(professional as any).stripe_account_id ?? null}
