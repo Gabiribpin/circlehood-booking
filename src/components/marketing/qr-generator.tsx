@@ -2,6 +2,7 @@
 import { logger } from '@/lib/logger';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,7 @@ const QR_SIZES = [
   { label: '200px (Preview)', value: 200 },
   { label: '300px (Email)', value: 300 },
   { label: '500px (Web)', value: 500 },
-  { label: '1000px (Impressão)', value: 1000 },
+  { label: '1000px (Print)', value: 1000 },
 ];
 
 const PRESET_COLORS = [
@@ -38,6 +39,7 @@ const PRESET_COLORS = [
 ];
 
 export function QRGenerator({ url, professionalId, businessName, renderMode }: QRGeneratorProps) {
+  const t = useTranslations('marketing');
   const [qrColor, setQrColor] = useState('#000000');
   const [qrSize, setQrSize] = useState(300);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -46,9 +48,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
-  const ctaText = url.includes('wa.me')
-    ? 'Escaneie para falar no WhatsApp'
-    : 'Escaneie para agendar';
+  const ctaText = url.includes('wa.me') ? t('ctaWhatsapp') : t('ctaBooking');
 
   // Generate QR code preview
   useEffect(() => {
@@ -65,8 +65,8 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
     } catch (error) {
       logger.error('Error generating QR preview:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao gerar preview do QR code',
+        title: t('toastError'),
+        description: t('toastQrFailed'),
         variant: 'destructive',
       });
     }
@@ -106,16 +106,16 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
         canvasToPNG(canvas, `qrcode-${isWhatsapp ? 'whatsapp-' : ''}${businessName.toLowerCase().replace(/\s+/g, '-')}`);
 
         toast({
-          title: 'Sucesso!',
-          description: 'QR Code baixado com sucesso',
+          title: t('toastSuccess'),
+          description: t('toastQrDownloaded'),
         });
       };
       img.src = qrCodeUrl;
     } catch (error) {
       logger.error('Error downloading QR:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao baixar QR code',
+        title: t('toastError'),
+        description: t('toastQrDownloadFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -142,16 +142,16 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
         canvasToSVG(canvas, `qrcode-${isWhatsapp ? 'whatsapp-' : ''}${businessName.toLowerCase().replace(/\s+/g, '-')}`);
 
         toast({
-          title: 'Sucesso!',
-          description: 'QR Code SVG baixado com sucesso',
+          title: t('toastSuccess'),
+          description: t('toastQrSvgDownloaded'),
         });
       };
       img.src = qrCodeUrl;
     } catch (error) {
       logger.error('Error downloading SVG:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao baixar QR code SVG',
+        title: t('toastError'),
+        description: t('toastQrDownloadFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -168,8 +168,8 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
   async function handleSaveDesign() {
     if (!saveName.trim()) {
       toast({
-        title: 'Nome obrigatório',
-        description: 'Digite um nome para salvar o design',
+        title: t('toastQrSaveNameRequired'),
+        description: t('toastQrSaveNameHint'),
         variant: 'destructive',
       });
       return;
@@ -197,16 +197,16 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
       if (error) throw error;
 
       toast({
-        title: 'Salvo!',
-        description: 'Design do QR Code salvo com sucesso',
+        title: t('toastSaved'),
+        description: t('toastQrSaved'),
       });
 
       setSaveName('');
     } catch (error) {
       logger.error('Error saving QR design:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao salvar design',
+        title: t('toastError'),
+        description: t('toastQrSaveFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -218,7 +218,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
   if (renderMode === 'customize') {
     return (
       <div className="space-y-6">
-        {/* Preview (small) */}
+        {/* Preview */}
         <div className="flex items-center justify-center p-6 bg-muted rounded-lg">
           {qrCodeUrl ? (
             <div className="bg-white p-3 rounded-lg shadow-lg">
@@ -226,25 +226,25 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                 src={qrCodeUrl}
                 alt="QR Code Preview"
                 className="w-full h-auto"
-                style={{ maxWidth: '200px' }}
+                style={{ maxWidth: '250px' }}
               />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         {/* Size Selection */}
         <div className="space-y-2">
-          <Label>Tamanho</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <Label>{t('qrSizeLabel')}</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {QR_SIZES.map((size) => (
               <Button
                 key={size.value}
                 variant={qrSize === size.value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setQrSize(size.value)}
-                className="justify-start"
+                className="text-xs"
               >
                 {size.label}
               </Button>
@@ -254,8 +254,8 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
 
         {/* Color Selection */}
         <div className="space-y-2">
-          <Label>Cor</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <Label>{t('qrColorLabel')}</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {PRESET_COLORS.map((color) => (
               <Button
                 key={color.value}
@@ -265,7 +265,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                 className="justify-start gap-2"
               >
                 <div
-                  className="w-4 h-4 rounded border"
+                  className="w-4 h-4 rounded border shrink-0"
                   style={{ backgroundColor: color.value }}
                 />
                 {color.label}
@@ -276,7 +276,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
 
         {/* Custom Color Picker */}
         <div className="space-y-2">
-          <Label htmlFor="custom-color">Cor Personalizada</Label>
+          <Label htmlFor="custom-color">{t('qrCustomColor')}</Label>
           <div className="flex gap-2">
             <Input
               id="custom-color"
@@ -316,19 +316,19 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
               />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2">
           <Button
             onClick={handleDownloadPNG}
             disabled={loading || !qrCodeUrl}
             className="flex-1"
           >
             <Download className="mr-2 h-4 w-4" />
-            Baixar PNG
+            {t('qrDownloadPNG')}
           </Button>
           <Button
             onClick={handleDownloadSVG}
@@ -337,7 +337,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
             className="flex-1"
           >
             <Download className="mr-2 h-4 w-4" />
-            Baixar SVG
+            {t('qrDownloadSVG')}
           </Button>
           <ImageShareButtons
             getBlob={getQRBlob}
@@ -347,15 +347,15 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
 
         {/* Save Design */}
         <div className="border-t pt-4">
-          <h4 className="font-medium mb-4">Salvar Design</h4>
+          <h4 className="font-medium mb-4">{t('qrSaveDesign')}</h4>
           <div className="space-y-2">
-            <Label htmlFor="save-name">Nome do design</Label>
+            <Label htmlFor="save-name">{t('qrSaveName')}</Label>
             <div className="flex gap-2">
               <Input
                 id="save-name"
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
-                placeholder="Ex: QR Code Principal"
+                placeholder={t('qrSaveNamePlaceholder')}
               />
               <Button
                 onClick={handleSaveDesign}
@@ -366,7 +366,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Salve seus designs favoritos para reutilizar depois
+              {t('qrSaveHint')}
             </p>
           </div>
         </div>
@@ -400,18 +400,18 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                     />
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">Gerando preview...</p>
+                  <p className="text-muted-foreground">{t('generatingPreview')}</p>
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                 <Button
                   onClick={handleDownloadPNG}
                   disabled={loading || !qrCodeUrl}
                   className="flex-1"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Baixar PNG
+                  {t('qrDownloadPNG')}
                 </Button>
                 <Button
                   onClick={handleDownloadSVG}
@@ -420,7 +420,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                   className="flex-1"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Baixar SVG
+                  {t('qrDownloadSVG')}
                 </Button>
                 <ImageShareButtons
                   getBlob={getQRBlob}
@@ -436,10 +436,10 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
           <CardContent className="p-6">
             <div className="space-y-6">
               <div>
-                <h4 className="font-medium mb-4">Personalização</h4>
+                <h4 className="font-medium mb-4">{t('stepCustomize')}</h4>
 
                 <div className="space-y-2 mb-4">
-                  <Label>Tamanho</Label>
+                  <Label>{t('qrSizeLabel')}</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {QR_SIZES.map((size) => (
                       <Button
@@ -447,7 +447,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                         variant={qrSize === size.value ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setQrSize(size.value)}
-                        className="justify-start"
+                        className="text-xs"
                       >
                         {size.label}
                       </Button>
@@ -456,8 +456,8 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <Label>Cor</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label>{t('qrColorLabel')}</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {PRESET_COLORS.map((color) => (
                       <Button
                         key={color.value}
@@ -467,7 +467,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                         className="justify-start gap-2"
                       >
                         <div
-                          className="w-4 h-4 rounded border"
+                          className="w-4 h-4 rounded border shrink-0"
                           style={{ backgroundColor: color.value }}
                         />
                         {color.label}
@@ -477,7 +477,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  <Label htmlFor="custom-color-default">Cor Personalizada</Label>
+                  <Label htmlFor="custom-color-default">{t('qrCustomColor')}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="custom-color-default"
@@ -498,15 +498,15 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-4">Salvar Design</h4>
+                <h4 className="font-medium mb-4">{t('qrSaveDesign')}</h4>
                 <div className="space-y-2">
-                  <Label htmlFor="save-name-default">Nome do design</Label>
+                  <Label htmlFor="save-name-default">{t('qrSaveName')}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="save-name-default"
                       value={saveName}
                       onChange={(e) => setSaveName(e.target.value)}
-                      placeholder="Ex: QR Code Principal"
+                      placeholder={t('qrSaveNamePlaceholder')}
                     />
                     <Button
                       onClick={handleSaveDesign}
@@ -517,7 +517,7 @@ export function QRGenerator({ url, professionalId, businessName, renderMode }: Q
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Salve seus designs favoritos para reutilizar depois
+                    {t('qrSaveHint')}
                   </p>
                 </div>
               </div>

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 import { Download, RefreshCw } from 'lucide-react';
 import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
@@ -37,6 +38,7 @@ const GRADIENT_PRESETS = [
 export function BusinessCardGenerator({
   professional, bookingUrl, qrUrl, qrCtaText, secondQrUrl, secondQrCtaText, renderMode,
 }: BusinessCardGeneratorProps) {
+  const t = useTranslations('marketing');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [gradient, setGradient] = useState(GRADIENT_PRESETS[0]);
@@ -46,7 +48,7 @@ export function BusinessCardGenerator({
   const { toast } = useToast();
 
   const effectiveQrUrl = qrUrl || bookingUrl;
-  const effectiveCtaText = qrCtaText || 'Escaneie para agendar';
+  const effectiveCtaText = qrCtaText || t('ctaBooking');
   const hasDualQr = !!secondQrUrl;
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export function BusinessCardGenerator({
 
       ctx.font = '16px monospace';
       ctx.fillStyle = '#E0E0E0';
-      ctx.fillText(`circlehood.app/${professional.slug}`, leftPadding, contactY + 75);
+      ctx.fillText(`booking.circlehood-tech.com/${professional.slug}`, leftPadding, contactY + 75);
 
       if (hasDualQr) {
         // Two QR codes stacked on the right
@@ -172,7 +174,7 @@ export function BusinessCardGenerator({
       }
     } catch (error) {
       logger.error('Error generating business card:', error);
-      toast({ title: 'Erro', description: 'Falha ao gerar cartão de visita', variant: 'destructive' });
+      toast({ title: t('toastError'), description: t('toastCardFailed'), variant: 'destructive' });
     }
   }
 
@@ -182,10 +184,10 @@ export function BusinessCardGenerator({
     setLoading(true);
     try {
       canvasToPNG(canvas, `cartao-${professional.slug}`);
-      toast({ title: 'Sucesso!', description: 'Cartão de visita baixado com sucesso' });
+      toast({ title: t('toastSuccess'), description: t('toastCardDownloaded') });
     } catch (error) {
       logger.error('Error downloading card:', error);
-      toast({ title: 'Erro', description: 'Falha ao baixar cartão', variant: 'destructive' });
+      toast({ title: t('toastError'), description: t('toastCardDownloadFailed'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -206,12 +208,12 @@ export function BusinessCardGenerator({
               <img src={previewUrl} alt="Business Card Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label>Estilo de Fundo</Label>
+          <Label>{t('cardBackgroundLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
             {GRADIENT_PRESETS.map((preset) => (
               <Button
@@ -229,18 +231,18 @@ export function BusinessCardGenerator({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Telefone (opcional)</Label>
+          <Label htmlFor="phone">{t('cardPhoneLabel')}</Label>
           <Input id="phone" value={customPhone} onChange={(e) => setCustomPhone(e.target.value)} placeholder="+351 91 234 5678" />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="instagram">Instagram (opcional)</Label>
+          <Label htmlFor="instagram">{t('cardInstagramLabel')}</Label>
           <Input id="instagram" value={customInstagram} onChange={(e) => setCustomInstagram(e.target.value)} placeholder="@seunegocio" />
         </div>
 
         <Button onClick={generatePreview} variant="outline" className="w-full">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Atualizar Preview
+          {t('cardUpdatePreview')}
         </Button>
 
         <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -257,20 +259,20 @@ export function BusinessCardGenerator({
               <img src={previewUrl} alt="Business Card Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
             <Download className="mr-2 h-4 w-4" />
-            Baixar Cartão (PNG)
+            {t('cardDownload')}
           </Button>
           <ImageShareButtons getBlob={getCardBlob} filename={`cartao-${professional.slug}`} />
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
-          Alta resolução (1050x600px) — Perfeito para compartilhar em redes sociais
+{t('cardResolution')}
         </p>
 
         <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -294,13 +296,13 @@ export function BusinessCardGenerator({
                   <img src={previewUrl} alt="Business Card Preview" className="w-full h-auto" />
                 </div>
               ) : (
-                <p className="text-muted-foreground">Gerando preview...</p>
+                <p className="text-muted-foreground">{t('generatingPreview')}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
-                Baixar Cartão (PNG)
+                {t('cardDownload')}
               </Button>
               <ImageShareButtons getBlob={getCardBlob} filename={`cartao-${professional.slug}`} />
             </div>
@@ -311,9 +313,9 @@ export function BusinessCardGenerator({
         <CardContent className="p-6">
           <div className="space-y-6">
             <div>
-              <h4 className="font-medium mb-4">Personalização</h4>
+              <h4 className="font-medium mb-4">{t('stepCustomize')}</h4>
               <div className="space-y-2 mb-4">
-                <Label>Estilo de Fundo</Label>
+                <Label>{t('cardBackgroundLabel')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {GRADIENT_PRESETS.map((preset) => (
                     <Button key={preset.label} variant={gradient === preset ? 'default' : 'outline'} size="sm" onClick={() => setGradient(preset)} className="justify-start gap-2">
@@ -324,16 +326,16 @@ export function BusinessCardGenerator({
                 </div>
               </div>
               <div className="space-y-2 mb-4">
-                <Label htmlFor="phone-default">Telefone (opcional)</Label>
+                <Label htmlFor="phone-default">{t('cardPhoneLabel')}</Label>
                 <Input id="phone-default" value={customPhone} onChange={(e) => setCustomPhone(e.target.value)} placeholder="+351 91 234 5678" />
               </div>
               <div className="space-y-2 mb-4">
-                <Label htmlFor="instagram-default">Instagram (opcional)</Label>
+                <Label htmlFor="instagram-default">{t('cardInstagramLabel')}</Label>
                 <Input id="instagram-default" value={customInstagram} onChange={(e) => setCustomInstagram(e.target.value)} placeholder="@seunegocio" />
               </div>
               <Button onClick={generatePreview} variant="outline" className="w-full">
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Atualizar Preview
+                {t('cardUpdatePreview')}
               </Button>
             </div>
           </div>
