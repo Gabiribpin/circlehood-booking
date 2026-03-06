@@ -495,18 +495,30 @@ export default function ExecutionWheelV3Page() {
 
       setFocus((currentFocus) => {
         if (!currentFocus) return null;
+
+        // Check if current issue has an open PR — if so, auto-advance to next
+        const currentIssueEntry = issues.find((i: GHIssue) => i.number === currentFocus.number);
+        const hasPR = currentIssueEntry?.pull_request;
+
         const stillOpen = issues.find((i: GHIssue) => i.number === currentFocus.number && !i.pull_request);
-        if (stillOpen) {
-          return { ...currentFocus, labels: labelsOf(stillOpen) };
+
+        if (hasPR || !stillOpen) {
+          // Issue has PR or was closed — move to next
+          const reason = hasPR ? 'PR aberto' : 'fechada';
+          log(`Issue #${currentFocus.number} ${reason}. Avancando...`);
+          const openWithoutPR = issues.filter((i: GHIssue) => i.state === 'open' && !i.pull_request && i.number !== currentFocus.number);
+          const next = pickNext(openWithoutPR.length > 0 ? openWithoutPR : issues.filter((i: GHIssue) => !i.pull_request));
+          if (next) {
+            const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+            log(`Novo foco: #${next.number} — ${next.title}`);
+            setPhase('ready');
+            return f;
+          }
+          return null;
         }
-        log('Issue focada foi fechada. Recalculando...');
-        const next = pickNext(issues);
-        if (next) {
-          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
-          log(`Novo foco: #${next.number} — ${next.title}`);
-          return f;
-        }
-        return null;
+
+        // Still open without PR — update labels
+        return { ...currentFocus, labels: labelsOf(stillOpen) };
       });
     } catch (e) {
       const msg = (e as Error).message;
