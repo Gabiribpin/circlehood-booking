@@ -66,6 +66,8 @@ interface Focus {
   node_id?: string;
 }
 
+type IssuePhase = 'ready' | 'ci-failing' | 'ready-to-validate' | 'awaiting-evidence' | 'audit';
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
@@ -209,6 +211,10 @@ export default function ExecutionWheelV2Page() {
 
   // Focus state
   const [focus, setFocus] = useState<Focus | null>(null);
+
+  // Phase detection state
+  const [phase, setPhase] = useState<IssuePhase | null>(null);
+  const [phaseLoading, setPhaseLoading] = useState(false);
 
   const log = useCallback((msg: string) => {
     const ts = new Date().toISOString().slice(11, 19);
@@ -356,6 +362,7 @@ export default function ExecutionWheelV2Page() {
     } finally {
       setGhLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [log]);
 
   // Dedup: search for similar issues by keywords
@@ -616,6 +623,67 @@ export default function ExecutionWheelV2Page() {
     }
   }
 
+  // ─── Phase Detection ────────────────────────────────────────────────
+
+  const detectPhase = useCallback(async (f: Focus | null) => {
+    if (!f) {
+      // No focus — check if there are open issues
+      if (ghIssues.filter((i) => !i.pull_request).length === 0) {
+        setPhase('audit');
+      } else {
+        setPhase(null);
+      }
+      return;
+    }
+
+    setPhaseLoading(true);
+    try {
+      const branch = branchName(f);
+      const data = await apiFetch(`/api/admin/github/issues?action=pr-status&branch=${encodeURIComponent(branch)}`);
+
+      if (!data.hasPR) {
+        setPhase('ready');
+      } else if (data.prState === 'merged') {
+        setPhase('awaiting-evidence');
+      } else if (data.prState === 'open' && data.ciStatus === 'failure') {
+        setPhase('ci-failing');
+      } else if (data.prState === 'open' && data.ciStatus === 'success') {
+        setPhase('ready-to-validate');
+      } else {
+        setPhase('ready');
+      }
+    } catch {
+      setPhase('ready'); // fallback
+    } finally {
+      setPhaseLoading(false);
+    }
+  }, [ghIssues]);
+
+  // Auto-detect phase when focus or issues change
+  useEffect(() => {
+    detectPhase(focus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, ghIssues]);
+
+  const PHASE_LABELS: Record<IssuePhase, { emoji: string; label: string; promptType: 'execution' | 'fix-ci' | 'validation' | 'evidence'; promptLabel: string }> = {
+    'ready':              { emoji: '🔵', label: 'PRONTO PARA EXECUTAR',  promptType: 'execution',  promptLabel: 'Execução' },
+    'ci-failing':         { emoji: '🟡', label: 'CI FALHANDO',           promptType: 'fix-ci',     promptLabel: 'Fix CI' },
+    'ready-to-validate':  { emoji: '🟢', label: 'PRONTO PARA VALIDAR',  promptType: 'validation', promptLabel: 'Validação' },
+    'awaiting-evidence':  { emoji: '🟣', label: 'AGUARDANDO EVIDÊNCIA', promptType: 'evidence',   promptLabel: 'Evidência' },
+    'audit':              { emoji: '⚪', label: 'AUDITORIA',             promptType: 'execution',  promptLabel: 'Auditoria' },
+  };
+
+  async function copySmartPrompt() {
+    if (phase === 'audit') {
+      await handleAuditPrompt();
+      return;
+    }
+    if (!focus || !phase) return;
+    const info = PHASE_LABELS[phase];
+    await copyPrompt(info.promptType);
+    log(`Prompt de ${info.promptLabel} copiado — #${focus.number}`);
+  }
+
   // ─── Dedup search on capture text change (debounced) ─────────────────
 
   useEffect(() => {
@@ -731,9 +799,9 @@ export default function ExecutionWheelV2Page() {
           Proxima Issue
         </button>
         <button
-          onClick={() => focus && copyPrompt('execution')}
-          disabled={!focus}
-          className="flex items-center gap-2 justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 transition-colors"
+          onClick={copySmartPrompt}
+          disabled={!focus && phase !== 'audit'}
+          className="flex items-center gap-2 justify-center rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 transition-colors"
         >
           <Copy className="h-4 w-4" />
           Copiar Prompt
@@ -1163,39 +1231,25 @@ export default function ExecutionWheelV2Page() {
                     </div>
                   </div>
 
-                  {/* Prompt buttons */}
+                  {/* Phase badge + Smart prompt button */}
                   <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Prompts</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <button
-                        onClick={() => copyPrompt('execution')}
-                        className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
-                      >
-                        <Copy className="h-3.5 w-3.5 inline mr-1.5" />
-                        Execucao
-                      </button>
-                      <button
-                        onClick={() => copyPrompt('fix-ci')}
-                        className="rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
-                      >
-                        <AlertTriangle className="h-3.5 w-3.5 inline mr-1.5" />
-                        Fix CI
-                      </button>
-                      <button
-                        onClick={() => copyPrompt('validation')}
-                        className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
-                      >
-                        <Shield className="h-3.5 w-3.5 inline mr-1.5" />
-                        Validacao
-                      </button>
-                      <button
-                        onClick={() => copyPrompt('evidence')}
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 inline mr-1.5" />
-                        Evidencia
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Fase</h3>
+                      {phaseLoading ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                      ) : phase && PHASE_LABELS[phase] ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                          {PHASE_LABELS[phase].emoji} {PHASE_LABELS[phase].label}
+                        </span>
+                      ) : null}
                     </div>
+                    <button
+                      onClick={copySmartPrompt}
+                      className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-3 text-sm transition-colors"
+                    >
+                      <Copy className="h-4 w-4 inline mr-2" />
+                      Copiar Prompt
+                    </button>
                   </div>
 
                   {/* Other actions */}

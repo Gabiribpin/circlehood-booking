@@ -64,6 +64,52 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data.items || []);
     }
 
+    if (action === 'pr-status') {
+      const branch = url.searchParams.get('branch');
+      if (!branch) {
+        return NextResponse.json({ error: 'branch parameter required' }, { status: 400 });
+      }
+
+      const owner = REPO.split('/')[0];
+      const pulls = await ghFetch(
+        `/repos/${REPO}/pulls?head=${encodeURIComponent(owner + ':' + branch)}&state=all&per_page=1`,
+        token
+      );
+
+      if (!pulls || pulls.length === 0) {
+        return NextResponse.json({ hasPR: false, prState: 'none', ciStatus: 'none' });
+      }
+
+      const pr = pulls[0];
+      const prState: string = pr.merged_at ? 'merged' : pr.state; // 'open' | 'closed' | 'merged'
+
+      let ciStatus = 'none';
+      if (pr.head?.sha) {
+        try {
+          const checks = await ghFetch(
+            `/repos/${REPO}/commits/${pr.head.sha}/check-runs?per_page=100`,
+            token
+          );
+          const runs = checks.check_runs || [];
+          if (runs.length > 0) {
+            const hasFailure = runs.some((r: { conclusion: string | null }) => r.conclusion === 'failure');
+            const allSuccess = runs.every((r: { conclusion: string | null; status: string }) =>
+              r.conclusion === 'success' || r.conclusion === 'skipped'
+            );
+            const hasPending = runs.some((r: { status: string }) => r.status !== 'completed');
+            if (hasFailure) ciStatus = 'failure';
+            else if (hasPending) ciStatus = 'pending';
+            else if (allSuccess) ciStatus = 'success';
+            else ciStatus = 'pending';
+          }
+        } catch {
+          // If check-runs fails, leave as 'none'
+        }
+      }
+
+      return NextResponse.json({ hasPR: true, prState, ciStatus });
+    }
+
     if (action === 'check') {
       await ghFetch(`/repos/${REPO}`, token);
       return NextResponse.json({ connected: true });
