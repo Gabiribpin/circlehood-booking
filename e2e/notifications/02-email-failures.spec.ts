@@ -232,9 +232,13 @@ test.describe('Observabilidade — notification_logs para emails', () => {
       },
     });
 
-    // Aceitar 201 (criado) ou 409 (slot ocupado por outro teste)
+    // Aceitar 201 (criado), 409 (slot ocupado) ou 429 (rate limit)
     if (res.status() === 409) {
       test.skip(true, 'Slot ocupado — sem disponibilidade para criar booking de teste');
+      return;
+    }
+    if (res.status() === 429) {
+      test.skip(true, 'Rate limited — muitas requisições simultâneas');
       return;
     }
 
