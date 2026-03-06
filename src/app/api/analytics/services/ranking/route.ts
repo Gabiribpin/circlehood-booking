@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // Contar agendamentos por serviço e coletar info
     const serviceMap = new Map<string, { name: string; price: number; count: number }>();
     for (const b of bookings ?? []) {
-      const svc = b.services as { id: string; name: string; price: number } | null;
+      const svc = b.services as unknown as { id: string; name: string; price: number } | null;
       if (!b.service_id || !svc) continue;
       const existing = serviceMap.get(b.service_id);
       if (existing) {

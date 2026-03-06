@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       const g = groups.get(key)!;
       g.bookings++;
       if (booking.status === 'confirmed' || booking.status === 'completed') {
-        const svc = booking.services as { price: number } | null;
+        const svc = booking.services as unknown as { price: number } | null;
         g.revenue += Number(svc?.price ?? 0);
         if (booking.client_phone) g.clients.add(booking.client_phone);
       }

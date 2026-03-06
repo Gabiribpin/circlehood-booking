@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     for (const b of bookings ?? []) {
       const phone = b.client_phone ?? 'unknown';
-      const svc = b.services as { price: number } | null;
+      const svc = b.services as unknown as { price: number } | null;
       const price = Number(svc?.price ?? 0);
 
       if (!clientMap.has(phone)) {

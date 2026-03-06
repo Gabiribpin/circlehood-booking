@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const cancelled = all.filter((b) => b.status === 'cancelled');
 
     const totalRevenue = confirmed.reduce((sum, b) => {
-      const svc = b.services as { price: number } | null;
+      const svc = b.services as unknown as { price: number } | null;
       return sum + Number(svc?.price ?? 0);
     }, 0);
     const confirmedCount = confirmed.length;
