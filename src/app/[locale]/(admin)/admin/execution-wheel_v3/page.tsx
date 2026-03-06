@@ -1,0 +1,1347 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Lightbulb,
+  AlertTriangle,
+  ArrowRight,
+  Copy,
+  RefreshCw,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  GitBranch,
+  Shield,
+  CheckCircle2,
+  Plus,
+  Link2,
+  Rocket,
+} from 'lucide-react';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface InboxItem {
+  id: string;
+  created_at: string;
+  type: 'idea' | 'error';
+  title: string;
+  raw_text: string;
+  status: 'new' | 'triaged' | 'converted';
+  severity: string | null;
+  area: string[];
+  needs_info: string[];
+  duplicates: unknown[];
+  github_issue_number: number | null;
+  github_issue_url: string | null;
+}
+
+interface GHLabel {
+  name: string;
+  color: string;
+}
+
+interface GHIssue {
+  number: number;
+  title: string;
+  html_url: string;
+  state: string;
+  labels: GHLabel[];
+  pull_request?: unknown;
+  node_id: string;
+}
+
+interface DedupSuggestion {
+  number: number;
+  title: string;
+  html_url: string;
+  score: number;
+}
+
+interface Focus {
+  number: number;
+  title: string;
+  url: string;
+  labels: string[];
+  node_id?: string;
+}
+
+type V3Phase =
+  | 'ready'             // 🔵 Issue aberta + sem branch
+  | 'run-tests'         // 🟠 Branch existe + testes não rodaram
+  | 'testing'           // 🔄 Testes rodando
+  | 'local-ok'          // 🟢 Testes passaram
+  | 'ready-for-vercel'  // 🟣 Revisão aprovada
+  | 'deploying'         // 🚀 Push + PR em andamento
+  | 'ci-vercel'         // 🟡 CI Vercel rodando
+  | 'done'              // ✅ Mergeado
+  | 'audit';            // ⚪ Sem issues
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
+const LS_FOCUS_V3 = 'wheel_v3.focus';
+const LS_PHASE_V3 = 'wheel_v3.phase';
+const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
+
+const PHASE_CONFIG: Record<V3Phase, { emoji: string; label: string; color: string }> = {
+  'ready':            { emoji: '🔵', label: 'PRONTO PARA EXECUTAR',  color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
+  'run-tests':        { emoji: '🟠', label: 'RODAR TESTES LOCAL',    color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' },
+  'testing':          { emoji: '🔄', label: 'TESTANDO LOCAL',        color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
+  'local-ok':         { emoji: '🟢', label: 'LOCAL OK',              color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' },
+  'ready-for-vercel': { emoji: '🟣', label: 'PRONTO PARA VERCEL',   color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' },
+  'deploying':        { emoji: '🚀', label: 'ENVIANDO PARA VERCEL', color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' },
+  'ci-vercel':        { emoji: '🟡', label: 'CI VERCEL',             color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' },
+  'done':             { emoji: '✅', label: 'CONCLUÍDO',             color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
+  'audit':            { emoji: '⚪', label: 'AUDITORIA',             color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function labelsOf(issue: GHIssue): string[] {
+  return issue.labels.map((l) => l.name).filter(Boolean);
+}
+
+function getSeverity(labels: string[]): string {
+  for (const p of PRIORITY) {
+    if (labels.includes(p)) return p;
+  }
+  return 'medium';
+}
+
+function severityScore(sev: string): number {
+  const idx = PRIORITY.indexOf(sev as (typeof PRIORITY)[number]);
+  return idx === -1 ? 999 : idx;
+}
+
+function getEffortScore(labels: string[]): number {
+  const s = new Set(labels);
+  if (s.has('effort:low') || s.has('size:S')) return 1;
+  if (s.has('effort:high') || s.has('size:L')) return 3;
+  return 2;
+}
+
+function sevColor(sev: string): string {
+  if (sev === 'blocker') return 'bg-red-600 text-white';
+  if (sev === 'critical') return 'bg-amber-500 text-black';
+  if (sev === 'high') return 'bg-orange-400 text-black';
+  if (sev === 'medium') return 'bg-yellow-300 text-black';
+  if (sev === 'low') return 'bg-sky-300 text-black';
+  return 'bg-slate-500 text-white';
+}
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40) || 'work';
+}
+
+function branchName(f: Focus): string {
+  return `fix/issue-${f.number}-${slugify(f.title)}`;
+}
+
+function labelBadgeColor(hex: string): string {
+  return `bg-[#${hex}] text-white`;
+}
+
+function suggestSeverity(text: string): string {
+  const t = text.toLowerCase();
+  if (/payment|stripe|refund|cobranca/.test(t)) return 'critical';
+  if (/auth|login|security|rls|senha/.test(t)) return 'critical';
+  if (/bot|booking falh|email falh|webhook/.test(t)) return 'high';
+  if (/ui|layout|css|i18n|visual/.test(t)) return 'medium';
+  if (/idea|ideia|sugestao|melhoria/.test(t)) return 'low';
+  return 'medium';
+}
+
+function suggestMissingInfo(item: { raw_text: string; type: string; area: string[] }): string[] {
+  const missing: string[] = [];
+  if (item.raw_text.length < 30) missing.push('Descricao detalhada');
+  if (item.type === 'error' && !/log|erro|stack|trace/i.test(item.raw_text)) missing.push('Log de erro');
+  if (item.area.length === 0) missing.push('Area(s) afetada(s)');
+  return missing;
+}
+
+function pickNext(issues: GHIssue[]): GHIssue | null {
+  const open = issues.filter((i) => i.state === 'open' && !i.pull_request);
+  if (!open.length) return null;
+  open.sort((a, b) => {
+    const la = labelsOf(a), lb = labelsOf(b);
+    const d1 = severityScore(getSeverity(la)) - severityScore(getSeverity(lb));
+    if (d1 !== 0) return d1;
+    const d2 = getEffortScore(la) - getEffortScore(lb);
+    if (d2 !== 0) return d2;
+    return a.number - b.number;
+  });
+  return open[0];
+}
+
+function timeAgo(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+// ─── API Helpers ─────────────────────────────────────────────────────────────
+
+async function apiFetch(path: string, opts?: RequestInit) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(opts?.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ─── Prompt Generators ──────────────────────────────────────────────────────
+
+function generateExecutionPrompt(f: Focus, issueBody: string): string {
+  return [
+    '# EXECUTION MODE v3 — Local First',
+    '',
+    '## Issue a resolver',
+    `#${f.number} — ${f.title}`,
+    `Link: ${f.url}`,
+    `Labels: ${f.labels.join(', ') || '(nenhuma)'}`,
+    '',
+    'Contexto da issue:',
+    issueBody,
+    '',
+    '## Passos',
+    '',
+    '1. Leia a issue completamente',
+    `2. Crie a branch: git checkout -b ${branchName(f)}`,
+    '3. Faça APENAS as alterações que a issue descreve',
+    '4. Suba o ambiente local:',
+    '   - supabase start (se não estiver rodando)',
+    '   - npm run dev (se não estiver rodando)',
+    '5. Rode os testes locais contra localhost:',
+    '   PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test',
+    '6. Rode os unit tests:',
+    '   npm run test',
+    '7. Se tudo passar, faça commit:',
+    `   git commit -m "fix: [descrição] (#${f.number})"`,
+    '   SEM Closes #X no commit',
+    '   NÃO faça push ainda — aguarde aprovação da usuária',
+  ].join('\n');
+}
+
+function generateTestPrompt(f: Focus): string {
+  return [
+    '# TEST MODE v3 — Rodar testes local',
+    '',
+    '## Ambiente',
+    'Verifique se o ambiente está de pé:',
+    '- supabase status → se não estiver rodando: supabase start',
+    '- curl http://localhost:3000 → se não responder: npm run dev &',
+    '',
+    '## Rodar testes',
+    '',
+    '### Unit tests',
+    'npm run test',
+    '',
+    '### E2E contra localhost',
+    'PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test',
+    '',
+    '## Relatório',
+    'Ao final, liste:',
+    '✅ Testes passando: [quantidade]',
+    '❌ Testes falhando: [lista com nome + erro]',
+    '',
+    'Se algum teste falhar, classifique:',
+    '🔴 ERRO DE CÓDIGO → corrija o código',
+    '🟡 ERRO DE TESTE → analise antes de alterar (não enfraqueça o teste)',
+    '🔵 FLAKY → reroda uma vez antes de investigar',
+    '',
+    'Só marque como LOCAL OK quando 100% dos testes passarem.',
+    '',
+    `Issue: #${f.number} — ${f.title}`,
+  ].join('\n');
+}
+
+function generateReviewPrompt(f: Focus): string {
+  return [
+    '# REVIEW MODE v3 — Revisar antes de ir para Vercel',
+    '',
+    '## O que revisar',
+    '',
+    '1. `git diff main` — leia cada alteração feita',
+    '2. Verifique se as mudanças estão dentro do escopo da issue',
+    '3. Verifique se não há arquivos críticos alterados sem necessidade:',
+    '   - supabase/migrations/',
+    '   - src/lib/stripe/',
+    '   - .env*',
+    '4. Confirme que os testes cobrem as mudanças feitas',
+    '5. Liste o que foi alterado em linguagem simples para a usuária revisar',
+    '',
+    '## Formato do relatório',
+    '',
+    '### Arquivos alterados',
+    '[lista com descrição de cada mudança]',
+    '',
+    '### Escopo',
+    '✅ Dentro do escopo / ⚠️ Fora do escopo — [motivo]',
+    '',
+    '### Cobertura de testes',
+    '✅ Coberto / ⚠️ Descoberto — [o que falta]',
+    '',
+    '### Recomendação',
+    '✅ PRONTO PARA VERCEL — pode liberar',
+    '⚠️ REVISAR — [o que precisa de atenção antes]',
+    '',
+    `Issue: #${f.number} — ${f.title}`,
+  ].join('\n');
+}
+
+function generateDeployPrompt(f: Focus): string {
+  return [
+    '# DEPLOY MODE v3 — Enviar para Vercel',
+    '',
+    'A branch local está aprovada. Agora:',
+    '',
+    '1. Push da branch:',
+    `   git push -u origin ${branchName(f)}`,
+    '',
+    '2. Abrir PR:',
+    `   gh pr create \\`,
+    `     --title "fix: [descrição] (#${f.number})" \\`,
+    `     --body "## O que foi feito`,
+    '   [descrição]',
+    '',
+    `   Closes #${f.number}" \\`,
+    '     --base main',
+    '',
+    '3. Ativar auto-merge:',
+    '   gh pr merge --auto --squash',
+    '',
+    '4. Aguardar CI do Vercel.',
+    '   - Se GDPR falhar por preview timeout → é flaky, reroda.',
+    '   - Se qualquer outro job falhar → Fix CI Mode.',
+  ].join('\n');
+}
+
+function generateFixCIPrompt(f: Focus): string {
+  return [
+    '# FIX CI MODE v3 — Investigar e corrigir falha de CI',
+    '',
+    '## Contexto',
+    `O PR da issue #${f.number} (${f.title}) está com CI falhando.`,
+    '',
+    '## Passos',
+    '',
+    '1. Identifique o PR com falha:',
+    '   gh pr list --state open',
+    '',
+    '2. Veja os checks do PR:',
+    '   gh pr checks [NÚMERO DO PR]',
+    '',
+    '3. Para cada job falhando, leia o log:',
+    '   gh run view [RUN_ID] --log-failed',
+    '',
+    '4. Classifique a falha:',
+    '   🔴 ERRO DE CÓDIGO → corrija o código, commit, push',
+    '   🟡 ERRO DE TESTE → analise se o teste está correto',
+    '   🔵 FLAKY/INFRA → gh run rerun [RUN_ID] --failed',
+    '',
+    '5. Confirme que todos os checks passaram:',
+    '   gh pr checks [NÚMERO DO PR] --watch',
+    '',
+    '## Nunca faça',
+    '- Não force merge se CI ainda estiver falhando',
+    '- Não altere arquivos fora do escopo da issue original',
+    '- Não desative ou ignore checks de CI',
+  ].join('\n');
+}
+
+function generateAuditPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return [
+    'MODO AUDITORIA COMPLETA — EXECUCAO TRANSPARENTE',
+    '',
+    'Executar varredura tecnica completa.',
+    '',
+    'Analisar:',
+    '- API routes',
+    '- Banco de dados',
+    '- Pagamentos',
+    '- Seguranca',
+    '- Frontend',
+    '- Build e dependencias',
+    '',
+    'Classificar em:',
+    'BLOCKER / CRITICAL / HIGH / MEDIUM / LOW / ENHANCEMENT',
+    '',
+    'Para cada problema:',
+    '- Evidencia (arquivo/linha)',
+    '- Impacto real',
+    '- Correcao minima',
+    '- Estimativa de esforco',
+    '',
+    'Gerar:',
+    `- docs/AUDIT_${today}.md`,
+    '- Criar issues no GitHub com labels corretas',
+    '- Atualizar Project',
+    '',
+    'Mostrar resumo final com veredito:',
+    'PRONTO ou NAO PRONTO.',
+  ].join('\n');
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export default function ExecutionWheelV3Page() {
+  const [activeTab, setActiveTab] = useState('inbox');
+  const [logs, setLogs] = useState<string[]>([]);
+  const logRef = useRef<HTMLDivElement>(null);
+
+  // Inbox state
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxFilter, setInboxFilter] = useState<{ status?: string; type?: string; search?: string }>({});
+  const [captureType, setCaptureType] = useState<'idea' | 'error' | null>(null);
+  const [captureText, setCaptureText] = useState('');
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  // Launch Gate state
+  const [ghIssues, setGhIssues] = useState<GHIssue[]>([]);
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghError, setGhError] = useState('');
+
+  // Dedup state
+  const [dedupSuggestions, setDedupSuggestions] = useState<DedupSuggestion[]>([]);
+  const [dedupLoading, setDedupLoading] = useState(false);
+
+  // Focus state
+  const [focus, setFocus] = useState<Focus | null>(null);
+
+  // V3 Phase state
+  const [phase, setPhase] = useState<V3Phase>('ready');
+
+  const log = useCallback((msg: string) => {
+    const ts = new Date().toISOString().slice(11, 19);
+    setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 100));
+  }, []);
+
+  // Load saved state
+  useEffect(() => {
+    try {
+      const savedFocus = localStorage.getItem(LS_FOCUS_V3);
+      if (savedFocus) setFocus(JSON.parse(savedFocus));
+      const savedPhase = localStorage.getItem(LS_PHASE_V3);
+      if (savedPhase) setPhase(savedPhase as V3Phase);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Save focus
+  useEffect(() => {
+    if (focus) localStorage.setItem(LS_FOCUS_V3, JSON.stringify(focus));
+    else localStorage.removeItem(LS_FOCUS_V3);
+  }, [focus]);
+
+  // Save phase
+  useEffect(() => {
+    localStorage.setItem(LS_PHASE_V3, phase);
+  }, [phase]);
+
+  // ─── Inbox API ──────────────────────────────────────────────────────────
+
+  const loadInbox = useCallback(async (filters?: typeof inboxFilter) => {
+    setInboxLoading(true);
+    try {
+      const f = filters || inboxFilter;
+      const params = new URLSearchParams();
+      if (f.status) params.set('status', f.status);
+      if (f.type) params.set('type', f.type);
+      if (f.search) params.set('search', f.search);
+      const qs = params.toString();
+      const data = await apiFetch(`/api/admin/inbox${qs ? `?${qs}` : ''}`);
+      setInboxItems(data);
+    } catch (e) {
+      log(`ERRO inbox: ${(e as Error).message}`);
+    } finally {
+      setInboxLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inboxFilter]);
+
+  const createInboxItem = useCallback(async (type: 'idea' | 'error', raw_text: string) => {
+    try {
+      const item = await apiFetch('/api/admin/inbox', {
+        method: 'POST',
+        body: JSON.stringify({ type, raw_text }),
+      });
+      log(`Capturado: "${item.title}" (${type})`);
+      setCaptureType(null);
+      setCaptureText('');
+      await loadInbox();
+    } catch (e) {
+      log(`ERRO captura: ${(e as Error).message}`);
+    }
+  }, [log, loadInbox]);
+
+  const updateInboxItem = useCallback(async (id: string, updates: Partial<InboxItem>) => {
+    try {
+      await apiFetch('/api/admin/inbox', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, ...updates }),
+      });
+      await loadInbox();
+    } catch (e) {
+      log(`ERRO update: ${(e as Error).message}`);
+    }
+  }, [log, loadInbox]);
+
+  const triageItem = useCallback(async (item: InboxItem) => {
+    const severity = suggestSeverity(item.raw_text);
+    const needs_info = suggestMissingInfo(item);
+    await updateInboxItem(item.id, { status: 'triaged', severity, needs_info });
+    log(`Triado: "${item.title}" → ${severity.toUpperCase()}`);
+  }, [updateInboxItem, log]);
+
+  const convertToIssue = useCallback(async (item: InboxItem) => {
+    try {
+      const labels = [item.type === 'idea' ? 'enhancement' : 'bug'];
+      if (item.severity) labels.push(item.severity);
+
+      const result = await apiFetch('/api/admin/github/issues', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: item.title,
+          description: item.raw_text,
+          labels,
+        }),
+      });
+
+      try {
+        await apiFetch('/api/admin/github/project', {
+          method: 'POST',
+          body: JSON.stringify({ content_id: result.node_id }),
+        });
+        log(`Issue #${result.number} adicionada ao Project`);
+      } catch {
+        log(`Issue #${result.number} criada (falha ao adicionar ao Project)`);
+      }
+
+      await updateInboxItem(item.id, {
+        status: 'converted',
+        github_issue_number: result.number,
+        github_issue_url: result.html_url,
+      });
+
+      log(`Convertido: "${item.title}" → Issue #${result.number}`);
+    } catch (e) {
+      log(`ERRO conversao: ${(e as Error).message}`);
+    }
+  }, [updateInboxItem, log]);
+
+  // ─── GitHub Issues API ──────────────────────────────────────────────────
+
+  const loadGhIssues = useCallback(async () => {
+    setGhLoading(true);
+    setGhError('');
+    try {
+      const issues = await apiFetch('/api/admin/github/issues?action=list');
+      setGhIssues(issues);
+      log(`Launch Gate: ${issues.length} issues abertas`);
+
+      setFocus((currentFocus) => {
+        if (!currentFocus) return null;
+        const stillOpen = issues.find((i: GHIssue) => i.number === currentFocus.number && !i.pull_request);
+        if (stillOpen) {
+          return { ...currentFocus, labels: labelsOf(stillOpen) };
+        }
+        log('Issue focada foi fechada. Recalculando...');
+        const next = pickNext(issues);
+        if (next) {
+          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+          log(`Novo foco: #${next.number} — ${next.title}`);
+          return f;
+        }
+        return null;
+      });
+    } catch (e) {
+      const msg = (e as Error).message;
+      setGhError(msg);
+      log(`ERRO GitHub: ${msg}`);
+    } finally {
+      setGhLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [log]);
+
+  // Dedup
+  const searchDedup = useCallback(async (text: string) => {
+    if (text.length < 10) { setDedupSuggestions([]); return; }
+    setDedupLoading(true);
+    try {
+      const stopwords = new Set(['a','o','e','de','da','do','em','para','com','que','um','uma','no','na','se','por','ao','os','as','das','dos','nos','nas','mais','como','ser','ter','foi','esta','isso','esse','essa','qual','quando','onde']);
+      const words = text.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !stopwords.has(w));
+      const query = words.slice(0, 3).join(' ');
+      if (!query) { setDedupSuggestions([]); return; }
+
+      const results = await apiFetch(`/api/admin/github/issues?action=search&q=${encodeURIComponent(query)}`);
+      const suggestions: DedupSuggestion[] = (results || []).slice(0, 5).map((r: { number: number; title: string; html_url: string; score?: number }) => ({
+        number: r.number,
+        title: r.title,
+        html_url: r.html_url,
+        score: r.score || 0,
+      }));
+      setDedupSuggestions(suggestions);
+    } catch {
+      setDedupSuggestions([]);
+    } finally {
+      setDedupLoading(false);
+    }
+  }, []);
+
+  // ─── Focus Actions ──────────────────────────────────────────────────────
+
+  function focusIssue(issue: GHIssue) {
+    const f: Focus = {
+      number: issue.number,
+      title: issue.title,
+      url: issue.html_url,
+      labels: labelsOf(issue),
+      node_id: issue.node_id,
+    };
+    setFocus(f);
+    setPhase('ready');
+    setActiveTab('focus');
+    log(`Foco: #${issue.number} — ${issue.title}`);
+  }
+
+  function pullNext() {
+    const next = pickNext(ghIssues);
+    if (next) {
+      focusIssue(next);
+    } else {
+      log('Nenhuma issue disponivel para focar.');
+    }
+  }
+
+  // ─── V3 Prompt Copy ──────────────────────────────────────────────────
+
+  async function copySmartPrompt() {
+    if (!focus && phase !== 'audit') return;
+
+    let text = '';
+    let label = '';
+
+    if (phase === 'audit' || (!focus && ghIssues.filter((i) => !i.pull_request).length === 0)) {
+      text = generateAuditPrompt();
+      label = 'Auditoria';
+    } else if (!focus) return;
+    else if (phase === 'ready') {
+      let issueBody = '(sem descricao)';
+      try {
+        const data = await apiFetch(`/api/admin/github/issues?action=get&number=${focus.number}`);
+        if (data.body) issueBody = data.body;
+      } catch { /* fallback */ }
+      text = generateExecutionPrompt(focus, issueBody);
+      label = 'Execução v3';
+    } else if (phase === 'run-tests') {
+      text = generateTestPrompt(focus);
+      label = 'Testes Local';
+    } else if (phase === 'local-ok') {
+      text = generateReviewPrompt(focus);
+      label = 'Revisão';
+    } else if (phase === 'ready-for-vercel' || phase === 'deploying') {
+      text = generateDeployPrompt(focus);
+      label = 'Deploy';
+    } else if (phase === 'ci-vercel') {
+      text = generateFixCIPrompt(focus);
+      label = 'Fix CI';
+    } else {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      log(`Prompt de ${label} copiado${focus ? ` — #${focus.number}` : ''}`);
+    } catch {
+      log('ERRO: falha ao copiar para clipboard.');
+    }
+  }
+
+  async function copyBranch() {
+    if (!focus) return;
+    try {
+      await navigator.clipboard.writeText(branchName(focus));
+      log(`Branch copiada: ${branchName(focus)}`);
+    } catch {
+      log('ERRO: falha ao copiar.');
+    }
+  }
+
+  // ─── V3 Phase Transitions ──────────────────────────────────────────────
+
+  function advancePhase() {
+    const transitions: Partial<Record<V3Phase, V3Phase>> = {
+      'ready': 'run-tests',
+      'run-tests': 'testing',
+      'testing': 'local-ok',
+      'local-ok': 'ready-for-vercel',
+      'ready-for-vercel': 'deploying',
+      'deploying': 'ci-vercel',
+      'ci-vercel': 'done',
+    };
+    const next = transitions[phase];
+    if (next) {
+      setPhase(next);
+      log(`Fase: ${PHASE_CONFIG[next].emoji} ${PHASE_CONFIG[next].label}`);
+    }
+  }
+
+  function setPhaseManual(p: V3Phase) {
+    setPhase(p);
+    log(`Fase manual: ${PHASE_CONFIG[p].emoji} ${PHASE_CONFIG[p].label}`);
+  }
+
+  // ─── Dedup search on capture text change (debounced) ─────────────────
+
+  useEffect(() => {
+    if (!captureType || !captureText.trim()) {
+      setDedupSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => searchDedup(captureText.trim()), 600);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureText, captureType]);
+
+  // ─── Initial load ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    loadInbox();
+    loadGhIssues();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Set audit phase when no issues
+  useEffect(() => {
+    if (!focus && ghIssues.filter((i) => !i.pull_request).length === 0 && !ghLoading) {
+      setPhase('audit');
+    }
+  }, [focus, ghIssues, ghLoading]);
+
+  // ─── Render ─────────────────────────────────────────────────────────────
+
+  const openCount = ghIssues.filter((i) => !i.pull_request).length;
+  const sev = focus ? getSeverity(focus.labels) : '';
+  const effort = focus ? getEffortScore(focus.labels) : 2;
+  const effortTxt = effort === 1 ? 'Baixo' : effort === 2 ? 'Medio' : 'Alto';
+  const phaseInfo = PHASE_CONFIG[phase];
+
+  const stats = PRIORITY.map((p) => ({
+    label: p.toUpperCase(),
+    count: ghIssues.filter((i) => !i.pull_request && getSeverity(labelsOf(i)) === p).length,
+    color: sevColor(p),
+  }));
+
+  const isLocalPhase = ['ready', 'run-tests', 'testing', 'local-ok', 'ready-for-vercel'].includes(phase);
+  const isVercelPhase = ['deploying', 'ci-vercel', 'done'].includes(phase);
+  const canCopyPrompt = phase !== 'testing' && phase !== 'deploying' && phase !== 'done';
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Roda V3 (Local First)
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Tudo local antes do Vercel — só sobe quando estiver aprovado
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.open(PROJECT_URL, '_blank')}
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 transition-colors"
+          >
+            <ExternalLink className="h-3.5 w-3.5 inline mr-1" />
+            Project
+          </button>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+            openCount > 0
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+          }`}>
+            {openCount} issues
+          </span>
+        </div>
+      </div>
+
+      {/* Severity stats bar */}
+      {openCount > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {stats.filter((s) => s.count > 0).map((s) => (
+            <span key={s.label} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${s.color}`}>
+              {s.label}: {s.count}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Audit prompt — when no issues */}
+      {openCount === 0 && !ghLoading && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
+            Sem issues abertas. Projeto aparentemente estavel.
+          </p>
+          <button
+            onClick={copySmartPrompt}
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+          >
+            Gerar Prompt Nova Auditoria
+          </button>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
+          onClick={() => { setCaptureType('idea'); setCaptureText(''); }}
+          className="flex items-center gap-2 justify-center rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-sm font-bold px-4 py-3 transition-colors"
+        >
+          <Lightbulb className="h-4 w-4" />
+          Captura (Ideia)
+        </button>
+        <button
+          onClick={() => { setCaptureType('error'); setCaptureText(''); }}
+          className="flex items-center gap-2 justify-center rounded-xl border-2 border-dashed border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 text-red-700 dark:text-red-300 text-sm font-bold px-4 py-3 transition-colors"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          Captura (Erro)
+        </button>
+        <button
+          onClick={pullNext}
+          disabled={ghIssues.length === 0}
+          className="flex items-center gap-2 justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 transition-colors"
+        >
+          <ArrowRight className="h-4 w-4" />
+          Proxima Issue
+        </button>
+        <button
+          onClick={copySmartPrompt}
+          disabled={!canCopyPrompt || (!focus && phase !== 'audit')}
+          className="flex items-center gap-2 justify-center rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 transition-colors"
+        >
+          <Copy className="h-4 w-4" />
+          Copiar Prompt
+        </button>
+      </div>
+
+      {/* Capture mini-form */}
+      {captureType && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            {captureType === 'idea' ? (
+              <Lightbulb className="h-4 w-4 text-indigo-500" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            )}
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
+              {captureType === 'idea' ? 'Nova Ideia' : 'Novo Erro'}
+            </span>
+          </div>
+          <textarea
+            autoFocus
+            placeholder={captureType === 'idea' ? 'Descreva a ideia...' : 'Descreva o erro (cole logs se tiver)...'}
+            value={captureText}
+            onChange={(e) => setCaptureText(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {dedupLoading && (
+            <p className="text-[11px] text-slate-400">Buscando duplicatas...</p>
+          )}
+          {dedupSuggestions.length > 0 && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3">
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mb-1.5">
+                <Link2 className="h-3 w-3 inline mr-1" />
+                Issues similares encontradas:
+              </p>
+              <div className="space-y-1">
+                {dedupSuggestions.map((s) => (
+                  <a key={s.number} href={s.html_url} target="_blank" rel="noreferrer" className="block text-xs text-amber-600 dark:text-amber-400 hover:underline">
+                    #{s.number} — {s.title}
+                  </a>
+                ))}
+              </div>
+              <p className="text-[10px] text-amber-500 mt-1.5 italic">Sugestivo — nao bloqueia criacao.</p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => captureText.trim() && createInboxItem(captureType, captureText.trim())}
+              disabled={!captureText.trim()}
+              className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-bold px-4 py-2 transition-colors"
+            >
+              Salvar
+            </button>
+            <button
+              onClick={() => { setCaptureType(null); setDedupSuggestions([]); }}
+              className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold px-4 py-2 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="inbox">
+            Inbox
+            {inboxItems.filter((i) => i.status === 'new').length > 0 && (
+              <span className="ml-1.5 text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                {inboxItems.filter((i) => i.status === 'new').length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="launch-gate">Launch Gate</TabsTrigger>
+          <TabsTrigger value="focus">
+            Focus
+            {focus && (
+              <span className="ml-1.5 text-[10px] font-bold bg-indigo-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                #{focus.number}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ─── INBOX TAB ─────────────────────────────────────────────── */}
+        <TabsContent value="inbox" className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={inboxFilter.search || ''}
+                onChange={(e) => {
+                  const f = { ...inboxFilter, search: e.target.value || undefined };
+                  setInboxFilter(f);
+                  loadInbox(f);
+                }}
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <select
+              value={inboxFilter.status || ''}
+              onChange={(e) => {
+                const f = { ...inboxFilter, status: e.target.value || undefined };
+                setInboxFilter(f);
+                loadInbox(f);
+              }}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+            >
+              <option value="">Todos status</option>
+              <option value="new">New</option>
+              <option value="triaged">Triaged</option>
+              <option value="converted">Converted</option>
+            </select>
+            <select
+              value={inboxFilter.type || ''}
+              onChange={(e) => {
+                const f = { ...inboxFilter, type: e.target.value || undefined };
+                setInboxFilter(f);
+                loadInbox(f);
+              }}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+            >
+              <option value="">Todos tipos</option>
+              <option value="idea">Ideia</option>
+              <option value="error">Erro</option>
+            </select>
+            <button
+              onClick={() => loadInbox()}
+              disabled={inboxLoading}
+              className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold px-3 py-2 transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${inboxLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {inboxItems.length === 0 ? (
+            <div className="text-center py-12 text-sm text-slate-400">
+              {inboxLoading ? 'Carregando...' : 'Inbox vazio. Use os botoes de captura rapida.'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {inboxItems.map((item) => (
+                <div key={item.id} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 rounded-full p-1.5 ${
+                      item.type === 'idea'
+                        ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
+                        : 'bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400'
+                    }`}>
+                      {item.type === 'idea' ? <Lightbulb className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{item.title}</span>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          item.status === 'new'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : item.status === 'triaged'
+                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                        }`}>
+                          {item.status.toUpperCase()}
+                        </span>
+                        {item.severity && (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${sevColor(item.severity)}`}>
+                            {item.severity.toUpperCase()}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-400">{timeAgo(item.created_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {item.status === 'new' && (
+                          <button onClick={() => triageItem(item)} className="rounded-md bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-bold px-2.5 py-1 transition-colors">
+                            Triar
+                          </button>
+                        )}
+                        {item.status === 'triaged' && (
+                          <button onClick={() => convertToIssue(item)} className="rounded-md bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 transition-colors">
+                            <Plus className="h-3 w-3 inline mr-1" />
+                            Criar Issue
+                          </button>
+                        )}
+                        {item.github_issue_url && (
+                          <a href={item.github_issue_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold px-2.5 py-1 hover:underline">
+                            <ExternalLink className="h-3 w-3" />
+                            #{item.github_issue_number}
+                          </a>
+                        )}
+                        <button
+                          onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
+                          className="rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2.5 py-1 transition-colors"
+                        >
+                          {expandedItem === item.id ? <ChevronUp className="h-3 w-3 inline" /> : <ChevronDown className="h-3 w-3 inline" />}
+                          <span className="ml-1">Detalhes</span>
+                        </button>
+                      </div>
+                      {expandedItem === item.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                          <div>
+                            <label className="block text-[11px] text-slate-400 mb-1">Texto original</label>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 rounded-lg p-2 whitespace-pre-wrap">{item.raw_text}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] text-slate-400 mb-1">Severidade</label>
+                              <select
+                                value={item.severity || ''}
+                                onChange={(e) => updateInboxItem(item.id, { severity: e.target.value || null } as Partial<InboxItem>)}
+                                className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-xs text-slate-900 dark:text-slate-100"
+                              >
+                                <option value="">(nenhuma)</option>
+                                {PRIORITY.map((p) => <option key={p} value={p}>{p}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] text-slate-400 mb-1">Area(s)</label>
+                              <input
+                                type="text"
+                                value={item.area.join(', ')}
+                                onChange={(e) => updateInboxItem(item.id, { area: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                                placeholder="api, bot, ui..."
+                                className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                              />
+                            </div>
+                          </div>
+                          {item.needs_info.length > 0 && (
+                            <div>
+                              <label className="block text-[11px] text-slate-400 mb-1">Info faltando</label>
+                              <div className="flex gap-1 flex-wrap">
+                                {item.needs_info.map((info) => (
+                                  <span key={info} className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold">{info}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ─── LAUNCH GATE TAB ───────────────────────────────────────── */}
+        <TabsContent value="launch-gate" className="space-y-4">
+          {ghError && (
+            <div className="rounded-xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Shield className="h-4 w-4 text-red-600" />
+                <span className="text-sm font-bold text-red-700 dark:text-red-300">GitHub Error</span>
+              </div>
+              <p className="text-xs text-red-600 dark:text-red-400">{ghError}</p>
+              <p className="text-[10px] text-red-500 mt-1">needs-info: configure GH_PAT_ADMIN no env</p>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300">Issues Abertas ({ghIssues.length})</h3>
+              <button onClick={loadGhIssues} disabled={ghLoading} className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-1.5 transition-colors">
+                <RefreshCw className={`h-3.5 w-3.5 inline mr-1 ${ghLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {ghIssues.length === 0 ? (
+              <div className="text-center py-8 text-sm text-slate-400">
+                {ghLoading ? 'Carregando...' : 'Nenhuma issue aberta.'}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                {ghIssues
+                  .filter((i) => !i.pull_request)
+                  .sort((a, b) => severityScore(getSeverity(labelsOf(a))) - severityScore(getSeverity(labelsOf(b))))
+                  .map((issue) => {
+                    const issueSev = getSeverity(labelsOf(issue));
+                    return (
+                      <div key={issue.number} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                        <span className="text-xs font-mono text-slate-400 w-8">#{issue.number}</span>
+                        <span className="text-sm text-slate-900 dark:text-white flex-1 truncate">{issue.title}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${sevColor(issueSev)}`}>{issueSev}</span>
+                          {issue.labels
+                            .filter((l) => !PRIORITY.includes(l.name as (typeof PRIORITY)[number]))
+                            .slice(0, 3)
+                            .map((l) => (
+                              <span key={l.name} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${labelBadgeColor(l.color)}`}>{l.name}</span>
+                            ))}
+                        </div>
+                        <a href={issue.html_url} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-blue-500">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                        <button onClick={() => focusIssue(issue)} className="rounded-md bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold px-2.5 py-1 transition-colors">
+                          Focar
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ─── FOCUS TAB ─────────────────────────────────────────────── */}
+        <TabsContent value="focus" className="space-y-4">
+          {!focus ? (
+            <div className="text-center py-12 text-sm text-slate-400">
+              Nenhuma issue em foco. Selecione uma na aba Launch Gate ou clique &ldquo;Proxima Issue&rdquo;.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Main focus card */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 space-y-4">
+                  {/* Issue title + phase badge */}
+                  <div>
+                    <div className="text-lg font-bold text-slate-900 dark:text-white">
+                      #{focus.number} — {focus.title}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${phaseInfo.color}`}>
+                        {phaseInfo.emoji} {phaseInfo.label}
+                      </span>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${sevColor(sev)}`}>
+                        {sev.toUpperCase()}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 text-[11px] font-bold">
+                        Esforco: {effortTxt}
+                      </span>
+                      {focus.labels
+                        .filter((l) => !PRIORITY.includes(l as (typeof PRIORITY)[number]))
+                        .map((l) => (
+                          <span key={l} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 text-[10px]">{l}</span>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Phase progress indicator */}
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+                    <div className="flex items-center gap-1">
+                      {/* Local phases */}
+                      <div className={`flex-1 rounded-l-full h-2 ${isLocalPhase ? 'bg-blue-500' : 'bg-blue-200 dark:bg-blue-900'}`} />
+                      <div className="text-[10px] text-slate-400 px-1">|</div>
+                      {/* Vercel phases */}
+                      <div className={`flex-1 rounded-r-full h-2 ${isVercelPhase ? 'bg-purple-500' : 'bg-purple-200 dark:bg-purple-900'}`} />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className={`text-[10px] font-bold ${isLocalPhase ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+                        FASE LOCAL
+                      </span>
+                      <span className={`text-[10px] font-bold ${isVercelPhase ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400'}`}>
+                        FASE VERCEL
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                    <div>
+                      <span className="text-slate-400">Branch:</span>{' '}
+                      <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px]">{branchName(focus)}</code>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Link:</span>{' '}
+                      <a href={focus.url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{focus.url}</a>
+                    </div>
+                  </div>
+
+                  {/* Smart prompt button */}
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
+                    {canCopyPrompt && (
+                      <button
+                        onClick={copySmartPrompt}
+                        className="w-full rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-3 text-sm transition-colors"
+                      >
+                        <Copy className="h-4 w-4 inline mr-2" />
+                        Copiar Prompt
+                      </button>
+                    )}
+
+                    {/* "Liberar para Vercel" button — only when ready-for-vercel */}
+                    {phase === 'ready-for-vercel' && (
+                      <button
+                        onClick={async () => {
+                          setPhaseManual('deploying');
+                          // Copy deploy prompt
+                          try {
+                            await navigator.clipboard.writeText(generateDeployPrompt(focus));
+                            log(`Prompt de Deploy copiado — #${focus.number}`);
+                          } catch {
+                            log('ERRO: falha ao copiar para clipboard.');
+                          }
+                        }}
+                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold px-4 py-3 text-sm transition-colors"
+                      >
+                        <Rocket className="h-4 w-4 inline mr-2" />
+                        Liberar para Vercel
+                      </button>
+                    )}
+
+                    {/* Phase control buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      {phase === 'ready' && (
+                        <button onClick={() => setPhaseManual('run-tests')} className="rounded-lg bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200 text-orange-700 dark:text-orange-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Marcar: Branch criada
+                        </button>
+                      )}
+                      {phase === 'run-tests' && (
+                        <button onClick={() => setPhaseManual('testing')} className="rounded-lg bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 text-amber-700 dark:text-amber-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Marcar: Testes rodando
+                        </button>
+                      )}
+                      {phase === 'testing' && (
+                        <button onClick={() => setPhaseManual('local-ok')} className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Marcar: Testes OK
+                        </button>
+                      )}
+                      {phase === 'local-ok' && (
+                        <button onClick={() => setPhaseManual('ready-for-vercel')} className="rounded-lg bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 text-purple-700 dark:text-purple-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Aprovar revisao
+                        </button>
+                      )}
+                      {phase === 'deploying' && (
+                        <button onClick={() => setPhaseManual('ci-vercel')} className="rounded-lg bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 text-yellow-700 dark:text-yellow-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Marcar: PR aberto
+                        </button>
+                      )}
+                      {phase === 'ci-vercel' && (
+                        <button onClick={() => setPhaseManual('done')} className="rounded-lg bg-green-100 dark:bg-green-900/30 hover:bg-green-200 text-green-700 dark:text-green-300 text-xs font-bold px-3 py-2 transition-colors">
+                          Marcar: Concluido
+                        </button>
+                      )}
+                      {phase !== 'ready' && (
+                        <button onClick={() => setPhaseManual('ready')} className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 dark:text-slate-400 text-xs font-bold px-3 py-2 transition-colors">
+                          Reset fase
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Other actions */}
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={copyBranch} className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 transition-colors">
+                      <GitBranch className="h-3.5 w-3.5 inline mr-1" />
+                      Copiar branch
+                    </button>
+                    <button onClick={() => window.open(focus.url, '_blank')} className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-2 transition-colors">
+                      <ExternalLink className="h-3.5 w-3.5 inline mr-1" />
+                      Abrir issue
+                    </button>
+                    <button onClick={() => { setFocus(null); setPhase('ready'); log('Foco resetado.'); }} className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold px-3 py-2 transition-colors">
+                      Reset foco
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rules sidebar */}
+              <div className="rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 mb-3">
+                  Regras V3 — Local First
+                </p>
+                <div className="font-mono text-[11px] leading-relaxed text-slate-700 dark:text-slate-300 space-y-2">
+                  <p>1) Tudo local ANTES do Vercel.</p>
+                  <p>2) NAO fazer push sem testes verdes.</p>
+                  <p>3) NAO usar &quot;Closes #X&quot; em commits.</p>
+                  <p>4) Branch obrigatoria.</p>
+                  <p>5) Revisao obrigatoria antes do deploy.</p>
+                  <p>6) CI verde ANTES de fechar issue.</p>
+                  <p>7) Fechar so via GitHub (com evidencia).</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Activity Log */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 mb-2">
+          Log de Atividades
+        </h2>
+        <div
+          ref={logRef}
+          className="font-mono text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-lg p-3 h-40 overflow-y-auto"
+        >
+          {logs.length === 0 ? (
+            <span className="italic">Aguardando acoes...</span>
+          ) : (
+            logs.map((l, i) => <div key={i}>{l}</div>)
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
