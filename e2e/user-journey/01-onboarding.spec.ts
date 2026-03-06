@@ -175,8 +175,8 @@ test.describe('Registro — API /api/register', () => {
         city: 'Dublin',
       },
     });
-    // DB unique constraint → 500 (profileError) ou 400 se Supabase detect antes
-    expect([400, 500]).toContain(res.status());
+    // DB unique constraint → 500 (profileError), 400 (Supabase detect) ou 429 (rate limit)
+    expect([400, 429, 500]).toContain(res.status());
   });
 });
 
@@ -409,24 +409,25 @@ test.describe('Fluxo completo de registro', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 test.describe('Página de Onboarding — Checklist', () => {
   // ── 4a: Estrutura da checklist ──────────────────────────────────────────
-  test('exibe 6 passos com passo 1 (conta) sempre concluído', async ({ page }) => {
+  test('exibe 7 passos com passo 1 (conta) sempre concluído', async ({ page }) => {
     await page.goto('/onboarding');
 
     // Aguarda carregamento (step account aparece quando dados carregaram)
     await page.locator('[data-testid="onboarding-step-account"]').waitFor({ timeout: 15_000 });
 
-    // 6 step cards
-    await expect(page.locator('[data-testid^="onboarding-step-"]')).toHaveCount(6);
+    // 7 step cards (account, services, schedule, whatsapp, botname, payment, profile)
+    await expect(page.locator('[data-testid^="onboarding-step-"]')).toHaveCount(7);
 
     // Step 1 (account): sempre concluído — tem título i18n "Criar conta"
     const step1 = page.locator('[data-testid="onboarding-step-account"]');
     await expect(step1).toContainText(/Criar conta|Create account/i);
 
-    // Steps 2-6 existem
+    // Steps 2-7 existem
     await expect(page.locator('[data-testid="onboarding-step-services"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-schedule"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-whatsapp"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-botname"]')).toBeVisible();
+    await expect(page.locator('[data-testid="onboarding-step-payment"]')).toBeVisible();
     await expect(page.locator('[data-testid="onboarding-step-profile"]')).toBeVisible();
   });
 
