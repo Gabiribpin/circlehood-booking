@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { getUnsubscribeHeaders, getMarketingEmailFooter } from '@/lib/email/unsubscribe';
 
 const NOTIFICATION_TYPES = ['day_7', 'day_3', 'day_1'] as const;
 type NotificationType = typeof NOTIFICATION_TYPES[number];
@@ -143,8 +144,9 @@ export async function POST(request: NextRequest) {
 
   const { data: professionals, error } = await supabase
     .from('professionals')
-    .select('id, business_name, user_id, trial_ends_at')
+    .select('id, business_name, user_id, trial_ends_at, unsubscribe_token')
     .eq('subscription_status', 'trial')
+    .eq('marketing_emails_opted_out', false)
     .gte('trial_ends_at', now.toISOString())
     .lte('trial_ends_at', windowEnd.toISOString());
 
@@ -210,11 +212,19 @@ export async function POST(request: NextRequest) {
           ? `🚨 Seu teste CircleHood expira amanhã — ${professional.business_name}`
           : `⚠️ Seu teste CircleHood expira em ${daysRemaining} dias — ${professional.business_name}`;
 
+      const unsubHeaders = professional.unsubscribe_token
+        ? getUnsubscribeHeaders(professional.unsubscribe_token)
+        : {};
+      const unsubFooter = professional.unsubscribe_token
+        ? getMarketingEmailFooter(professional.unsubscribe_token)
+        : '';
+
       await resend.emails.send({
         from: `CircleHood Booking <${fromEmail}>`,
         to: email,
         subject,
-        html: buildEmailHtml(professional.business_name, daysRemaining, notificationType),
+        html: buildEmailHtml(professional.business_name, daysRemaining, notificationType) + unsubFooter,
+        headers: unsubHeaders,
       });
 
       // Record the notification

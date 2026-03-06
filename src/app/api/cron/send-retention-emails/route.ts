@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { getUnsubscribeHeaders, getMarketingEmailFooter } from '@/lib/email/unsubscribe';
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -26,9 +27,10 @@ export async function POST(request: NextRequest) {
     // Find professionals with pending deletion and their auth email
     const { data: pendingDeletion, error: fetchError } = await supabase
       .from('professionals')
-      .select('id, business_name, user_id, deleted_at, deletion_scheduled_for')
+      .select('id, business_name, user_id, deleted_at, deletion_scheduled_for, unsubscribe_token')
       .not('deleted_at', 'is', null)
-      .not('deletion_scheduled_for', 'is', null);
+      .not('deletion_scheduled_for', 'is', null)
+      .eq('marketing_emails_opted_out', false);
 
     if (fetchError) throw fetchError;
     if (!pendingDeletion || pendingDeletion.length === 0) {
@@ -100,11 +102,19 @@ export async function POST(request: NextRequest) {
       );
 
       try {
+        const unsubHeaders = prof.unsubscribe_token
+          ? getUnsubscribeHeaders(prof.unsubscribe_token)
+          : {};
+        const unsubFooter = prof.unsubscribe_token
+          ? getMarketingEmailFooter(prof.unsubscribe_token)
+          : '';
+
         await resend.emails.send({
           from: fromEmail,
           to: userEmail,
           subject: emailContent.subject,
-          html: emailContent.html,
+          html: emailContent.html + unsubFooter,
+          headers: unsubHeaders,
         });
 
         // Record that email was sent
