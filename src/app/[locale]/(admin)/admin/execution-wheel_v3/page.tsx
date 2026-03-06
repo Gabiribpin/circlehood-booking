@@ -611,7 +611,8 @@ export default function ExecutionWheelV3Page() {
         setPhase('ready');
       }
     } catch {
-      // Don't override manual phase on API error
+      // API error — default to ready (no PR found)
+      setPhase('ready');
     } finally {
       setPhaseLoading(false);
     }
