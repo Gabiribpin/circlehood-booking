@@ -21,6 +21,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { handleWhatsAppSupportMessage } from '@/lib/ai/support-bot';
+import { validateEvolutionWebhook } from '@/lib/webhooks/signature';
 
 async function sendWhatsAppReply(to: string, message: string) {
   const evoUrl = process.env.EVOLUTION_API_URL;
@@ -47,6 +48,12 @@ async function sendWhatsAppReply(to: string, message: string) {
 }
 
 export async function POST(request: NextRequest) {
+  // Validate Evolution API webhook signature
+  const apikeyHeader = request.headers.get('apikey');
+  if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body: any;
   try {
     body = await request.json();
