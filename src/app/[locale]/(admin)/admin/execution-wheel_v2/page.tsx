@@ -411,7 +411,7 @@ export default function ExecutionWheelV2Page() {
     }
   }
 
-  async function copyPrompt(type: 'execution' | 'validation' | 'evidence') {
+  async function copyPrompt(type: 'execution' | 'validation' | 'evidence' | 'fix-ci') {
     if (!focus) return;
 
     let text = '';
@@ -425,29 +425,48 @@ export default function ExecutionWheelV2Page() {
       } catch { /* use fallback */ }
 
       text = [
-        'MODO EXECUCAO CONTROLADA — Issue #' + focus.number,
-        'Titulo: ' + focus.title,
+        '# EXECUTION MODE — Corrigir Issue em Foco',
+        '',
+        '## Issue a resolver',
+        '#' + focus.number + ' — ' + focus.title,
         'Link: ' + focus.url,
         'Labels: ' + (focus.labels.join(', ') || '(nenhuma)'),
         '',
         'Contexto da issue:',
         issueBody,
         '',
-        'REGRAS OBRIGATORIAS:',
-        '- NAO usar "Closes #X" em commits (falso-fechamento)',
-        '- Branch obrigatoria: ' + branchName(focus),
-        '- Testes obrigatorios antes de qualquer PR',
-        '- Uma issue por vez, sem desviar escopo',
-        '- CI verde obrigatorio antes de fechar',
+        '## Passos obrigatórios',
         '',
-        'Tarefas:',
-        '1) Diagnostico tecnico',
-        '2) Causa raiz',
-        '3) Correcao minima e segura',
-        '4) Testes (unit + E2E se aplicavel)',
-        '5) Build verde (`npm run build`)',
-        '6) Branch: ' + branchName(focus),
-        '7) Commit: fix(scope): descricao objetiva',
+        '1. Leia a issue completamente antes de tocar em qualquer arquivo',
+        '2. Crie uma branch: git checkout -b ' + branchName(focus),
+        '3. Faça APENAS as alterações que a issue descreve — nada além',
+        '4. Rode os testes locais antes de commitar',
+        '5. Commit com mensagem clara: "fix: [descrição curta] (#' + focus.number + ')"',
+        '   - NÃO use "Closes #X" no commit, apenas no PR',
+        '6. Abra o PR com:',
+        '   gh pr create \\',
+        '     --title "fix: [descrição curta] (#' + focus.number + ')" \\',
+        '     --body "## O que foi feito',
+        '   [descreva a correção em 2-3 linhas]',
+        '   ',
+        '   Closes #' + focus.number + '" \\',
+        '     --base main',
+        '7. Imediatamente após criar o PR, habilite auto-merge:',
+        '   gh pr merge --auto --squash',
+        '8. Aguarde o CI rodar. Se algum job falhar, veja a seção abaixo.',
+        '',
+        '## Se o CI falhar',
+        '- Rode: gh pr checks para ver qual job falhou',
+        '- Analise o log de erro',
+        '- Corrija o problema no mesmo branch',
+        '- Faça novo commit e push — o CI vai rodar novamente automaticamente',
+        '- Repita até todos os checks ficarem verdes',
+        '',
+        '## Definição de "pronto"',
+        '- Todos os CI checks verdes ✅',
+        '- PR mergeado automaticamente ✅',
+        '- Issue fechada automaticamente (via Closes #X) ✅',
+        '- Branch deletada automaticamente ✅',
       ].join('\n');
     } else if (type === 'validation') {
       text = [
@@ -467,6 +486,42 @@ export default function ExecutionWheelV2Page() {
         '',
         'Se qualquer item acima nao estiver completo,',
         'a issue deve ser considerada NAO resolvida.',
+      ].join('\n');
+    } else if (type === 'fix-ci') {
+      text = [
+        '# FIX CI MODE — Investigar e corrigir falha de CI',
+        '',
+        '## Contexto',
+        'O PR da issue #' + focus.number + ' (' + focus.title + ') está com CI falhando.',
+        'Preciso que você investigue e corrija sem minha intervenção.',
+        '',
+        '## Passos',
+        '',
+        '1. Identifique o PR com falha:',
+        '   gh pr list --state open',
+        '',
+        '2. Veja os checks do PR:',
+        '   gh pr checks [NÚMERO DO PR]',
+        '',
+        '3. Para cada job falhando, leia o log completo:',
+        '   gh run view [RUN_ID] --log-failed',
+        '',
+        '4. Classifique a falha:',
+        '   - ERRO DE CÓDIGO → corrija o código, commit, push',
+        '   - ERRO DE TESTE → analise se o teste está correto ou se o código quebrou o contrato',
+        '   - FLAKY TEST → rode novamente: gh run rerun [RUN_ID]',
+        '   - ERRO DE CONFIGURAÇÃO → verifique env vars e dependências',
+        '',
+        '5. Após corrigir, confirme que todos os checks passaram:',
+        '   gh pr checks [NÚMERO DO PR] --watch',
+        '',
+        '6. Se após 3 tentativas o CI ainda falhar com o mesmo erro,',
+        '   pare e descreva o problema para eu analisar manualmente.',
+        '',
+        '## Nunca faça',
+        '- Não force merge se CI ainda estiver falhando',
+        '- Não altere arquivos fora do escopo da issue original',
+        '- Não desative ou ignore checks de CI',
       ].join('\n');
     } else {
       text = [
@@ -1111,13 +1166,20 @@ export default function ExecutionWheelV2Page() {
                   {/* Prompt buttons */}
                   <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Prompts</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <button
                         onClick={() => copyPrompt('execution')}
                         className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
                       >
                         <Copy className="h-3.5 w-3.5 inline mr-1.5" />
                         Execucao
+                      </button>
+                      <button
+                        onClick={() => copyPrompt('fix-ci')}
+                        className="rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2.5 transition-colors"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 inline mr-1.5" />
+                        Fix CI
                       </button>
                       <button
                         onClick={() => copyPrompt('validation')}
