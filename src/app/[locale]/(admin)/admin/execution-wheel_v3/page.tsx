@@ -165,12 +165,8 @@ function suggestMissingInfo(item: { raw_text: string; type: string; area: string
 
 function pickNext(issues: GHIssue[]): GHIssue | null {
   const open = issues.filter((i) => i.state === 'open' && !i.pull_request);
-  return pickNextFromList(open);
-}
-
-function pickNextFromList(issues: GHIssue[]): GHIssue | null {
-  if (!issues.length) return null;
-  const sorted = [...issues].sort((a, b) => {
+  if (!open.length) return null;
+  open.sort((a, b) => {
     const la = labelsOf(a), lb = labelsOf(b);
     const d1 = severityScore(getSeverity(la)) - severityScore(getSeverity(lb));
     if (d1 !== 0) return d1;
@@ -178,7 +174,7 @@ function pickNextFromList(issues: GHIssue[]): GHIssue | null {
     if (d2 !== 0) return d2;
     return a.number - b.number;
   });
-  return sorted[0];
+  return open[0];
 }
 
 function timeAgo(date: string): string {
@@ -236,10 +232,8 @@ function generateExecutionPrompt(f: Focus, issueBody: string): string {
     '   npm run test',
     `7. Se tudo passar, faca commit:`,
     `   git commit -m "fix: [descricao] (#${f.number})"`,
-    `8. Push + PR + auto-merge:`,
-    `   git push -u origin ${branchName(f)}`,
-    `   gh pr create --title "fix: [descricao] (#${f.number})" --body "Closes #${f.number}" --base main`,
-    '   gh pr merge --auto --squash',
+    '   SEM Closes #X no commit',
+    '   NAO faca push ainda — aguarde aprovacao da usuaria',
   ].join('\n');
 }
 
@@ -359,12 +353,6 @@ export default function ExecutionWheelV3Page() {
 
   // Launch Gate state
   const [ghIssues, setGhIssues] = useState<GHIssue[]>([]);
-  const [issuesWithPR, setIssuesWithPR] = useState<Set<number>>(() => {
-    try {
-      const saved = localStorage.getItem('v3_issues_with_pr');
-      return saved ? new Set(JSON.parse(saved) as number[]) : new Set();
-    } catch { return new Set(); }
-  });
   const [ghLoading, setGhLoading] = useState(false);
   const [ghError, setGhError] = useState('');
 
@@ -501,78 +489,25 @@ export default function ExecutionWheelV3Page() {
     setGhLoading(true);
     setGhError('');
     try {
-      // Fetch issues and open PR branches in parallel
-      const [issues, prBranches] = await Promise.all([
-        apiFetch('/api/admin/github/issues?action=list'),
-        apiFetch('/api/admin/github/issues?action=open-pr-branches').catch(() => [] as string[]),
-      ]);
+      const issues = await apiFetch('/api/admin/github/issues?action=list');
       setGhIssues(issues);
+      log(`Launch Gate: ${issues.length} issues abertas`);
 
-      // Build set of issue numbers that have open PRs
-      const prBranchSet = new Set(prBranches as string[]);
-      const issuesWithPRLocal = new Set<number>();
-      for (const issue of issues as GHIssue[]) {
-        const branch = branchName({ number: issue.number, title: issue.title, url: '', labels: [] });
-        if (prBranchSet.has(branch)) {
-          issuesWithPRLocal.add(issue.number);
+      setFocus((currentFocus) => {
+        if (!currentFocus) return null;
+        const stillOpen = issues.find((i: GHIssue) => i.number === currentFocus.number && !i.pull_request);
+        if (stillOpen) {
+          return { ...currentFocus, labels: labelsOf(stillOpen) };
         }
-      }
-      setIssuesWithPR(issuesWithPRLocal);
-      try { localStorage.setItem('v3_issues_with_pr', JSON.stringify([...issuesWithPRLocal])); } catch {}
-      const issuesWithPR = issuesWithPRLocal;
-
-      const availableCount = (issues as GHIssue[]).filter((i: GHIssue) => !issuesWithPR.has(i.number)).length;
-      log(`Launch Gate: ${(issues as GHIssue[]).length} issues abertas (${availableCount} sem PR)`);
-
-      const savedFocus = JSON.parse(localStorage.getItem(LS_FOCUS_V3) || 'null') as Focus | null;
-      if (!savedFocus) {
-        // Auto-select highest priority issue when no focus is set
-        const available = (issues as GHIssue[]).filter(
-          (i: GHIssue) => !issuesWithPR.has(i.number)
-        );
-        const next = pickNextFromList(available);
+        log('Issue focada foi fechada. Recalculando...');
+        const next = pickNext(issues);
         if (next) {
           const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
-          setFocus(f);
-          setPhase('ready');
-          log(`Auto-foco: #${next.number} — ${next.title}`);
-        }
-        return;
-      }
-
-      const issueInList = (issues as GHIssue[]).find((i: GHIssue) => i.number === savedFocus.number);
-      const focusHasPR = issuesWithPR.has(savedFocus.number);
-
-      // Issue closed, has PR, or phase is done — advance to next without PR
-      if (!issueInList || focusHasPR || phase === 'done') {
-        log(!issueInList
-          ? `#${savedFocus.number} foi fechada. Avancando...`
-          : phase === 'done'
-            ? `#${savedFocus.number} concluída. Avancando...`
-            : `#${savedFocus.number} tem PR aberto. Avancando...`
-        );
-        // Pick next issue that does NOT have an open PR
-        const available = (issues as GHIssue[]).filter((i: GHIssue) =>
-          i.number !== savedFocus.number && !issuesWithPR.has(i.number)
-        );
-        const next = pickNextFromList(available);
-        if (next) {
-          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
-          setFocus(f);
-          setPhase('ready');
-          lastDetectedRef.current = next.number;
           log(`Novo foco: #${next.number} — ${next.title}`);
-        } else {
-          setFocus(null);
-          setPhase('ready');
-          log('Sem mais issues disponíveis (todas têm PR).');
+          return f;
         }
-        return;
-      }
-
-      // No PR — update labels
-      setFocus({ ...savedFocus, labels: labelsOf(issueInList) });
-      lastDetectedRef.current = null;
+        return null;
+      });
     } catch (e) {
       const msg = (e as Error).message;
       setGhError(msg);
@@ -611,11 +546,12 @@ export default function ExecutionWheelV3Page() {
     }
   }, []);
 
-  // ─── Phase Detection (badge only, no auto-advance) ──────────────────
+  // ─── Phase Detection ──────────────────────────────────────────────────
 
   const detectPhase = useCallback(async (f: Focus | null) => {
     if (!f) {
-      setPhase('ready');
+      const openCount = ghIssues.filter((i) => !i.pull_request).length;
+      if (openCount === 0) setPhase('ready');
       return;
     }
 
@@ -625,26 +561,27 @@ export default function ExecutionWheelV3Page() {
       const data = await apiFetch(`/api/admin/github/issues?action=pr-status&branch=${encodeURIComponent(branch)}`);
 
       if (!data.hasPR) {
+        // No PR — check CI local workflow
         setPhase('ready');
       } else if (data.prState === 'merged') {
         setPhase('done');
+      } else if (data.prState === 'open' && data.ciStatus === 'failure') {
+        setPhase('pr-open'); // PR open, CI running or failing
+      } else if (data.prState === 'open' && data.ciStatus === 'success') {
+        setPhase('done'); // will auto-merge
       } else if (data.prState === 'open') {
         setPhase('pr-open');
       } else {
         setPhase('ready');
       }
     } catch {
-      setPhase('ready');
+      // Don't override manual phase on API error
     } finally {
       setPhaseLoading(false);
     }
-  }, []);
+  }, [ghIssues]);
 
-  const lastDetectedRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!focus || ghIssues.length === 0) return;
-    if (lastDetectedRef.current === focus.number) return;
-    lastDetectedRef.current = focus.number;
     detectPhase(focus);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, ghIssues]);
@@ -666,8 +603,7 @@ export default function ExecutionWheelV3Page() {
   }
 
   function pullNext() {
-    const available = ghIssues.filter((i) => !issuesWithPR.has(i.number));
-    const next = pickNextFromList(available);
+    const next = pickNext(ghIssues);
     if (next) {
       focusIssue(next);
     } else {
@@ -795,15 +731,14 @@ export default function ExecutionWheelV3Page() {
 
   // ─── Render ───────────────────────────────────────────────────────────
 
-  const pendingCount = ghIssues.filter((i) => !issuesWithPR.has(i.number)).length;
-  const openCount = ghIssues.length;
+  const openCount = ghIssues.filter((i) => !i.pull_request).length;
   const sev = focus ? getSeverity(focus.labels) : '';
   const effort = focus ? getEffortScore(focus.labels) : 2;
   const effortTxt = effort === 1 ? 'Baixo' : effort === 2 ? 'Medio' : 'Alto';
 
   const stats = PRIORITY.map((p) => ({
     label: p.toUpperCase(),
-    count: ghIssues.filter((i) => !issuesWithPR.has(i.number) && getSeverity(labelsOf(i)) === p).length,
+    count: ghIssues.filter((i) => !i.pull_request && getSeverity(labelsOf(i)) === p).length,
     color: sevColor(p),
   }));
 
@@ -846,15 +781,12 @@ export default function ExecutionWheelV3Page() {
             <ExternalLink className="h-3.5 w-3.5 inline mr-1" />
             Project
           </button>
-          <span
-            title={`${pendingCount} pendentes / ${openCount} total`}
-            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-              pendingCount > 0
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-            }`}
-          >
-            {pendingCount} pendentes
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+            openCount > 0
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+          }`}>
+            {openCount} issues
           </span>
         </div>
       </div>
@@ -942,31 +874,24 @@ export default function ExecutionWheelV3Page() {
         </div>
       )}
 
-      {/* Audit mode when all issues resolved */}
-      {(openCount === 0 || pendingCount === 0) && !ghLoading && (
-        <div className="rounded-xl border-2 border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 p-6 space-y-4 text-center">
-          <div className="text-4xl">&#127881;</div>
-          <h2 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-            Todas as issues resolvidas!
-          </h2>
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            {openCount === 0
-              ? 'Nenhuma issue aberta. Projeto estavel.'
-              : `${openCount} issues abertas, todas com PR. Aguardando merge.`}
+      {/* Audit prompt when no issues */}
+      {openCount === 0 && !ghLoading && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
+          <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
+            Sem issues abertas. Projeto aparentemente estavel.
           </p>
           <button
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(generateAuditPrompt());
-                log('Prompt de Auditoria copiado');
+                log('Prompt de auditoria copiado');
               } catch {
                 log('ERRO: falha ao copiar.');
               }
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-base font-bold px-6 py-3 transition-colors"
+            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
           >
-            <Search className="h-5 w-5" />
-            Iniciar Nova Auditoria
+            Gerar Prompt Nova Auditoria
           </button>
         </div>
       )}
@@ -1263,16 +1188,10 @@ export default function ExecutionWheelV3Page() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300">
-                Issues Abertas ({pendingCount})
+                Issues Abertas ({ghIssues.filter((i) => !i.pull_request).length})
               </h3>
               <button
-                onClick={() => {
-                  localStorage.removeItem(LS_FOCUS_V3);
-                  localStorage.removeItem('v3_issues_with_pr');
-                  setFocus(null);
-                  setIssuesWithPR(new Set());
-                  loadGhIssues();
-                }}
+                onClick={loadGhIssues}
                 disabled={ghLoading}
                 className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-1.5 transition-colors"
               >
@@ -1281,14 +1200,14 @@ export default function ExecutionWheelV3Page() {
               </button>
             </div>
 
-            {ghIssues.filter((i) => !issuesWithPR.has(i.number)).length === 0 ? (
+            {ghIssues.filter((i) => !i.pull_request).length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-400">
                 {ghLoading ? 'Carregando...' : 'Nenhuma issue aberta.'}
               </div>
             ) : (
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {ghIssues
-                  .filter((i) => !issuesWithPR.has(i.number))
+                  .filter((i) => !i.pull_request)
                   .sort((a, b) => severityScore(getSeverity(labelsOf(a))) - severityScore(getSeverity(labelsOf(b))))
                   .map((issue) => {
                     const issueSev = getSeverity(labelsOf(issue));
