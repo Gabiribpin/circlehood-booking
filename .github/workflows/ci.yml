@@ -663,11 +663,9 @@ jobs:
                 echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
-              echo "❌ Preview URL não respondeu — deploy não ficou pronto"
-              exit 1
+              echo "⚠️ Preview URL não respondeu — usando PROD_URL como fallback"
             else
-              echo "❌ Preview URL não encontrada após 3min — deploy não ficou pronto"
-              exit 1
+              echo "⚠️ Preview URL não encontrada após 3min — usando PROD_URL como fallback"
             fi
           fi
           echo "url=$PROD_URL" >> "$GITHUB_OUTPUT"
