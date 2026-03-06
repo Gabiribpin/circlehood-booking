@@ -1,11 +1,9 @@
 name: CI Local
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: ci-local-${{ github.ref }}
@@ -13,10 +11,10 @@ concurrency:
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # Job 1: TypeScript type checking — sem deps externas
+  # Job 1: TypeScript type checking
   # ─────────────────────────────────────────────────────────────
   typecheck:
-    name: typecheck
+    name: TypeCheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,16 +24,13 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx tsc --noEmit
-        env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
 
   # ─────────────────────────────────────────────────────────────
-  # Job 2: ESLint — informational only (not a merge gate)
+  # Job 2: ESLint
   # ─────────────────────────────────────────────────────────────
   lint:
-    name: lint (informational)
+    name: Lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,10 +41,10 @@ jobs:
       - run: npm run lint
 
   # ─────────────────────────────────────────────────────────────
-  # Job 3: Vitest (unit tests) — sem deps externas
+  # Job 3: Vitest (unit tests)
   # ─────────────────────────────────────────────────────────────
   vitest:
-    name: vitest
+    name: Vitest (unit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,3 +54,54 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm test
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 4: Playwright against localhost (no Vercel dependency)
+  # ─────────────────────────────────────────────────────────────
+  playwright-local:
+    name: Playwright (localhost)
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, vitest]
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-anon-key' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'mock-service-role-key' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET || 'mock-cron-secret' }}
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock' }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || 'sk_test_mock' }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'test-admin-password' }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL || 'admin@test.com' }}
+      REDIS_URL: ${{ secrets.REDIS_URL || '' }}
+      GH_PAT_ADMIN: ${{ secrets.GH_PAT_ADMIN || '' }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY || 'mock-resend-key' }}
+      RESEND_FROM_EMAIL: noreply@test.com
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Start Next.js server
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Playwright tests
+        run: npx playwright test --project=smoke-chromium
+        env:
+          TEST_BASE_URL: http://localhost:3000
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-local
+          path: e2e-report/
+          retention-days: 7
