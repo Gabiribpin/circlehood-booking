@@ -1,11 +1,9 @@
 import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 
 interface Booking {
   id: string;
-  client_name: string;
-  client_phone: string;
   booking_date: string;
   start_time: string;
   end_time: string;
@@ -14,7 +12,7 @@ interface Booking {
 
 interface Cluster {
   region: string;
-  bookings: Booking[];
+  bookingCount: number;
   earliestTime: string;
   latestTime: string;
   gapMinutes: number;
@@ -73,34 +71,34 @@ function findFreeSlots(bookings: Booking[], slotDuration = 60): string[] {
 
 export async function POST(request: NextRequest) {
   try {
-    const { professionalId, date } = await request.json();
+    const supabase = await createClient();
 
-    if (!professionalId) {
-      return Response.json(
-        { error: 'Missing required field: professionalId' },
-        { status: 400 }
-      );
+    // Auth: require logged-in user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Resolve professional and verify ownership
+    const { data: professional } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
+    if (!professional) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { date } = await request.json();
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    // Fetch bookings for the date
+    // Fetch bookings for the date — only for the authenticated professional
+    // No PII fields (client_name, client_phone) in the select
     const { data: bookings, error } = await supabase
       .from('bookings')
-      .select(`
-        id,
-        client_name,
-        client_phone,
-        booking_date,
-        start_time,
-        end_time
-      `)
-      .eq('professional_id', professionalId)
+      .select('id, booking_date, start_time, end_time, client_phone')
+      .eq('professional_id', professional.id)
       .eq('booking_date', targetDate)
       .eq('status', 'confirmed')
       .order('start_time', { ascending: true });
@@ -119,24 +117,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Enrich bookings with client region
+    // Enrich bookings with client region (phone needed only for region lookup, not returned)
     const phones = bookings.map((b) => b.client_phone).filter(Boolean);
 
     const { data: contacts } = await supabase
       .from('contacts')
       .select('phone, regions')
-      .eq('professional_id', professionalId)
+      .eq('professional_id', professional.id)
       .in('phone', phones);
 
     const phoneToRegion: Record<string, string> = {};
     for (const contact of contacts || []) {
       if (contact.regions?.length) {
-        phoneToRegion[contact.phone] = contact.regions[0]; // Primary region
+        phoneToRegion[contact.phone] = contact.regions[0];
       }
     }
 
     const enrichedBookings: Booking[] = bookings.map((b) => ({
-      ...b,
+      id: b.id,
+      booking_date: b.booking_date,
+      start_time: b.start_time,
+      end_time: b.end_time,
       region: phoneToRegion[b.client_phone] || 'Sem região',
     }));
 
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
       grouped[region].push(booking);
     }
 
-    // Build clusters (regions with 2+ bookings)
+    // Build clusters (regions with bookings)
     const clusters: Cluster[] = [];
     const suggestions: Suggestion[] = [];
     let totalSavingsMinutes = 0;
@@ -167,20 +168,19 @@ export async function POST(request: NextRequest) {
 
       clusters.push({
         region,
-        bookings: regionBookings,
+        bookingCount: regionBookings.length,
         earliestTime,
         latestTime,
         gapMinutes: spanMinutes,
       });
 
-      // Suggest only if 1+ bookings (can always fill more)
       const freeSlots = findFreeSlots(sorted);
 
       // Count how many clients of this region are not yet booked today
       const { count: unbookedCount } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
-        .eq('professional_id', professionalId)
+        .eq('professional_id', professional.id)
         .contains('regions', [region]);
 
       const alreadyBooked = regionBookings.length;
@@ -199,7 +199,6 @@ export async function POST(request: NextRequest) {
           clientsToNotify: Math.min(clientsToNotify, 3),
         });
 
-        // Estimate savings: each extra booking in same region saves ~20min of travel
         totalSavingsMinutes += Math.min(clientsToNotify, 2) * 20;
       }
     }
@@ -215,7 +214,7 @@ export async function POST(request: NextRequest) {
     return Response.json({
       date: targetDate,
       totalBookings: bookings.length,
-      clusters: clusters.sort((a, b) => b.bookings.length - a.bookings.length),
+      clusters: clusters.sort((a, b) => b.bookingCount - a.bookingCount),
       suggestions,
       potentialSavings,
     });
