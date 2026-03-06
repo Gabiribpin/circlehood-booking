@@ -4,7 +4,34 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getStripeServer } from '@/lib/stripe/server';
 import { calculateDeposit, toCents } from '@/lib/payment/calculate-deposit';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Simple IP-based rate limiting (in-memory, per serverless instance)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10; // max requests per window
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 export async function POST(request: NextRequest) {
+  // Rate limit by IP
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde um momento.' },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -25,12 +52,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Validate UUID format to prevent injection
+  if (!UUID_REGEX.test(professional_id) || !UUID_REGEX.test(service_id)) {
+    return NextResponse.json(
+      { error: 'IDs inválidos' },
+      { status: 400 }
+    );
+  }
+
   const supabase = createAdminClient();
 
   // Buscar configuração de depósito do profissional
   const { data: professional } = await supabase
     .from('professionals')
-    .select('require_deposit, deposit_type, deposit_value, currency')
+    .select('id, require_deposit, deposit_type, deposit_value, currency')
     .eq('id', professional_id)
     .single();
 
@@ -52,7 +87,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Buscar preço do serviço
+  // Verify Stripe Connect is fully onboarded (charges_enabled)
+  const { data: connectAccount } = await supabase
+    .from('stripe_connect_accounts')
+    .select('charges_enabled')
+    .eq('professional_id', professional_id)
+    .maybeSingle();
+
+  if (!connectAccount?.charges_enabled) {
+    return NextResponse.json(
+      { error: 'Pagamento online não disponível para este profissional' },
+      { status: 400 }
+    );
+  }
+
+  // Buscar preço do serviço (must belong to this professional)
   const { data: service } = await supabase
     .from('services')
     .select('price, name')
@@ -99,7 +148,6 @@ export async function POST(request: NextRequest) {
           deposit_type: professional.deposit_type,
           deposit_value: String(professional.deposit_value),
         },
-        // Permite cards e outros métodos automaticamente
         automatic_payment_methods: { enabled: true },
       },
       { idempotencyKey }

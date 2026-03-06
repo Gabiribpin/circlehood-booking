@@ -44,7 +44,7 @@ vi.mock('@/lib/validation/booking-schema', () => ({
 
 function mockSupabase(overrides: Record<string, unknown> = {}) {
   const professional = {
-    id: 'prof-1',
+    id: '00000000-0000-4000-a000-000000000001',
     require_deposit: true,
     deposit_type: 'percentage',
     deposit_value: 30,
@@ -54,8 +54,9 @@ function mockSupabase(overrides: Record<string, unknown> = {}) {
     stripe_account_id: 'acct_test',
     ...overrides,
   };
-  const service = { id: 'svc-1', name: 'Corte', price: 100, duration_minutes: 30 };
+  const service = { id: '00000000-0000-4000-a000-000000000002', name: 'Corte', price: 100, duration_minutes: 30 };
   const booking = { id: 'booking-123' };
+  const connectAccount = { charges_enabled: true };
 
   mockFrom.mockImplementation((table: string) => {
     if (table === 'professionals') {
@@ -63,6 +64,15 @@ function mockSupabase(overrides: Record<string, unknown> = {}) {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({ data: professional, error: null }),
+          }),
+        }),
+      };
+    }
+    if (table === 'stripe_connect_accounts') {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: connectAccount, error: null }),
           }),
         }),
       };
@@ -132,7 +142,7 @@ describe('Idempotency keys — create-intent', () => {
     const req = new Request('http://localhost/api/payment/create-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ professional_id: 'prof-1', service_id: 'svc-1' }),
+      body: JSON.stringify({ professional_id: '00000000-0000-4000-a000-000000000001', service_id: '00000000-0000-4000-a000-000000000002' }),
     }) as any;
 
     const res = await POST(req);
@@ -142,7 +152,7 @@ describe('Idempotency keys — create-intent', () => {
     expect(mockStripePaymentIntentsCreate).toHaveBeenCalledTimes(1);
     const [, options] = mockStripePaymentIntentsCreate.mock.calls[0];
     expect(options).toHaveProperty('idempotencyKey');
-    expect(options.idempotencyKey).toMatch(/^pi:prof-1:svc-1:/);
+    expect(options.idempotencyKey).toMatch(/^pi:00000000-0000-4000-a000-000000000001:00000000-0000-4000-a000-000000000002:/);
   });
 
   it('uses client-provided idempotency_key when sent', async () => {
@@ -153,8 +163,8 @@ describe('Idempotency keys — create-intent', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        professional_id: 'prof-1',
-        service_id: 'svc-1',
+        professional_id: '00000000-0000-4000-a000-000000000001',
+        service_id: '00000000-0000-4000-a000-000000000002',
         idempotency_key: 'client-key-abc',
       }),
     }) as any;
@@ -174,14 +184,14 @@ describe('Idempotency keys — create-intent', () => {
     const req1 = new Request('http://localhost/api/payment/create-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ professional_id: 'prof-1', service_id: 'svc-1' }),
+      body: JSON.stringify({ professional_id: '00000000-0000-4000-a000-000000000001', service_id: '00000000-0000-4000-a000-000000000002' }),
     }) as any;
     await POST(req1);
 
     const req2 = new Request('http://localhost/api/payment/create-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ professional_id: 'prof-1', service_id: 'svc-1' }),
+      body: JSON.stringify({ professional_id: '00000000-0000-4000-a000-000000000001', service_id: '00000000-0000-4000-a000-000000000002' }),
     }) as any;
     await POST(req2);
 
@@ -200,8 +210,8 @@ describe('Idempotency keys — checkout session', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        professional_id: 'prof-1',
-        service_id: 'svc-1',
+        professional_id: '00000000-0000-4000-a000-000000000001',
+        service_id: '00000000-0000-4000-a000-000000000002',
         booking_date: '2026-03-10',
         start_time: '10:00',
         client_name: 'Test Client',
