@@ -493,33 +493,57 @@ export default function ExecutionWheelV3Page() {
       setGhIssues(issues);
       log(`Launch Gate: ${issues.length} issues abertas`);
 
+      // Check if focused issue was closed
       setFocus((currentFocus) => {
         if (!currentFocus) return null;
-
-        // Check if current issue has an open PR — if so, auto-advance to next
-        const currentIssueEntry = issues.find((i: GHIssue) => i.number === currentFocus.number);
-        const hasPR = currentIssueEntry?.pull_request;
-
         const stillOpen = issues.find((i: GHIssue) => i.number === currentFocus.number && !i.pull_request);
-
-        if (hasPR || !stillOpen) {
-          // Issue has PR or was closed — move to next
-          const reason = hasPR ? 'PR aberto' : 'fechada';
-          log(`Issue #${currentFocus.number} ${reason}. Avancando...`);
-          const openWithoutPR = issues.filter((i: GHIssue) => i.state === 'open' && !i.pull_request && i.number !== currentFocus.number);
-          const next = pickNext(openWithoutPR.length > 0 ? openWithoutPR : issues.filter((i: GHIssue) => !i.pull_request));
-          if (next) {
-            const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
-            log(`Novo foco: #${next.number} — ${next.title}`);
-            setPhase('ready');
-            return f;
-          }
-          return null;
+        if (stillOpen) {
+          return { ...currentFocus, labels: labelsOf(stillOpen) };
         }
-
-        // Still open without PR — update labels
-        return { ...currentFocus, labels: labelsOf(stillOpen) };
+        // Issue was closed — recalculate
+        log('Issue focada foi fechada. Recalculando...');
+        const next = pickNext(issues.filter((i: GHIssue) => !i.pull_request));
+        if (next) {
+          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+          log(`Novo foco: #${next.number} — ${next.title}`);
+          setPhase('ready');
+          return f;
+        }
+        return null;
       });
+
+      // After loading issues, check if focused issue has a PR open — auto-advance
+      // This runs after setFocus above resolves
+      setFocus((currentFocus) => {
+        if (!currentFocus) return null;
+        // We'll check PR status asynchronously below
+        return currentFocus;
+      });
+
+      // Check PR status for focused issue and auto-advance if PR exists
+      const currentFocusSnapshot = focus;
+      if (currentFocusSnapshot) {
+        try {
+          const branch = branchName(currentFocusSnapshot);
+          const prData = await apiFetch(`/api/admin/github/issues?action=pr-status&branch=${encodeURIComponent(branch)}`);
+          if (prData.hasPR) {
+            log(`Issue #${currentFocusSnapshot.number} tem PR (${prData.prState}). Avancando...`);
+            const openWithoutPR = issues.filter((i: GHIssue) => !i.pull_request && i.number !== currentFocusSnapshot.number);
+            const next = pickNext(openWithoutPR);
+            if (next) {
+              const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+              setFocus(f);
+              setPhase('ready');
+              log(`Novo foco: #${next.number} — ${next.title}`);
+            } else {
+              setFocus(null);
+              log('Nenhuma issue sem PR disponivel.');
+            }
+          }
+        } catch {
+          // PR status check failed — keep current focus
+        }
+      }
     } catch (e) {
       const msg = (e as Error).message;
       setGhError(msg);
@@ -528,7 +552,7 @@ export default function ExecutionWheelV3Page() {
       setGhLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [log]);
+  }, [log, focus]);
 
   // Dedup search
   const searchDedup = useCallback(async (text: string) => {
