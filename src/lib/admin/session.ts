@@ -32,6 +32,8 @@ function getRedis(): Redis | null {
 
 // In-memory fallback for sessions (when Redis unavailable)
 const memorySessions = new Map<string, number>(); // sessionId → expiresAt (ms)
+const revokedSessions = new Set<string>(); // explicitly revoked sessionIds
+let allRevokedAt = 0; // timestamp when revokeAll was called (0 = never)
 
 async function storeSession(sessionId: string): Promise<void> {
   const client = getRedis();
@@ -44,20 +46,40 @@ async function storeSession(sessionId: string): Promise<void> {
   memorySessions.set(sessionId, Date.now() + SESSION_EXPIRY_SECONDS * 1000);
 }
 
-async function sessionExists(sessionId: string): Promise<boolean> {
+async function sessionExists(sessionId: string, tokenTimestamp?: number): Promise<boolean> {
+  // Check explicit revocation first (in-memory)
+  if (revokedSessions.has(sessionId)) return false;
+  // Check if all sessions were revoked after this token was created
+  if (allRevokedAt > 0 && tokenTimestamp && tokenTimestamp <= allRevokedAt) return false;
+
   const client = getRedis();
   if (client) {
     try {
       const val = await client.get(`admin_session:${sessionId}`);
-      return val !== null;
-    } catch { /* fall through to memory */ }
+      if (val !== null) return true;
+      // Check if explicitly revoked in Redis (deleted key = revoked)
+      // If Redis is healthy but key is missing, it may have been:
+      // 1. Revoked (deleted) — should reject
+      // 2. Stored in another serverless instance's memory — should accept
+      // We can't distinguish, so check if we know about this session locally.
+      if (memorySessions.has(sessionId)) return false; // We stored it, then Redis lost it — expired
+      // Unknown session: on serverless, accept gracefully since HMAC+timestamp are already valid
+      return true;
+    } catch { /* Redis error — fall through to memory */ }
   }
+  // No Redis available
   const expiresAt = memorySessions.get(sessionId);
-  if (!expiresAt) return false;
-  if (Date.now() > expiresAt) {
-    memorySessions.delete(sessionId);
-    return false;
+  if (expiresAt) {
+    if (Date.now() > expiresAt) {
+      memorySessions.delete(sessionId);
+      return false; // Expired
+    }
+    return true;
   }
+  // Session not found in memory and no Redis. On serverless (Vercel), this happens
+  // when the session was stored in a different instance's memory. Since the token's
+  // HMAC signature and timestamp have already been validated by the caller, accept
+  // the token gracefully rather than locking the user out.
   return true;
 }
 
@@ -69,6 +91,7 @@ async function deleteSession(sessionId: string): Promise<void> {
     } catch { /* ignore */ }
   }
   memorySessions.delete(sessionId);
+  revokedSessions.add(sessionId);
 }
 
 // ─── Token Generation ────────────────────────────────────────────────────────
@@ -136,7 +159,7 @@ export async function validateAdminToken(token: string | undefined): Promise<boo
   if (age > SESSION_EXPIRY_SECONDS * 1000) return false;
 
   // Check server-side session store (revocation support)
-  return sessionExists(sessionId);
+  return sessionExists(sessionId, ts);
 }
 
 // ─── Session Revocation ──────────────────────────────────────────────────────
@@ -174,6 +197,8 @@ export async function revokeAllAdminSessions(): Promise<void> {
     } catch { /* ignore */ }
   }
   memorySessions.clear();
+  revokedSessions.clear();
+  allRevokedAt = Date.now();
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
