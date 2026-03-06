@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { MarketingManager } from './marketing-manager';
@@ -38,13 +39,13 @@ export default async function MarketingPage() {
     .select('*', { count: 'exact', head: true })
     .eq('professional_id', professional.id);
 
+  const t = await getTranslations('marketing');
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Marketing</h1>
-        <p className="text-muted-foreground mt-1">
-          Crie materiais de divulgação profissionais para seu negócio
-        </p>
+        <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
       </div>
 
       <MarketingManager

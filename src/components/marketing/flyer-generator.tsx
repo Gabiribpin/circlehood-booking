@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslations } from 'next-intl';
 import { Download, Printer, FileText } from 'lucide-react';
 import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
@@ -32,26 +33,27 @@ const FLYER_SIZES = {
 };
 
 const COLOR_SCHEMES = [
-  { label: 'Profissional', primary: '#1E40AF', secondary: '#3B82F6', bg: '#EFF6FF' },
-  { label: 'Elegante', primary: '#5B21B6', secondary: '#8B5CF6', bg: '#F5F3FF' },
-  { label: 'Fresco', primary: '#047857', secondary: '#10B981', bg: '#ECFDF5' },
-  { label: 'Vibrante', primary: '#DC2626', secondary: '#F87171', bg: '#FEF2F2' },
-  { label: 'Moderno', primary: '#0891B2', secondary: '#22D3EE', bg: '#ECFEFF' },
+  { tKey: 'flyerColorProfessional', primary: '#1E40AF', secondary: '#3B82F6', bg: '#EFF6FF' },
+  { tKey: 'flyerColorElegant', primary: '#5B21B6', secondary: '#8B5CF6', bg: '#F5F3FF' },
+  { tKey: 'flyerColorFresh', primary: '#047857', secondary: '#10B981', bg: '#ECFDF5' },
+  { tKey: 'flyerColorVibrant', primary: '#DC2626', secondary: '#F87171', bg: '#FEF2F2' },
+  { tKey: 'flyerColorModern', primary: '#0891B2', secondary: '#22D3EE', bg: '#ECFEFF' },
 ];
 
 export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, secondQrUrl, secondQrCtaText, renderMode }: FlyerGeneratorProps) {
+  const t = useTranslations('marketing');
   const [size, setSize] = useState<FlyerSize>('a4');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [colorScheme, setColorScheme] = useState(COLOR_SCHEMES[0]);
-  const [customHeadline, setCustomHeadline] = useState('Agende seu horário agora!');
+  const [customHeadline, setCustomHeadline] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const [showPhone, setShowPhone] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const effectiveQrUrl = qrUrl || bookingUrl;
-  const effectiveCtaText = qrCtaText || 'Escaneie para agendar';
+  const effectiveCtaText = qrCtaText || t('ctaBooking');
   const hasDualQr = !!secondQrUrl;
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
       const headlineY = headerHeight + (professional.bio ? 350 : 200);
       ctx.font = `bold ${size === 'a4' ? '64' : '52'}px Arial`;
       ctx.fillStyle = colorScheme.secondary;
-      const headlineLines = wrapText(ctx, customHeadline, canvas.width - 200);
+      const headlineLines = wrapText(ctx, customHeadline || t('flyerHeadlinePlaceholder'), canvas.width - 200);
       drawMultilineText(ctx, headlineLines, centerX, headlineY, size === 'a4' ? 75 : 60);
 
       // Helper to draw footer content after QR codes
@@ -127,7 +129,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         ctx.font = `bold ${size === 'a4' ? '48' : '38'}px monospace`;
         ctx.fillStyle = colorScheme.primary;
         ctx.textAlign = 'center';
-        const shortUrl = `circlehood.app/${professional.slug}`;
+        const shortUrl = `booking.circlehood-tech.com/${professional.slug}`;
         ctx.fillText(shortUrl, centerX, footerY);
 
         if (showPhone && professional.phone) {
@@ -177,7 +179,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
           ctx.font = `bold ${size === 'a4' ? '36' : '28'}px Arial`;
           ctx.fillStyle = colorScheme.primary;
           ctx.textAlign = 'center';
-          ctx.fillText('📅 Agendar', qr1X + qrSize / 2, qrY + qrSize + bgPadding + 45);
+          ctx.fillText(effectiveCtaText, qr1X + qrSize / 2, qrY + qrSize + bgPadding + 45);
 
           const qr2Img = new Image();
           qr2Img.onload = () => {
@@ -195,7 +197,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
             ctx.font = `bold ${size === 'a4' ? '36' : '28'}px Arial`;
             ctx.fillStyle = colorScheme.primary;
             ctx.textAlign = 'center';
-            ctx.fillText('💬 WhatsApp', qr2X + qrSize / 2, qrY + qrSize + bgPadding + 45);
+            ctx.fillText(secondQrCtaText || t('ctaWhatsapp'), qr2X + qrSize / 2, qrY + qrSize + bgPadding + 45);
 
             drawFooter(qrY, qrSize + 70);
           };
@@ -235,8 +237,8 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
     } catch (error) {
       logger.error('Error generating flyer:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao gerar flyer',
+        title: t('toastError'),
+        description: t('toastFlyerFailed'),
         variant: 'destructive',
       });
     }
@@ -252,14 +254,14 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
       canvasToPNG(canvas, filename);
 
       toast({
-        title: 'Sucesso!',
-        description: `Flyer ${FLYER_SIZES[size].label} baixado com sucesso`,
+        title: t('toastSuccess'),
+        description: t('toastFlyerDownloaded'),
       });
     } catch (error) {
       logger.error('Error downloading flyer:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao baixar flyer',
+        title: t('toastError'),
+        description: t('toastFlyerDownloadFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -280,14 +282,14 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
     try {
       printCanvas(canvas);
       toast({
-        title: 'Imprimindo...',
-        description: 'Janela de impressão aberta',
+        title: t('toastPrinting'),
+        description: t('toastPrintOpened'),
       });
     } catch (error) {
       logger.error('Error printing flyer:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao imprimir flyer',
+        title: t('toastError'),
+        description: t('toastPrintFailed'),
         variant: 'destructive',
       });
     }
@@ -304,13 +306,13 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
               <img src={previewUrl} alt="Flyer Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         {/* Size Selector */}
         <div className="space-y-2">
-          <Label>Tamanho</Label>
+          <Label>{t('flyerSizeLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant={size === 'a4' ? 'default' : 'outline'}
@@ -335,11 +337,11 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
 
         {/* Color Scheme */}
         <div className="space-y-2">
-          <Label>Esquema de Cores</Label>
+          <Label>{t('flyerColorLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
             {COLOR_SCHEMES.map((scheme) => (
               <Button
-                key={scheme.label}
+                key={scheme.tKey}
                 variant={colorScheme === scheme ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setColorScheme(scheme)}
@@ -349,7 +351,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: scheme.primary }} />
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: scheme.secondary }} />
                 </div>
-                {scheme.label}
+                {t(scheme.tKey)}
               </Button>
             ))}
           </div>
@@ -357,24 +359,24 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
 
         {/* Custom Headline */}
         <div className="space-y-2">
-          <Label htmlFor="headline">Título de Chamada</Label>
+          <Label htmlFor="headline">{t('flyerHeadlineLabel')}</Label>
           <Input
             id="headline"
             value={customHeadline}
             onChange={(e) => setCustomHeadline(e.target.value)}
-            placeholder="Agende seu horário agora!"
+            placeholder={t('flyerHeadlinePlaceholder')}
             maxLength={60}
           />
         </div>
 
         {/* Custom Description */}
         <div className="space-y-2">
-          <Label htmlFor="description">Descrição (opcional)</Label>
+          <Label htmlFor="description">{t('flyerDescriptionLabel')}</Label>
           <Textarea
             id="description"
             value={customDescription}
             onChange={(e) => setCustomDescription(e.target.value)}
-            placeholder="Adicione informações extras..."
+            placeholder={t('flyerDescriptionPlaceholder')}
             rows={3}
             maxLength={150}
           />
@@ -390,7 +392,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
             className="rounded"
           />
           <Label htmlFor="show-phone" className="cursor-pointer">
-            Mostrar telefone no flyer
+            {t('flyerShowPhoneLabel')}
           </Label>
         </div>
 
@@ -410,7 +412,7 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
               <img src={previewUrl} alt="Flyer Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
@@ -418,11 +420,11 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleDownload} disabled={loading || !previewUrl}>
             <Download className="mr-2 h-4 w-4" />
-            Baixar
+            {t('flyerDownload')}
           </Button>
           <Button onClick={handlePrint} disabled={loading || !previewUrl} variant="outline">
             <Printer className="mr-2 h-4 w-4" />
-            Imprimir
+            {t('flyerPrint')}
           </Button>
           <ImageShareButtons
             getBlob={getFlyerBlob}
@@ -431,9 +433,9 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
-          Alta resolução ({FLYER_SIZES[size].width}x{FLYER_SIZES[size].height}px @ 300dpi)
+          {t('flyerResolution', { width: FLYER_SIZES[size].width, height: FLYER_SIZES[size].height })}
           <br />
-          Pronto para impressão profissional
+          {t('flyerPrintReady')}
         </p>
 
         <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -482,18 +484,18 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
                   <img src={previewUrl} alt="Flyer Preview" className="w-full h-auto" />
                 </div>
               ) : (
-                <p className="text-muted-foreground">Gerando preview...</p>
+                <p className="text-muted-foreground">{t('generatingPreview')}</p>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleDownload} disabled={loading || !previewUrl}>
                 <Download className="mr-2 h-4 w-4" />
-                Baixar
+                {t('flyerDownload')}
               </Button>
               <Button onClick={handlePrint} disabled={loading || !previewUrl} variant="outline">
                 <Printer className="mr-2 h-4 w-4" />
-                Imprimir
+                {t('flyerPrint')}
               </Button>
               <ImageShareButtons
                 getBlob={getFlyerBlob}
@@ -502,9 +504,9 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Alta resolução ({FLYER_SIZES[size].width}x{FLYER_SIZES[size].height}px @ 300dpi)
+              {t('flyerResolution', { width: FLYER_SIZES[size].width, height: FLYER_SIZES[size].height })}
               <br />
-              Pronto para impressão profissional
+              {t('flyerPrintReady')}
             </p>
           </div>
         </CardContent>
@@ -515,14 +517,14 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
         <CardContent className="p-6">
           <div className="space-y-6">
             <div>
-              <h4 className="font-medium mb-4">Personalização</h4>
+              <h4 className="font-medium mb-4">{t('flyerCustomize')}</h4>
 
               <div className="space-y-2 mb-4">
-                <Label>Esquema de Cores</Label>
+                <Label>{t('flyerColorLabel')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {COLOR_SCHEMES.map((scheme) => (
                     <Button
-                      key={scheme.label}
+                      key={scheme.tKey}
                       variant={colorScheme === scheme ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setColorScheme(scheme)}
@@ -532,30 +534,30 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
                         <div className="w-3 h-3 rounded" style={{ backgroundColor: scheme.primary }} />
                         <div className="w-3 h-3 rounded" style={{ backgroundColor: scheme.secondary }} />
                       </div>
-                      {scheme.label}
+                      {t(scheme.tKey)}
                     </Button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2 mb-4">
-                <Label htmlFor="headline-default">Título de Chamada</Label>
+                <Label htmlFor="headline-default">{t('flyerHeadlineLabel')}</Label>
                 <Input
                   id="headline-default"
                   value={customHeadline}
                   onChange={(e) => setCustomHeadline(e.target.value)}
-                  placeholder="Agende seu horário agora!"
+                  placeholder={t('flyerHeadlinePlaceholder')}
                   maxLength={60}
                 />
               </div>
 
               <div className="space-y-2 mb-4">
-                <Label htmlFor="description-default">Descrição (opcional)</Label>
+                <Label htmlFor="description-default">{t('flyerDescriptionLabel')}</Label>
                 <Textarea
                   id="description-default"
                   value={customDescription}
                   onChange={(e) => setCustomDescription(e.target.value)}
-                  placeholder="Adicione informações extras..."
+                  placeholder={t('flyerDescriptionPlaceholder')}
                   rows={3}
                   maxLength={150}
                 />
@@ -570,19 +572,19 @@ export function FlyerGenerator({ professional, bookingUrl, qrUrl, qrCtaText, sec
                   className="rounded"
                 />
                 <Label htmlFor="show-phone-default" className="cursor-pointer">
-                  Mostrar telefone no flyer
+                  {t('flyerShowPhoneLabel')}
                 </Label>
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="font-medium mb-2 text-sm">Dicas de Impressão</h4>
+              <h4 className="font-medium mb-2 text-sm">{t('flyerPrintTipsTitle')}</h4>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li>Use papel couché 170g ou superior</li>
-                <li>Imprima em gráfica para melhor qualidade</li>
-                <li>A4: ideal para murais e vitrines</li>
-                <li>A5: perfeito para distribuição manual</li>
-                <li>Plastifique para maior durabilidade</li>
+                <li>{t('flyerTip1')}</li>
+                <li>{t('flyerTip2')}</li>
+                <li>{t('flyerTip3')}</li>
+                <li>{t('flyerTip4')}</li>
+                <li>{t('flyerTip5')}</li>
               </ul>
             </div>
           </div>

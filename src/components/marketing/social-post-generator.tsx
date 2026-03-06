@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslations } from 'next-intl';
 import { Download, Instagram, Facebook } from 'lucide-react';
 import { ImageShareButtons } from '@/components/marketing/image-share-buttons';
 import { generateQRDataURL } from '@/lib/marketing/qr-generator';
@@ -40,17 +41,18 @@ const GRADIENT_THEMES = [
 ];
 
 export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText, secondQrUrl, secondQrCtaText, renderMode }: SocialPostGeneratorProps) {
+  const t = useTranslations('marketing');
   const [format, setFormat] = useState<PostFormat>('instagram-story');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [theme, setTheme] = useState(GRADIENT_THEMES[0]);
   const [customTitle, setCustomTitle] = useState('Agende Comigo!');
-  const [customMessage, setCustomMessage] = useState('Acesse o link e escolha o melhor horário para você 📅');
+  const [customMessage, setCustomMessage] = useState('Acesse o link e escolha o melhor horário para você');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const effectiveQrUrl = qrUrl || bookingUrl;
-  const effectiveCtaText = qrCtaText || 'Escaneie para agendar';
+  const effectiveCtaText = qrCtaText || t('ctaBooking');
   const hasDualQr = !!secondQrUrl;
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
         const bottomY = canvas.height - 100;
         ctx.font = 'bold 28px monospace';
         ctx.fillStyle = '#FFFFFF';
-        const shortUrl = `circlehood.app/${professional.slug}`;
+        const shortUrl = `booking.circlehood-tech.com/${professional.slug}`;
         ctx.fillText(shortUrl, centerX, bottomY);
 
         setPreviewUrl(canvas.toDataURL());
@@ -186,8 +188,8 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
     } catch (error) {
       logger.error('Error generating social post:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao gerar post',
+        title: t('toastError'),
+        description: t('toastPostFailed'),
         variant: 'destructive',
       });
     }
@@ -203,14 +205,14 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
       canvasToPNG(canvas, filename);
 
       toast({
-        title: 'Sucesso!',
-        description: `Post para ${POST_FORMATS[format].label} baixado com sucesso`,
+        title: t('toastSuccess'),
+        description: t('toastPostDownloaded'),
       });
     } catch (error) {
       logger.error('Error downloading post:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao baixar post',
+        title: t('toastError'),
+        description: t('toastPostDownloadFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -237,13 +239,13 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
               <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
         {/* Format Selector */}
         <div className="space-y-2">
-          <Label>Formato</Label>
+          <Label>{t('socialFormatLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant={format === 'instagram-story' ? 'default' : 'outline'}
@@ -268,23 +270,23 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
 
         {/* Theme Selection */}
         <div className="space-y-2">
-          <Label>Tema de Cores</Label>
+          <Label>{t('flyerColorLabel')}</Label>
           <div className="grid grid-cols-2 gap-2">
-            {GRADIENT_THEMES.map((t) => (
+            {GRADIENT_THEMES.map((gt) => (
               <Button
-                key={t.label}
-                variant={theme === t ? 'default' : 'outline'}
+                key={gt.label}
+                variant={theme === gt ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setTheme(t)}
+                onClick={() => setTheme(gt)}
                 className="justify-start gap-2"
               >
                 <div
                   className="w-4 h-4 rounded"
                   style={{
-                    background: `linear-gradient(135deg, ${t.color1}, ${t.color2})`,
+                    background: `linear-gradient(135deg, ${gt.color1}, ${gt.color2})`,
                   }}
                 />
-                {t.label}
+                {gt.label}
               </Button>
             ))}
           </div>
@@ -292,7 +294,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
 
         {/* Custom Title */}
         <div className="space-y-2">
-          <Label htmlFor="title">Título Principal</Label>
+          <Label htmlFor="title">{t('socialTitleLabel')}</Label>
           <Input
             id="title"
             value={customTitle}
@@ -304,7 +306,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
 
         {/* Custom Message */}
         <div className="space-y-2">
-          <Label htmlFor="message">Mensagem</Label>
+          <Label htmlFor="message">{t('socialMessageLabel')}</Label>
           <Textarea
             id="message"
             value={customMessage}
@@ -336,7 +338,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
               <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
             </div>
           ) : (
-            <p className="text-muted-foreground">Gerando preview...</p>
+            <p className="text-muted-foreground">{t('generatingPreview')}</p>
           )}
         </div>
 
@@ -344,7 +346,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
             <Download className="mr-2 h-4 w-4" />
-            Baixar {POST_FORMATS[format].label}
+            {t('socialDownload')}
           </Button>
           <ImageShareButtons
             getBlob={getPostBlob}
@@ -402,14 +404,14 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
                   <img src={previewUrl} alt="Social Post Preview" className="w-full h-auto" />
                 </div>
               ) : (
-                <p className="text-muted-foreground">Gerando preview...</p>
+                <p className="text-muted-foreground">{t('generatingPreview')}</p>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleDownload} disabled={loading || !previewUrl} className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
-                Baixar {POST_FORMATS[format].label}
+                {t('socialDownload')}
               </Button>
               <ImageShareButtons
                 getBlob={getPostBlob}
@@ -425,10 +427,10 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
         <CardContent className="p-6">
           <div className="space-y-6">
             <div>
-              <h4 className="font-medium mb-4">Personalização</h4>
+              <h4 className="font-medium mb-4">{t('stepCustomize')}</h4>
 
               <div className="space-y-2 mb-4">
-                <Label>Tema de Cores</Label>
+                <Label>{t('flyerColorLabel')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {GRADIENT_THEMES.map((t) => (
                     <Button
@@ -451,7 +453,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
               </div>
 
               <div className="space-y-2 mb-4">
-                <Label htmlFor="title-default">Título Principal</Label>
+                <Label htmlFor="title-default">{t('socialTitleLabel')}</Label>
                 <Input
                   id="title-default"
                   value={customTitle}
@@ -462,7 +464,7 @@ export function SocialPostGenerator({ professional, bookingUrl, qrUrl, qrCtaText
               </div>
 
               <div className="space-y-2 mb-4">
-                <Label htmlFor="message-default">Mensagem</Label>
+                <Label htmlFor="message-default">{t('socialMessageLabel')}</Label>
                 <Textarea
                   id="message-default"
                   value={customMessage}

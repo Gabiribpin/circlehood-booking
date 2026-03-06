@@ -40,7 +40,7 @@ export function MarketingManager({ professional, savedQRCodes, totalScans, whats
   const [materialType, setMaterialType] = useState<MaterialType>('qr-booking');
   const [qrTarget, setQrTarget] = useState<QrTarget>('booking');
 
-  const bookingUrl = `https://circlehood-booking.vercel.app/${professional.slug}`;
+  const bookingUrl = `https://booking.circlehood-tech.com/${professional.slug}`;
   const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}` : bookingUrl;
 
   // Resolve URLs/CTA based on qrTarget
