@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getAuthUrl } from '@/lib/integrations/google-calendar';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * Inicia fluxo OAuth do Google Calendar
@@ -8,6 +9,13 @@ import { getAuthUrl } from '@/lib/integrations/google-calendar';
  */
 export async function GET() {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const authUrl = getAuthUrl();
 
     return NextResponse.redirect(authUrl);
