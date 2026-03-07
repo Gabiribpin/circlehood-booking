@@ -359,6 +359,7 @@ export default function ExecutionWheelV3Page() {
 
   // Launch Gate state
   const [ghIssues, setGhIssues] = useState<GHIssue[]>([]);
+  const [issuesWithPR, setIssuesWithPR] = useState<Set<number>>(new Set());
   const [ghLoading, setGhLoading] = useState(false);
   const [ghError, setGhError] = useState('');
 
@@ -504,13 +505,15 @@ export default function ExecutionWheelV3Page() {
 
       // Build set of issue numbers that have open PRs
       const prBranchSet = new Set(prBranches as string[]);
-      const issuesWithPR = new Set<number>();
+      const issuesWithPRLocal = new Set<number>();
       for (const issue of issues as GHIssue[]) {
         const branch = branchName({ number: issue.number, title: issue.title, url: '', labels: [] });
         if (prBranchSet.has(branch)) {
-          issuesWithPR.add(issue.number);
+          issuesWithPRLocal.add(issue.number);
         }
       }
+      setIssuesWithPR(issuesWithPRLocal);
+      const issuesWithPR = issuesWithPRLocal;
 
       const availableCount = (issues as GHIssue[]).filter((i: GHIssue) => !issuesWithPR.has(i.number)).length;
       log(`Launch Gate: ${(issues as GHIssue[]).length} issues abertas (${availableCount} sem PR)`);
@@ -770,14 +773,15 @@ export default function ExecutionWheelV3Page() {
 
   // ─── Render ───────────────────────────────────────────────────────────
 
-  const openCount = ghIssues.filter((i) => !i.pull_request).length;
+  const pendingCount = ghIssues.filter((i) => !issuesWithPR.has(i.number)).length;
+  const openCount = ghIssues.length;
   const sev = focus ? getSeverity(focus.labels) : '';
   const effort = focus ? getEffortScore(focus.labels) : 2;
   const effortTxt = effort === 1 ? 'Baixo' : effort === 2 ? 'Medio' : 'Alto';
 
   const stats = PRIORITY.map((p) => ({
     label: p.toUpperCase(),
-    count: ghIssues.filter((i) => !i.pull_request && getSeverity(labelsOf(i)) === p).length,
+    count: ghIssues.filter((i) => !issuesWithPR.has(i.number) && getSeverity(labelsOf(i)) === p).length,
     color: sevColor(p),
   }));
 
@@ -820,12 +824,15 @@ export default function ExecutionWheelV3Page() {
             <ExternalLink className="h-3.5 w-3.5 inline mr-1" />
             Project
           </button>
-          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
-            openCount > 0
-              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-              : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-          }`}>
-            {openCount} issues
+          <span
+            title={`${pendingCount} pendentes / ${openCount} total`}
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+              pendingCount > 0
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+            }`}
+          >
+            {pendingCount} pendentes
           </span>
         </div>
       </div>
