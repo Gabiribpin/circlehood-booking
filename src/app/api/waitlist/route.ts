@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 // POST - Adicionar na waitlist (Public)
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (await isRateLimited(`waitlist:${ip}`, 5, 60)) {
+  if (await isRateLimited(`rl:waitlist:${ip}`, 5, 60)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 

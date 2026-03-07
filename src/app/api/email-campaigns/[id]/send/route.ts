@@ -32,7 +32,7 @@ export async function POST(
   }
 
   // Rate limiting por professional_id — 5 campaigns per hour
-  if (await isRateLimited(`campaign-send:${professional.id}`, CAMPAIGN_RATE_LIMIT, CAMPAIGN_RATE_WINDOW)) {
+  if (await isRateLimited(`rl:campaign-send:${professional.id}`, CAMPAIGN_RATE_LIMIT, CAMPAIGN_RATE_WINDOW)) {
     return NextResponse.json(
       { error: 'Too many campaigns sent. Try again later.' },
       { status: 429 }

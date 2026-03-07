@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 20 translation requests per minute per user
-    const limited = await isRateLimited(`translate:${user.id}`, 20, 60);
+    const limited = await isRateLimited(`rl:translate:${user.id}`, 20, 60);
     if (limited) {
       return Response.json({ error: 'Too many requests' }, { status: 429 });
     }

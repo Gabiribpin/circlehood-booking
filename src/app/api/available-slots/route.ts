@@ -8,7 +8,7 @@ const SLOTS_RATE_WINDOW = 60; // 1 minute in seconds
 export async function GET(request: NextRequest) {
   // ─── Rate limiting por IP ──────────────────────────────────────────
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (await isRateLimited(`available-slots:${ip}`, SLOTS_RATE_LIMIT, SLOTS_RATE_WINDOW)) {
+  if (await isRateLimited(`rl:available-slots:${ip}`, SLOTS_RATE_LIMIT, SLOTS_RATE_WINDOW)) {
     return NextResponse.json(
       { error: 'Too many requests. Try again later.' },
       { status: 429 }

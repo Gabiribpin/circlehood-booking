@@ -83,7 +83,7 @@ const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (await isRateLimited(`testimonials:${ip}`, 5, 60)) {
+  if (await isRateLimited(`rl:testimonials:${ip}`, 5, 60)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
