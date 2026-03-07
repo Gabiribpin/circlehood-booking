@@ -17,6 +17,16 @@ export async function PATCH(
 
   const { status, priority } = await request.json();
 
+  const VALID_STATUSES = ['open', 'in_progress', 'closed', 'awaiting_response'] as const;
+  const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+
+  if (status && !(VALID_STATUSES as readonly string[]).includes(status)) {
+    return NextResponse.json({ error: 'Status inválido' }, { status: 400 });
+  }
+  if (priority && !(VALID_PRIORITIES as readonly string[]).includes(priority)) {
+    return NextResponse.json({ error: 'Prioridade inválida' }, { status: 400 });
+  }
+
   const updates: Record<string, string> = {};
   if (status) updates.status = status;
   if (priority) updates.priority = priority;
