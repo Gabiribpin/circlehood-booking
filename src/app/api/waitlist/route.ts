@@ -1,6 +1,18 @@
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const waitlistSchema = z.object({
+  professional_id: z.string().uuid(),
+  service_id: z.string().uuid(),
+  contact_name: z.string().min(1).max(200),
+  contact_phone: z.string().min(1).max(30),
+  contact_email: z.string().email().max(254).optional().nullable(),
+  preferred_dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1),
+  preferred_time_slots: z.array(z.string().max(20)).optional(),
+  notes: z.string().max(1000).optional().nullable(),
+});
 
 // GET - Listar waitlist (Professional only)
 export async function GET(request: NextRequest) {
@@ -53,6 +65,11 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const body = await request.json();
 
+  const parsed = waitlistSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 });
+  }
+
   const {
     professional_id,
     service_id,
@@ -62,17 +79,9 @@ export async function POST(request: NextRequest) {
     preferred_dates,
     preferred_time_slots,
     notes,
-  } = body;
+  } = parsed.data;
 
   try {
-    // Validações
-    if (!professional_id || !service_id || !contact_name || !contact_phone) {
-      return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 });
-    }
-
-    if (!preferred_dates || preferred_dates.length === 0) {
-      return NextResponse.json({ error: 'Selecione pelo menos uma data preferida' }, { status: 400 });
-    }
 
     // Inserir na waitlist
     const { data: waitlistEntry, error: insertError } = await supabase

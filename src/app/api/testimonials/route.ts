@@ -2,6 +2,20 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const testimonialUpdateSchema = z.object({
+  id: z.string().uuid(),
+  client_name: z.string().max(200).optional(),
+  client_photo_url: z.string().url().max(2000).nullable().optional(),
+  testimonial_text: z.string().max(5000).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+  service_name: z.string().max(200).nullable().optional(),
+  testimonial_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  is_visible: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
+  order_index: z.number().int().min(0).optional(),
+});
 
 // GET - Buscar depoimentos
 export async function GET(request: NextRequest) {
@@ -198,38 +212,17 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const {
-      id,
-      client_name,
-      client_photo_url,
-      testimonial_text,
-      rating,
-      service_name,
-      testimonial_date,
-      is_visible,
-      is_featured,
-      order_index,
-    } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Testimonial ID required' }, { status: 400 });
+    const parsed = testimonialUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 });
     }
 
-    const updateData: any = {};
-    if (client_name !== undefined) updateData.client_name = client_name;
-    if (client_photo_url !== undefined) updateData.client_photo_url = client_photo_url;
-    if (testimonial_text !== undefined) updateData.testimonial_text = testimonial_text;
-    if (rating !== undefined) {
-      if (rating < 1 || rating > 5) {
-        return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
-      }
-      updateData.rating = rating;
+    const { id, ...fields } = parsed.data;
+
+    const updateData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) updateData[key] = value;
     }
-    if (service_name !== undefined) updateData.service_name = service_name;
-    if (testimonial_date !== undefined) updateData.testimonial_date = testimonial_date;
-    if (is_visible !== undefined) updateData.is_visible = is_visible;
-    if (is_featured !== undefined) updateData.is_featured = is_featured;
-    if (order_index !== undefined) updateData.order_index = order_index;
 
     const { data: testimonial, error } = await supabase
       .from('testimonials')
@@ -276,8 +269,8 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const testimonialId = searchParams.get('id');
 
-    if (!testimonialId) {
-      return NextResponse.json({ error: 'Testimonial ID required' }, { status: 400 });
+    if (!testimonialId || !z.string().uuid().safeParse(testimonialId).success) {
+      return NextResponse.json({ error: 'Valid testimonial ID required' }, { status: 400 });
     }
 
     const { error } = await supabase

@@ -69,9 +69,23 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const category = formData.get('category') as string;
+    const rawTitle = (formData.get('title') as string) || '';
+    const rawDescription = (formData.get('description') as string) || '';
+    const rawCategory = (formData.get('category') as string) || '';
+
+    if (rawTitle.length > 200) {
+      return NextResponse.json({ error: 'Title too long (max 200 characters)' }, { status: 400 });
+    }
+    if (rawDescription.length > 2000) {
+      return NextResponse.json({ error: 'Description too long (max 2000 characters)' }, { status: 400 });
+    }
+    if (rawCategory.length > 100) {
+      return NextResponse.json({ error: 'Category too long (max 100 characters)' }, { status: 400 });
+    }
+
+    const title = rawTitle;
+    const description = rawDescription;
+    const category = rawCategory;
     const isBeforeAfter = formData.get('isBeforeAfter') === 'true';
     const beforeFile = formData.get('beforeFile') as File;
     const afterFile = formData.get('afterFile') as File;

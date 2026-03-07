@@ -1,6 +1,12 @@
 import { logger } from '@/lib/logger';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const rescheduleSchema = z.object({
+  new_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
+  new_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Invalid time format'),
+});
 
 export async function POST(
   request: NextRequest,
@@ -8,7 +14,12 @@ export async function POST(
 ) {
   const { token } = await params;
   const body = await request.json();
-  const { new_date, new_time } = body;
+
+  const parsed = rescheduleSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 });
+  }
+  const { new_date, new_time } = parsed.data;
 
   const supabase = createAdminClient();
 
