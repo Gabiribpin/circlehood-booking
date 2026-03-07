@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 12. INSERT payment ──────────────────────────────────────────────────
-  await supabase.from('payments').insert({
+  const { error: paymentError } = await supabase.from('payments').insert({
     professional_id,
     booking_id: booking.id,
     amount: depositAmount,
@@ -269,6 +269,12 @@ export async function POST(request: NextRequest) {
     status: 'pending',
     stripe_checkout_session_id: session.id,
   });
+
+  if (paymentError) {
+    logger.error('[bookings/checkout] payment insert failed — rolling back booking', paymentError);
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+    return NextResponse.json({ error: 'Erro ao registrar pagamento. Tente novamente.' }, { status: 500 });
+  }
 
   return NextResponse.json({ session_url: session.url });
 }
