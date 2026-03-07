@@ -30,7 +30,14 @@ export async function GET() {
 }
 
 // ─── POST — create new ticket + AI bot auto-response ──────────────────────────
+const MAX_BODY_SIZE = 1_048_576; // 1 MB
+
 export async function POST(request: NextRequest) {
+  const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10);
+  if (contentLength > MAX_BODY_SIZE) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
