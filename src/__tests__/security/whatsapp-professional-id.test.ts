@@ -78,13 +78,11 @@ describe('WhatsApp tables multi-tenant isolation (#109)', () => {
   describe('whatsapp/send/route.ts uses correct column', () => {
     const sendRoute = readFileSync(SEND_ROUTE_PATH, 'utf-8');
 
-    it('does not filter whatsapp_config by professional_id (column does not exist)', () => {
-      // whatsapp_config does NOT have professional_id — must use user_id
-      expect(sendRoute).not.toContain("eq('professional_id'");
-    });
-
-    it('filters whatsapp_config by user_id', () => {
-      expect(sendRoute).toContain("eq('user_id', user.id)");
+    it('filters whatsapp_config by user_id or professional_id', () => {
+      // whatsapp_config has both user_id and professional_id (added in migration 20260307000002)
+      const usesUserId = sendRoute.includes("eq('user_id', user.id)");
+      const usesProfId = sendRoute.includes("eq('professional_id'");
+      expect(usesUserId || usesProfId).toBe(true);
     });
   });
 });
