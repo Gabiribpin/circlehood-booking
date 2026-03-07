@@ -117,12 +117,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Buscar todas as seções
+    // Buscar seções (max 7 types per professional, limit as defensive guard)
     const { data: sections, error } = await supabase
       .from('page_sections')
       .select('*')
       .eq('professional_id', professional.id)
-      .order('order_index', { ascending: true });
+      .order('order_index', { ascending: true })
+      .limit(50);
 
     if (error) throw error;
 
