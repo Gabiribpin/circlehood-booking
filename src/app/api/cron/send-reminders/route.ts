@@ -161,8 +161,9 @@ export async function POST(request: NextRequest) {
           .eq('booking_id', booking.id)
           .single();
 
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://booking.circlehood-tech.com';
         const rescheduleLink = tokenData
-          ? `\n\nPara reagendar ou cancelar:\nhttps://circlehood-booking.vercel.app/reschedule/${tokenData.token}`
+          ? `\n\nPara reagendar ou cancelar:\n${baseUrl}/reschedule/${tokenData.token}`
           : '';
 
         // Formatar mensagem
