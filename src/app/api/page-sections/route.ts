@@ -266,20 +266,23 @@ export async function PUT(request: NextRequest) {
       is_visible: z.boolean(),
     });
 
-    // Atualizar todas as seções
-    const updates = sections.map(async (section) => {
+    // Validate all items before sending to DB
+    const validatedUpdates = [];
+    for (const section of sections) {
       const parsed = bulkItemSchema.safeParse(section);
-      if (!parsed.success) return null;
-      const { id, order_index, is_visible } = parsed.data;
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid section data' }, { status: 400 });
+      }
+      validatedUpdates.push(parsed.data);
+    }
 
-      return supabase
-        .from('page_sections')
-        .update({ order_index, is_visible })
-        .eq('id', id)
-        .eq('professional_id', professional.id);
-    });
+    // Atomic bulk update via RPC (single transaction)
+    const { error: rpcError } = await supabase.rpc('bulk_update_page_sections', {
+      p_professional_id: professional.id,
+      p_updates: JSON.stringify(validatedUpdates),
+    } as never);
 
-    await Promise.all(updates);
+    if (rpcError) throw rpcError;
 
     // Buscar seções atualizadas
     const { data: updatedSections } = await supabase
