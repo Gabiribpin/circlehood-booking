@@ -450,7 +450,9 @@
     "day3": "Wednesday",
     "day4": "Thursday",
     "day5": "Friday",
-    "day6": "Saturday"
+    "day6": "Saturday",
+    "removeBlockedDate": "Remove blocked date",
+    "removeBlockedPeriod": "Remove blocked period"
   },
   "support": {
     "title": "Support Center",
@@ -487,7 +489,8 @@
     "replyShortly": "We'll respond shortly.",
     "errorLoad": "Error loading tickets",
     "errorOpen": "Error opening ticket",
-    "errorReply": "Error sending reply"
+    "errorReply": "Error sending reply",
+    "sendReply": "Send reply"
   },
   "gallery": {
     "title": "Photo Gallery",
@@ -751,7 +754,9 @@
     "importContactsError": "Error importing contacts",
     "importWhatsAppBtn": "Import from WhatsApp",
     "importWhatsAppSuccess": "WhatsApp import complete!",
-    "importWhatsAppDesc": "{imported} contacts imported, {skipped} already existed."
+    "importWhatsAppDesc": "{imported} contacts imported, {skipped} already existed.",
+    "editClient": "Edit client",
+    "deleteClient": "Delete client"
   },
   "onboarding": {
     "title": "Set up your account",
@@ -1190,7 +1195,9 @@
     "tip2": "Facebook and WhatsApp Status",
     "tip3": "Google My Business",
     "tip4": "WhatsApp groups in your area",
-    "tip5": "Print the QR Code and place it at your establishment"
+    "tip5": "Print the QR Code and place it at your establishment",
+    "copyLink": "Copy link",
+    "openPage": "Open page"
   },
   "integrations": {
     "title": "Integrations",

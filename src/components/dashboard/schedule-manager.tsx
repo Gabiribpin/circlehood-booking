@@ -274,6 +274,7 @@ export function ScheduleManager({
                         variant="ghost"
                         size="icon"
                         onClick={() => removeBlockedDate(bd.id)}
+                        aria-label={t('removeBlockedDate')}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -356,6 +357,7 @@ export function ScheduleManager({
                         variant="ghost"
                         size="icon"
                         onClick={() => removeBlockedPeriod(bp.id)}
+                        aria-label={t('removeBlockedPeriod')}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
