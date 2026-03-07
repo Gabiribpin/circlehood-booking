@@ -41,6 +41,13 @@ export async function GET() {
       return NextResponse.json({ enabled: false });
     }
 
+    if (res.status === 403) {
+      return NextResponse.json({
+        enabled: false,
+        error: 'GitHub 403: Token sem permissao. Recrie GH_ACTIONS_TOKEN com scope "Variables: Read and Write" (Fine-grained PAT → Repository permissions → Variables).',
+      });
+    }
+
     if (!res.ok) {
       return NextResponse.json({ enabled: false, error: `GitHub ${res.status}` });
     }

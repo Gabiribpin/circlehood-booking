@@ -18,7 +18,9 @@ import {
   Plus,
   Link2,
   Rocket,
+  FlaskConical,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -473,6 +475,12 @@ export default function ExecutionWheelV3Page() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'safe' | 'migrations' | 'review' | 'error'>('idle');
   const [syncOutput, setSyncOutput] = useState('');
 
+  // Bot E2E toggle
+  const [botE2eEnabled, setBotE2eEnabled] = useState(false);
+  const [botE2eLoading, setBotE2eLoading] = useState(true);
+  const [botE2eError, setBotE2eError] = useState('');
+
+
   const log = useCallback((msg: string) => {
     const ts = new Date().toISOString().slice(11, 19);
     setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 100));
@@ -504,6 +512,49 @@ export default function ExecutionWheelV3Page() {
   useEffect(() => {
     localStorage.setItem(LS_PHASE_V3, phase);
   }, [phase]);
+
+  // ─── Bot E2E Toggle ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/bot-e2e-toggle');
+        if (!res.ok) { setBotE2eError('Falha ao carregar'); return; }
+        const data = await res.json();
+        setBotE2eEnabled(data.enabled);
+        if (data.error) setBotE2eError(data.error);
+      } catch {
+        setBotE2eError('Falha ao carregar');
+      } finally {
+        setBotE2eLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleBotE2eToggle = useCallback(async (checked: boolean) => {
+    setBotE2eLoading(true);
+    setBotE2eError('');
+    try {
+      const res = await fetch('/api/admin/bot-e2e-toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: checked }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.error || `HTTP ${res.status}`;
+        setBotE2eError(msg.includes('403') ? 'Token sem permissao Variables. Recrie GH_ACTIONS_TOKEN com scope "Variables: Read/Write".' : msg);
+        log(`ERRO Bot E2E: ${msg}`);
+        return;
+      }
+      setBotE2eEnabled(data.enabled);
+      log(`Bot E2E ${data.enabled ? 'LIGADO' : 'DESLIGADO'}`);
+    } catch (e) {
+      log(`ERRO Bot E2E: ${(e as Error).message}`);
+    } finally {
+      setBotE2eLoading(false);
+    }
+  }, [log]);
 
   // ─── Inbox API ──────────────────────────────────────────────────────────
 
@@ -941,6 +992,37 @@ export default function ExecutionWheelV3Page() {
           <p className="text-xs text-amber-600 dark:text-amber-400">
             Testes rodam contra localhost. Deploy via CI local no GitHub.
           </p>
+        </div>
+      </div>
+
+      {/* Bot E2E toggle */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FlaskConical className="h-5 w-5 text-indigo-500" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900 dark:text-white">Bot E2E (Anthropic)</span>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  botE2eEnabled
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                }`}>
+                  {botE2eEnabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                {botE2eError
+                  ? botE2eError
+                  : 'Controla a variavel BOT_E2E_ENABLED no GitHub Actions. Deixe OFF no dia-a-dia — ligue apenas antes de release.'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={botE2eEnabled}
+            onCheckedChange={handleBotE2eToggle}
+            disabled={botE2eLoading || !!botE2eError}
+          />
         </div>
       </div>
 
