@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!prof.require_deposit || !prof.deposit_type || prof.deposit_value == null) {
+  if (!prof.require_deposit || !prof.deposit_type || prof.deposit_value == null || prof.deposit_value <= 0) {
     return NextResponse.json(
       { error: 'Sinal não configurado.' },
       { status: 422 }
