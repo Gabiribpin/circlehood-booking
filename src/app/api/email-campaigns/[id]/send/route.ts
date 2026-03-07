@@ -2,6 +2,10 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendBulkEmails } from '@/lib/integrations/email-marketing'
+import { isRateLimited } from '@/lib/rate-limit'
+
+const CAMPAIGN_RATE_LIMIT = 5 // max campaign sends per window
+const CAMPAIGN_RATE_WINDOW = 3600 // 1 hour in seconds
 
 export async function POST(
   request: NextRequest,
@@ -25,6 +29,14 @@ export async function POST(
 
   if (!professional) {
     return NextResponse.json({ error: 'Professional not found' }, { status: 404 })
+  }
+
+  // Rate limiting por professional_id — 5 campaigns per hour
+  if (await isRateLimited(`campaign-send:${professional.id}`, CAMPAIGN_RATE_LIMIT, CAMPAIGN_RATE_WINDOW)) {
+    return NextResponse.json(
+      { error: 'Too many campaigns sent. Try again later.' },
+      { status: 429 }
+    )
   }
 
   // Buscar campanha
