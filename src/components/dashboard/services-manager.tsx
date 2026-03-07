@@ -233,6 +233,7 @@ export function ServicesManager({
                       variant="ghost"
                       size="icon"
                       onClick={() => openEdit(service)}
+                      aria-label={tc('edit')}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -243,6 +244,7 @@ export function ServicesManager({
                         setDeletingService(service);
                         setDeleteDialogOpen(true);
                       }}
+                      aria-label={tc('delete')}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

@@ -309,6 +309,7 @@ export default function SupportPage() {
                         onClick={() => handleSendReply(ticket.id)}
                         disabled={submitting || !replyText[ticket.id]?.trim()}
                         className="self-end"
+                        aria-label={t('sendReply')}
                       >
                         <Send className="h-4 w-4" />
                       </Button>

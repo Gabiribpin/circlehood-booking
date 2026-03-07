@@ -170,6 +170,7 @@ export function NextStepsCard() {
                   size="icon"
                   className="h-9 w-9 shrink-0"
                   onClick={() => copyToClipboard(landingUrl, 'landing')}
+                  aria-label={t('copyLink')}
                 >
                   {copied === 'landing'
                     ? <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -180,6 +181,7 @@ export function NextStepsCard() {
                   size="icon"
                   className="h-9 w-9 shrink-0"
                   onClick={() => window.open(landingUrl, '_blank')}
+                  aria-label={t('openPage')}
                 >
                   <ExternalLink className="w-4 h-4" />
                 </Button>
