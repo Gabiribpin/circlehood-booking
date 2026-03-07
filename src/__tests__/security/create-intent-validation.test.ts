@@ -19,7 +19,7 @@ const source = readFileSync(routePath, 'utf-8');
 describe('create-intent rate limiting (issue #183)', () => {
   it('has rate limiting implementation', () => {
     expect(source).toContain('isRateLimited');
-    expect(source).toContain('rateLimitMap');
+    expect(source).toContain("from '@/lib/rate-limit'");
   });
 
   it('returns 429 when rate limited', () => {
