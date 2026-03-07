@@ -23,6 +23,7 @@ const BOOKING_SLUG = 'salao-da-rita';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function cleanIdempotencyBookings() {
+  // Cancel bookings from the dedicated idempotency phone
   await supabase
     .from('bookings')
     .update({
@@ -33,6 +34,24 @@ async function cleanIdempotencyBookings() {
     .eq('professional_id', TEST.PROFESSIONAL_ID)
     .eq('client_phone', TEST_PHONE_IDEM)
     .neq('status', 'cancelled');
+}
+
+/**
+ * Free up slots by cancelling stale test bookings from ALL E2E test phones.
+ * Only cancels pending/confirmed bookings (never completed).
+ * Runs once before the suite to ensure slots are available.
+ */
+async function cleanAllTestBookings() {
+  await supabase
+    .from('bookings')
+    .update({
+      status: 'cancelled',
+      cancelled_by: 'system',
+      cancellation_reason: 'Idempotency E2E — free stale test slots',
+    })
+    .eq('professional_id', TEST.PROFESSIONAL_ID)
+    .like('client_phone', '3538000%')
+    .in('status', ['confirmed', 'pending_payment']);
 }
 
 async function countActiveIdempotencyBookings(): Promise<number> {
@@ -160,6 +179,12 @@ async function fillBookingFormToStep4(
 }
 
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
+
+// Free all stale test slots once before the suite starts.
+// This ensures slots are available even when other CI runs left bookings behind.
+test.beforeAll(async () => {
+  await cleanAllTestBookings();
+});
 
 test.beforeEach(async () => {
   await cleanIdempotencyBookings();
