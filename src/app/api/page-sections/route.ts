@@ -92,7 +92,10 @@ const dataSchemaMap: Record<ValidSectionType, z.ZodType> = {
   contact: contactDataSchema,
 };
 
-// GET - Buscar todas as seções do profissional
+// GET - Buscar seções do profissional (com paginação)
+const MAX_LIMIT = 50;
+const DEFAULT_LIMIT = 50;
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
@@ -116,13 +119,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
   }
 
+  // Pagination params
+  const { searchParams } = new URL(request.url);
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 1),
+    MAX_LIMIT
+  );
+  const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
+
   try {
-    // Buscar todas as seções
     const { data: sections, error } = await supabase
       .from('page_sections')
       .select('*')
       .eq('professional_id', professional.id)
-      .order('order_index', { ascending: true });
+      .order('order_index', { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
