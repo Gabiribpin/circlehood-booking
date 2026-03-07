@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
     } as never);
 
   if (insertError) {
+    // 23505 = unique_violation — slug race condition (two concurrent registrations)
+    if (insertError.code === '23505' && insertError.message?.includes('slug')) {
+      return NextResponse.json({ error: 'Este link já está em uso.' }, { status: 400 });
+    }
     logger.error('[complete-profile] insert error:', insertError);
     return NextResponse.json({ error: 'Erro ao criar perfil.' }, { status: 500 });
   }
