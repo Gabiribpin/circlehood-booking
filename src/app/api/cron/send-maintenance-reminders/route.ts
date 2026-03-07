@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 function detectLanguageFromPhone(phone: string): 'pt' | 'en' {
   // Aceita com ou sem '+' (ex: '+5511...' e '5511...' são ambos Brasil)
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
               `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,
               {
                 method: 'POST',
-                headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+                headers: { apikey: decryptToken(wc.evolution_api_key), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ number: normalized, text: message }),
               }
             );
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
               {
                 method: 'POST',
                 headers: {
-                  Authorization: `Bearer ${wc.access_token}`,
+                  Authorization: `Bearer ${decryptToken(wc.access_token)}`,
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({

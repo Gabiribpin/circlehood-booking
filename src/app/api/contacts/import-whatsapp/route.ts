@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 // Allow up to 60s — needed for large contact lists (Evolution API can be slow)
 export const maxDuration = 60;
@@ -83,7 +84,7 @@ export async function POST(_request: NextRequest) {
       evolutionRes = await fetch(url, {
         method: 'POST',
         headers: {
-          apikey: config.evolution_api_key,
+          apikey: decryptToken(config.evolution_api_key),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),

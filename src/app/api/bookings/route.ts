@@ -7,6 +7,7 @@ import { safeSendEmail } from '@/lib/email/safe-send';
 import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
 import { bookingSchema, sanitizeString } from '@/lib/validation/booking-schema';
 import { isRateLimited } from '@/lib/rate-limit';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 const BOOKING_RATE_LIMIT = 10; // max bookings per window
 const BOOKING_RATE_WINDOW = 3600; // 1 hour in seconds
@@ -334,7 +335,7 @@ export async function POST(request: NextRequest) {
             ) {
               await sendEvolutionMessage(client_phone, message, {
                 apiUrl: config.evolution_api_url,
-                apiKey: config.evolution_api_key,
+                apiKey: decryptToken(config.evolution_api_key),
                 instance: config.evolution_instance,
               });
             }

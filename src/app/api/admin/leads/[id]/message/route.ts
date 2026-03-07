@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateAdminToken } from '@/lib/admin/session';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(
   request: NextRequest,
@@ -86,7 +87,7 @@ export async function POST(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: evoConfig.evolution_api_key,
+          apikey: decryptToken(evoConfig.evolution_api_key),
         },
         body: JSON.stringify({ number: lead.phone, text: message.trim() }),
       });

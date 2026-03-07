@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 // Templates de mensagem por idioma
 const MESSAGE_TEMPLATES = {
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
               `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`,
               {
                 method: 'POST',
-                headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+                headers: { apikey: decryptToken(wc.evolution_api_key), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ number: normalized, text: message }),
               }
             );

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { evolutionConfig } from '@/lib/evolution/config';
 import { validateAdminToken } from '@/lib/admin/session';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 
@@ -27,7 +28,7 @@ export async function GET() {
     }
 
     const res = await fetch(`${config.evolution_api_url}/instance/connectionState/${SALES_INSTANCE}`, {
-      headers: { 'apikey': config.evolution_api_key },
+      headers: { 'apikey': decryptToken(config.evolution_api_key) },
     });
 
     if (!res.ok) {

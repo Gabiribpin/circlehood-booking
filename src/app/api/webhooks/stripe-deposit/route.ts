@@ -8,6 +8,7 @@ import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { safeSendEmail } from '@/lib/email/safe-send';
 import { safeSendWhatsApp } from '@/lib/whatsapp/safe-send';
 import { isEventProcessed, markEventProcessed } from '@/lib/webhooks/event-dedup';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
                 async () => {
                   await sendEvolutionMessage(booking.client_phone!, message, {
                     apiUrl: config.evolution_api_url!,
-                    apiKey: config.evolution_api_key!,
+                    apiKey: decryptToken(config.evolution_api_key!),
                     instance: config.evolution_instance!,
                   });
                 },
