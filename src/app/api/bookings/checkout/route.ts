@@ -148,7 +148,24 @@ export async function POST(request: NextRequest) {
   const endM = (totalMinutes % 60).toString().padStart(2, '0');
   const end_time = `${endH}:${endM}`;
 
-  // ─── 8. Check double-booking ─────────────────────────────────────────────
+  // ─── 8. Pre-validate Stripe + deposit BEFORE booking insert ─────────────
+  const stripe = getStripeServer();
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+  }
+
+  const depositAmount = calculateDeposit(
+    service.price,
+    prof.deposit_type as 'percentage' | 'fixed',
+    prof.deposit_value as number
+  );
+  const depositCents = toCents(depositAmount);
+  if (depositCents <= 0) {
+    return NextResponse.json({ error: 'Valor do sinal inválido.' }, { status: 400 });
+  }
+  const applicationFeeCents = Math.round(depositCents * 0.05);
+
+  // ─── 9. Check double-booking ─────────────────────────────────────────────
   const { data: conflicts } = await supabase
     .from('bookings')
     .select('id')
@@ -165,7 +182,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ─── 9. Insert booking com status pending_payment ────────────────────────
+  // ─── 10. Insert booking com status pending_payment ────────────────────────
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
@@ -195,23 +212,6 @@ export async function POST(request: NextRequest) {
     }
     logger.error('[bookings/checkout] booking insert failed', bookingError);
     return NextResponse.json({ error: 'Erro ao criar agendamento. Tente novamente.' }, { status: 500 });
-  }
-
-  // ─── 10. Calcular sinal + taxa plataforma ────────────────────────────────
-  const depositAmount = calculateDeposit(
-    service.price,
-    prof.deposit_type as 'percentage' | 'fixed',
-    prof.deposit_value as number
-  );
-  const depositCents = toCents(depositAmount);
-  const applicationFeeCents = Math.round(depositCents * 0.05);
-
-  // ─── 11. Criar Stripe Checkout Session ───────────────────────────────────
-  const stripe = getStripeServer();
-  if (!stripe) {
-    // Rollback: cancelar booking criado
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
-    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
   }
 
   const currencyCode = (prof.currency as string)?.toLowerCase() || 'eur';
