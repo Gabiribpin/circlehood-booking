@@ -33,6 +33,9 @@ export async function sendBotMessage(
 
   const res = await request.post(`${TEST.BASE_URL}/api/whatsapp/webhook`, {
     data: payload,
+    headers: {
+      apikey: TEST.WHATSAPP_WEBHOOK_SECRET,
+    },
   });
 
   return { status: res.status(), ok: res.ok() };

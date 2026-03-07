@@ -15,4 +15,5 @@ export const TEST = {
   SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   REDIS_URL: process.env.REDIS_URL ?? '',
   E2E_TEST_SECRET: process.env.E2E_TEST_SECRET ?? '',
+  WHATSAPP_WEBHOOK_SECRET: process.env.WHATSAPP_WEBHOOK_SECRET ?? '',
 };
