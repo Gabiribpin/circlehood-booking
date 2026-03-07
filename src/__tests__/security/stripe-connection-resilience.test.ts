@@ -72,10 +72,10 @@ describe('/api/bookings/checkout — error handling', () => {
   });
 
   it('rolls back booking on Stripe failure', () => {
-    // After the catch, it should cancel the booking
+    // After the Stripe session catch, it should cancel the booking
     const catchBlock = content.slice(
-      content.indexOf("logger.error('[bookings/checkout]"),
-      content.indexOf("logger.error('[bookings/checkout]") + 300
+      content.indexOf("Stripe session creation failed"),
+      content.indexOf("Stripe session creation failed") + 300
     );
     expect(catchBlock).toContain("status: 'cancelled'");
   });
