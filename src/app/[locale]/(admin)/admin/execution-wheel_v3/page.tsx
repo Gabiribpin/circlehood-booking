@@ -84,6 +84,9 @@ type V3Phase =
 const PRIORITY = ['blocker', 'critical', 'high', 'medium', 'low', 'enhancement'] as const;
 const LS_FOCUS_V3 = 'wheel_v3.focus';
 const LS_PHASE_V3 = 'wheel_v3.phase';
+const LS_SYNC_STATUS = 'v3_last_sync_status';
+const LS_SYNC_AT = 'v3_last_sync_at';
+const LS_SYNC_OUTPUT = 'v3_last_sync_output';
 const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
 
 const PHASE_CONFIG: Record<V3Phase, { emoji: string; label: string; color: string }> = {
@@ -466,19 +469,30 @@ export default function ExecutionWheelV3Page() {
   const [phase, setPhase] = useState<V3Phase>('ready');
   const [phaseLoading, setPhaseLoading] = useState(false);
 
+  // Sync state
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'safe' | 'migrations' | 'review' | 'error'>('idle');
+  const [syncOutput, setSyncOutput] = useState('');
+
   const log = useCallback((msg: string) => {
     const ts = new Date().toISOString().slice(11, 19);
     setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 100));
   }, []);
 
-  // Load saved focus + phase
+  // Load saved focus + phase + sync
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_FOCUS_V3);
       if (saved) setFocus(JSON.parse(saved));
       const savedPhase = localStorage.getItem(LS_PHASE_V3);
       if (savedPhase) setPhase(savedPhase as V3Phase);
+      const savedSync = localStorage.getItem(LS_SYNC_STATUS);
+      if (savedSync && savedSync !== 'idle' && savedSync !== 'loading') {
+        setSyncStatus(savedSync as typeof syncStatus);
+        const savedOutput = localStorage.getItem(LS_SYNC_OUTPUT);
+        if (savedOutput) setSyncOutput(savedOutput);
+      }
     } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save focus + phase
@@ -720,6 +734,30 @@ export default function ExecutionWheelV3Page() {
     detectPhase(focus);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, ghIssues]);
+
+  // ─── Sync Vercel ────────────────────────────────────────────────────────
+
+  const runSync = useCallback(async () => {
+    setSyncStatus('loading');
+    setSyncOutput('');
+    log('Sincronizando com Vercel...');
+    try {
+      const res = await fetch('/api/admin/sync-vercel', { method: 'POST' });
+      const data = await res.json();
+      const status = res.ok ? data.status : 'error';
+      setSyncStatus(status);
+      setSyncOutput(data.output || '');
+      localStorage.setItem(LS_SYNC_STATUS, status);
+      localStorage.setItem(LS_SYNC_AT, new Date().toISOString());
+      localStorage.setItem(LS_SYNC_OUTPUT, data.output || '');
+      log(`Sync concluido: ${status}`);
+    } catch (e) {
+      setSyncStatus('error');
+      setSyncOutput(String(e));
+      localStorage.setItem(LS_SYNC_STATUS, 'error');
+      log(`ERRO sync: ${(e as Error).message}`);
+    }
+  }, [log]);
 
   // ─── Focus Actions ──────────────────────────────────────────────────────
 
@@ -1018,25 +1056,140 @@ export default function ExecutionWheelV3Page() {
         </div>
       )}
 
-      {/* Audit prompt when no issues */}
+      {/* Zero issues — Sync + Audit flow */}
       {openCount === 0 && !ghLoading && (
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
-            Sem issues abertas. Projeto aparentemente estavel.
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-5 space-y-4">
+          <p className="text-base font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+            <span className="text-xl">&#127881;</span>
+            Todas as issues resolvidas!
           </p>
-          <button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(generateAuditPrompt());
-                log('Prompt de auditoria copiado');
-              } catch {
-                log('ERRO: falha ao copiar.');
-              }
-            }}
-            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
-          >
-            Gerar Prompt Nova Auditoria
-          </button>
+
+          {/* Etapa A — Sync pendente */}
+          {syncStatus === 'idle' && (
+            <>
+              <div className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 p-4">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Antes de auditar, sincronize com a Vercel para subir as correcoes acumuladas para producao.
+                </p>
+              </div>
+              <button
+                onClick={runSync}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-3 transition-colors flex items-center gap-2"
+              >
+                <Rocket className="h-4 w-4" />
+                Sincronizar com Vercel
+              </button>
+            </>
+          )}
+
+          {/* Etapa B — Loading */}
+          {syncStatus === 'loading' && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Analisando commits acumulados...
+              </p>
+              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div className="h-full bg-indigo-500 rounded-full animate-pulse w-2/3" />
+              </div>
+            </div>
+          )}
+
+          {/* Etapa C — Resultado */}
+          {syncStatus === 'safe' && (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                SEGURO PARA DEPLOY
+              </p>
+              <pre className="rounded-lg bg-slate-900 text-slate-200 text-xs p-4 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap">{syncOutput}</pre>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(generateAuditPrompt());
+                    log('Prompt de auditoria copiado');
+                  } catch {
+                    log('ERRO: falha ao copiar.');
+                  }
+                }}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                Iniciar Nova Auditoria
+              </button>
+            </div>
+          )}
+
+          {syncStatus === 'migrations' && (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                DEPLOY COM ATENCAO
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Ha migracoes pendentes — rode <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">supabase db push</code> antes.
+              </p>
+              <pre className="rounded-lg bg-slate-900 text-slate-200 text-xs p-4 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap">{syncOutput}</pre>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(generateAuditPrompt());
+                    log('Prompt de auditoria copiado');
+                  } catch {
+                    log('ERRO: falha ao copiar.');
+                  }
+                }}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                Iniciar Nova Auditoria
+              </button>
+            </div>
+          )}
+
+          {syncStatus === 'review' && (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                REVISAR ANTES DE FAZER DEPLOY
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-300">
+                Conflitos ou arquivos criticos detectados.
+              </p>
+              <pre className="rounded-lg bg-slate-900 text-slate-200 text-xs p-4 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap">{syncOutput}</pre>
+              <button
+                disabled
+                className="rounded-lg bg-indigo-600 text-white text-sm font-bold px-4 py-2.5 opacity-40 cursor-not-allowed flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                Iniciar Nova Auditoria
+              </button>
+            </div>
+          )}
+
+          {syncStatus === 'error' && (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Erro ao rodar sync
+              </p>
+              <pre className="rounded-lg bg-slate-900 text-red-300 text-xs p-4 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap">{syncOutput}</pre>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(generateAuditPrompt());
+                    log('Prompt de auditoria copiado');
+                  } catch {
+                    log('ERRO: falha ao copiar.');
+                  }
+                }}
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors flex items-center gap-2"
+              >
+                <Search className="h-4 w-4" />
+                Iniciar Nova Auditoria
+              </button>
+            </div>
+          )}
         </div>
       )}
 
