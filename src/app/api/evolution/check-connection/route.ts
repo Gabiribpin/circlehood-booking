@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const instance = request.nextUrl.searchParams.get('instance');
-    if (!instance) {
-      return NextResponse.json({ error: 'Instance name required' }, { status: 400 });
+    const instanceRaw = request.nextUrl.searchParams.get('instance');
+    if (!instanceRaw || !/^[a-zA-Z0-9_-]+$/.test(instanceRaw)) {
+      return NextResponse.json({ error: 'Invalid instance name' }, { status: 400 });
     }
+    const instance = instanceRaw;
 
     // Buscar token da instância no Supabase
     const { data: config } = await supabase
