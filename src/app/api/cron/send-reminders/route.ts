@@ -48,10 +48,10 @@ Te recuerdo que tienes cita mañana:
   },
 };
 
-function formatMessage(template: string, data: Record<string, any>): string {
+function formatMessage(template: string, data: Record<string, string>): string {
   let message = template;
   Object.keys(data).forEach((key) => {
-    message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), data[key]);
+    message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), data[key] ?? '');
   });
   return message;
 }
@@ -152,7 +152,16 @@ export async function POST(request: NextRequest) {
     // Processar cada booking
     for (const booking of bookings) {
       try {
-        const language = detectLanguage(booking.client_phone ?? '');
+        if (!booking.client_phone) {
+          // Skip bookings without phone — can't send WhatsApp reminder
+          await supabase
+            .from('bookings')
+            .update({ reminder_sent: true, reminder_sent_at: new Date().toISOString() })
+            .eq('id', booking.id);
+          continue;
+        }
+
+        const language = detectLanguage(booking.client_phone);
 
         // Buscar token de reagendamento
         const { data: tokenData } = await supabase
@@ -167,15 +176,20 @@ export async function POST(request: NextRequest) {
           : '';
 
         // Formatar mensagem
+        const serviceName = (booking.services as any)?.name ?? 'Serviço';
+        const servicePrice = (booking.services as any)?.price ?? '0';
+        const profAddress = (booking.professionals as any)?.address;
+        const profCity = (booking.professionals as any)?.city ?? 'Dublin';
+
         const message = formatMessage(MESSAGE_TEMPLATES[language].reminder, {
-          name: booking.client_name,
-          date: new Date(booking.booking_date).toLocaleDateString('pt-BR'),
-          time: booking.start_time.substring(0, 5),
-          service: (booking.services as any)?.name || 'Serviço',
-          price: (booking.services as any)?.price || '0',
-          location:
-            (booking.professionals as any)?.address ||
-            `${(booking.professionals as any)?.city || 'Dublin'}`,
+          name: booking.client_name ?? 'Cliente',
+          date: booking.booking_date
+            ? new Date(booking.booking_date).toLocaleDateString('pt-BR')
+            : '',
+          time: booking.start_time?.substring(0, 5) ?? '',
+          service: serviceName,
+          price: String(servicePrice),
+          location: profAddress ?? profCity,
           reschedule_link: rescheduleLink,
         });
 
@@ -185,7 +199,7 @@ export async function POST(request: NextRequest) {
 
         let sent = false;
 
-        if (booking.client_phone && wc && wc.evolution_api_url && wc.evolution_instance) {
+        if (booking.client_phone && wc?.evolution_api_url && wc.evolution_instance && wc.evolution_api_key) {
           const normalized = normalizePhoneForWhatsApp(booking.client_phone);
           try {
             const res = await fetch(
