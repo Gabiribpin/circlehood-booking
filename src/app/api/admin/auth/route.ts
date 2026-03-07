@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { generateAdminToken, revokeAdminToken, isRateLimited } from '@/lib/admin/session';
 
 export async function POST(request: NextRequest) {
@@ -13,7 +14,13 @@ export async function POST(request: NextRequest) {
 
   const { password } = await request.json();
 
-  if (!process.env.ADMIN_PASSWORD || password !== process.env.ADMIN_PASSWORD) {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (
+    !expected ||
+    typeof password !== 'string' ||
+    password.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(password), Buffer.from(expected))
+  ) {
     return NextResponse.json({ error: 'Senha incorreta' }, { status: 401 });
   }
 
