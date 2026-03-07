@@ -1,6 +1,96 @@
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const MAX_STRING = 500;
+const MAX_URL = 2000;
+
+const heroDataSchema = z.object({
+  title: z.string().max(MAX_STRING).optional(),
+  subtitle: z.string().max(MAX_STRING).optional(),
+  ctaText: z.string().max(MAX_STRING),
+  backgroundUrl: z.string().max(MAX_URL).optional(),
+  avatarUrl: z.string().max(MAX_URL).optional(),
+  showSocialLinks: z.boolean(),
+  socialLinks: z.object({
+    instagram: z.string().max(MAX_URL).optional(),
+    facebook: z.string().max(MAX_URL).optional(),
+    tiktok: z.string().max(MAX_URL).optional(),
+  }).optional(),
+});
+
+const aboutDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  description: z.string().max(5000),
+  yearsExperience: z.number().int().min(0).max(100).optional(),
+  certifications: z.array(z.object({
+    name: z.string().max(MAX_STRING),
+    institution: z.string().max(MAX_STRING),
+    year: z.number().int().min(1900).max(2100),
+  })).max(50).optional(),
+  specialties: z.array(z.string().max(MAX_STRING)).max(50).optional(),
+  imageUrl: z.string().max(MAX_URL).optional(),
+});
+
+const servicesDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  description: z.string().max(2000).optional(),
+  displayMode: z.enum(['grid', 'list']),
+  showPrices: z.boolean(),
+  showDuration: z.boolean(),
+  showDescription: z.boolean(),
+  ctaText: z.string().max(MAX_STRING),
+});
+
+const galleryDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  description: z.string().max(2000).optional(),
+  layout: z.enum(['grid', 'masonry', 'carousel']),
+  columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+  showCategories: z.boolean(),
+  categories: z.array(z.string().max(MAX_STRING)).max(50).optional(),
+});
+
+const testimonialsDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  description: z.string().max(2000).optional(),
+  displayMode: z.enum(['grid', 'carousel']),
+  showRatings: z.boolean(),
+  showPhotos: z.boolean(),
+  maxToShow: z.number().int().min(1).max(100),
+});
+
+const faqDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  items: z.array(z.object({
+    question: z.string().max(1000),
+    answer: z.string().max(5000),
+  })).max(100),
+});
+
+const contactDataSchema = z.object({
+  heading: z.string().max(MAX_STRING),
+  showPhone: z.boolean(),
+  showEmail: z.boolean(),
+  showWhatsApp: z.boolean(),
+  showAddress: z.boolean(),
+  showMap: z.boolean(),
+  mapEmbedUrl: z.string().max(MAX_URL).optional(),
+});
+
+const VALID_TYPES = ['hero', 'about', 'services', 'gallery', 'testimonials', 'faq', 'contact'] as const;
+type ValidSectionType = typeof VALID_TYPES[number];
+
+const dataSchemaMap: Record<ValidSectionType, z.ZodType> = {
+  hero: heroDataSchema,
+  about: aboutDataSchema,
+  services: servicesDataSchema,
+  gallery: galleryDataSchema,
+  testimonials: testimonialsDataSchema,
+  faq: faqDataSchema,
+  contact: contactDataSchema,
+};
 
 // GET - Buscar todas as seções do profissional
 export async function GET(request: NextRequest) {
@@ -77,9 +167,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar section_type
-    const validTypes = ['hero', 'about', 'services', 'gallery', 'testimonials', 'faq', 'contact'];
-    if (!validTypes.includes(section_type)) {
+    if (!VALID_TYPES.includes(section_type)) {
       return NextResponse.json({ error: 'Invalid section type' }, { status: 400 });
+    }
+
+    // Validar order_index
+    if (typeof order_index !== 'number' || !Number.isInteger(order_index) || order_index < 0 || order_index > 100) {
+      return NextResponse.json({ error: 'Invalid order_index' }, { status: 400 });
+    }
+
+    // Validar theme
+    const validThemes = ['default', 'modern', 'elegant', 'minimalist'];
+    if (theme && !validThemes.includes(theme)) {
+      return NextResponse.json({ error: 'Invalid theme' }, { status: 400 });
+    }
+
+    // Validar data contra schema do section_type
+    const dataSchema = dataSchemaMap[section_type as ValidSectionType];
+    const dataParsed = dataSchema.safeParse(data);
+    if (!dataParsed.success) {
+      return NextResponse.json({ error: dataParsed.error.issues[0]?.message || 'Invalid data' }, { status: 400 });
     }
 
     // Upsert (insert or update)
@@ -90,7 +197,7 @@ export async function POST(request: NextRequest) {
           professional_id: professional.id,
           section_type,
           order_index,
-          data,
+          data: dataParsed.data,
           is_visible: is_visible ?? true,
           theme: theme || 'default',
         },
@@ -138,13 +245,21 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { sections } = body;
 
-    if (!Array.isArray(sections)) {
-      return NextResponse.json({ error: 'Sections must be an array' }, { status: 400 });
+    if (!Array.isArray(sections) || sections.length > 20) {
+      return NextResponse.json({ error: 'Sections must be an array (max 20)' }, { status: 400 });
     }
+
+    const bulkItemSchema = z.object({
+      id: z.string().uuid(),
+      order_index: z.number().int().min(0).max(100),
+      is_visible: z.boolean(),
+    });
 
     // Atualizar todas as seções
     const updates = sections.map(async (section) => {
-      const { id, order_index, is_visible } = section;
+      const parsed = bulkItemSchema.safeParse(section);
+      if (!parsed.success) return null;
+      const { id, order_index, is_visible } = parsed.data;
 
       return supabase
         .from('page_sections')
