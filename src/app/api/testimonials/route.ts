@@ -113,6 +113,20 @@ export async function POST(request: NextRequest) {
 
   // ── Fluxo público (professional_id no body → visitante enviando depoimento) ──
   if (bodyProfessionalId) {
+    // Validate UUID format
+    if (!z.string().uuid().safeParse(bodyProfessionalId).success) {
+      return NextResponse.json({ error: 'Invalid professional ID' }, { status: 400 });
+    }
+
+    // Tighter rate limit for public submissions: 5/hour per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (await isRateLimited(`rl:testimonials-public:${ip}`, 5, 3600)) {
+      return NextResponse.json(
+        { error: 'Too many submissions. Try again later.' },
+        { status: 429 }
+      );
+    }
+
     try {
       const adminClient = createAdminClient();
 
