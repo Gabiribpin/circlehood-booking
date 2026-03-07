@@ -3,14 +3,16 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 /**
- * Tests for Issue #136: Race condition — booking inserted before Stripe session
+ * Tests for Issue #136 + #355: Stripe session failure handling
  *
  * If stripe.checkout.sessions.create() fails, the booking must be rolled back
- * (cancelled) to free the slot. Previously, the Stripe call had no try-catch,
- * leaving orphaned pending_payment bookings blocking slots indefinitely.
+ * (cancelled) to free the slot.
+ *
+ * Issue #355: Stripe availability and deposit calculation are validated BEFORE
+ * booking insert, so no rollback is needed for those pre-checks.
  */
 
-describe('Checkout route Stripe rollback (issue #136)', () => {
+describe('Checkout route Stripe rollback (issue #136, #355)', () => {
   const source = readFileSync(
     resolve('src/app/api/bookings/checkout/route.ts'),
     'utf-8'
@@ -53,17 +55,22 @@ describe('Checkout route Stripe rollback (issue #136)', () => {
     expect(catchBlock).toContain('502');
   });
 
-  it('also rolls back when Stripe is not configured', () => {
-    // The existing !stripe check should also cancel
-    const notConfiguredBlock = source.slice(
-      source.indexOf('if (!stripe)'),
-      source.indexOf('if (!stripe)') + 300
-    );
-    expect(notConfiguredBlock).toContain("status: 'cancelled'");
-    expect(notConfiguredBlock).toContain('503');
+  it('validates Stripe availability BEFORE booking insert (#355)', () => {
+    // Stripe null check must come BEFORE booking insert
+    const stripeNullCheck = source.indexOf('if (!stripe)');
+    const bookingInsert = source.indexOf("status: 'pending_payment'");
+    expect(stripeNullCheck).toBeGreaterThan(-1);
+    expect(stripeNullCheck).toBeLessThan(bookingInsert);
   });
 
-  it('inserts booking before Stripe (intentional order for double-booking protection)', () => {
+  it('calculates deposit BEFORE booking insert (#355)', () => {
+    const depositCalc = source.indexOf('calculateDeposit(');
+    const bookingInsert = source.indexOf("status: 'pending_payment'");
+    expect(depositCalc).toBeGreaterThan(-1);
+    expect(depositCalc).toBeLessThan(bookingInsert);
+  });
+
+  it('inserts booking before Stripe session creation (intentional for slot reservation)', () => {
     // Booking insert must come BEFORE Stripe session creation
     // This is by design — the booking reserves the slot, Stripe is created after
     const insertIndex = source.indexOf(".insert({");
