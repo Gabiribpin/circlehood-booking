@@ -11,45 +11,47 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export const metadata: Metadata = {
   title: 'CircleHood Booking | by CircleHood Tech',
-  description: 'Crie sua página profissional com agendamento online. Perfeito para qualquer profissional autônomo: beleza, saúde, fitness, educação, pets e muito mais.',
 };
 
-const FEATURES = [
-  {
-    icon: Globe,
-    title: 'Sua página profissional',
-    description: 'Link personalizado tipo booking.circlehood-tech.com/seu-nome. Coloque na bio do Instagram e pronto.',
-  },
-  {
-    icon: CalendarDays,
-    title: 'Agendamento online',
-    description: 'Seus clientes escolhem o servico, dia e horario. Sem mensagens de ida e volta.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'WhatsApp integrado',
-    description: 'Botao direto pro seu WhatsApp na página. Facil para os clientes falarem com você.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Bio gerada por IA',
-    description: 'Nossa IA cria uma descrição profissional do seu negócio em segundos.',
-  },
-];
-
-const BENEFITS = [
-  'Página pronta em minutos',
-  'Funciona no celular perfeitamente',
-  'Receba agendamentos 24/7',
-  'Sem necessidade de site proprio',
-  'Suporte em PT, EN e ES',
-  'Teste grátis por 14 dias',
-];
-
 export default function LandingPage() {
+  const t = useTranslations('landing');
+
+  const FEATURES = [
+    {
+      icon: Globe,
+      title: t('featurePageTitle'),
+      description: t('featurePageDesc'),
+    },
+    {
+      icon: CalendarDays,
+      title: t('featureBookingTitle'),
+      description: t('featureBookingDesc'),
+    },
+    {
+      icon: MessageCircle,
+      title: t('featureWhatsappTitle'),
+      description: t('featureWhatsappDesc'),
+    },
+    {
+      icon: Sparkles,
+      title: t('featureAiTitle'),
+      description: t('featureAiDesc'),
+    },
+  ];
+
+  const BENEFITS = [
+    t('benefitReady'),
+    t('benefitMobile'),
+    t('benefitBookings247'),
+    t('benefitNoWebsite'),
+    t('benefitMultilingual'),
+    t('benefitFreeTrial'),
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -58,10 +60,10 @@ export default function LandingPage() {
           <CircleHoodLogo size="sm" showText={true} />
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="sm">
-              <Link href="/login">Entrar</Link>
+              <Link href="/login">{t('headerLogin')}</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/register">Comecar grátis</Link>
+              <Link href="/register">{t('headerStartFree')}</Link>
             </Button>
           </div>
         </div>
@@ -74,24 +76,24 @@ export default function LandingPage() {
             <CircleHoodLogo size="lg" showText={true} subtitle="by CircleHood Tech" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            Sua página profissional com agendamento online
+            {t('heroTitle')}
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Crie seu mini-site em minutos. Seus clientes veem seus serviços, precos e agendam direto — sem WhatsApp ping-pong.
+            {t('heroSubtitle')}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg" className="gap-2">
               <Link href="/register">
-                Criar minha página grátis
+                {t('heroCtaPrimary')}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/demo">Ver exemplo</Link>
+              <Link href="/demo">{t('heroCtaSecondary')}</Link>
             </Button>
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            14 dias grátis.
+            {t('heroTrialNote')}
           </p>
         </div>
       </section>
@@ -100,7 +102,7 @@ export default function LandingPage() {
       <section className="py-16 px-4 bg-muted/30">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
-            Tudo que você precisa num so lugar
+            {t('featuresHeading')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {FEATURES.map((feature) => (
@@ -122,10 +124,10 @@ export default function LandingPage() {
       <section className="py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-8">
-            Perfeito para profissionais autonomos
+            {t('benefitsHeading')}
           </h2>
           <p className="text-muted-foreground mb-8">
-            Cabeleireiros, personal trainers, terapeutas, tutores, fotógrafos, coaches — se você atende com hora marcada, o CircleHood é pra você.
+            {t('benefitsSubtitle')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-md mx-auto">
             {BENEFITS.map((benefit) => (
@@ -142,29 +144,29 @@ export default function LandingPage() {
       <section className="py-16 px-4 bg-muted/30">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
-            Simples e acessivel
+            {t('pricingHeading')}
           </h2>
           <p className="text-center text-muted-foreground mb-10">
-            Comece grátis, assine quando estiver pronto.
+            {t('pricingSubtitle')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {/* Free / Trial */}
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg">Teste Grátis</h3>
-                  <p className="text-sm text-muted-foreground">14 dias sem compromisso</p>
+                  <h3 className="font-semibold text-lg">{t('pricingFreeTitle')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('pricingFreeSubtitle')}</p>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold">&euro;0</span>
-                  <span className="text-muted-foreground text-sm">/14 dias</span>
+                  <span className="text-muted-foreground text-sm">/{t('pricingFreePeriod')}</span>
                 </div>
                 <ul className="space-y-2">
                   {[
-                    'Página profissional',
-                    'Até 5 serviços',
-                    'Agendamento online',
-                    'WhatsApp integrado',
+                    t('pricingFeaturePage'),
+                    t('pricingFeature5Services'),
+                    t('pricingFeatureBooking'),
+                    t('pricingFeatureWhatsapp'),
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
@@ -173,7 +175,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/register">Comecar grátis</Link>
+                  <Link href="/register">{t('headerStartFree')}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -182,26 +184,26 @@ export default function LandingPage() {
             <Card className="border-primary shadow-lg relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                  Recomendado
+                  {t('pricingRecommended')}
                 </span>
               </div>
               <CardContent className="p-6 space-y-4">
                 <div>
                   <h3 className="font-semibold text-lg">Pro</h3>
-                  <p className="text-sm text-muted-foreground">Tudo ilimitado</p>
+                  <p className="text-sm text-muted-foreground">{t('pricingProSubtitle')}</p>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold">&euro;25</span>
-                  <span className="text-muted-foreground text-sm">/mês</span>
+                  <span className="text-muted-foreground text-sm">/{t('pricingProPeriod')}</span>
                 </div>
                 <ul className="space-y-2">
                   {[
-                    'Página profissional',
-                    'Serviços ilimitados',
-                    'Agendamento ilimitado',
-                    'WhatsApp integrado',
-                    'Bio gerada por IA',
-                    'Notificacoes por email',
+                    t('pricingFeaturePage'),
+                    t('pricingFeatureUnlimitedServices'),
+                    t('pricingFeatureUnlimitedBookings'),
+                    t('pricingFeatureWhatsapp'),
+                    t('pricingFeatureAiBio'),
+                    t('pricingFeatureEmailNotifications'),
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
@@ -210,10 +212,10 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Button asChild className="w-full">
-                  <Link href="/register">Comecar 14 dias grátis</Link>
+                  <Link href="/register">{t('pricingProCta')}</Link>
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Cancele quando quiser.
+                  {t('pricingCancelAnytime')}
                 </p>
               </CardContent>
             </Card>
@@ -224,14 +226,14 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-20 px-4 text-center">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-          Pronto para ter sua página profissional?
+          {t('ctaHeading')}
         </h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Em 5 minutos você cria sua página, adiciona serviços e já pode compartilhar o link com seus clientes.
+          {t('ctaSubtitle')}
         </p>
         <Button asChild size="lg" className="gap-2">
           <Link href="/register">
-            Criar minha página agora
+            {t('ctaButton')}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
@@ -242,7 +244,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <CircleHoodLogo size="xs" showText={true} subtitle="by CircleHood Tech" />
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} CircleHood Tech. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} CircleHood Tech. {t('footerRights')}
           </p>
         </div>
       </footer>

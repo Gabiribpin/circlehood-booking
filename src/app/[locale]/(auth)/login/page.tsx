@@ -60,8 +60,8 @@ export default function LoginPage() {
             <CircleHoodLogoFull />
           </div>
           <div>
-            <CardTitle className="text-xl font-bold">Entrar na sua conta</CardTitle>
-            <CardDescription>Gerencie seus agendamentos</CardDescription>
+            <CardTitle className="text-xl font-bold">{t('loginTitle')}</CardTitle>
+            <CardDescription>{t('loginSubtitle')}</CardDescription>
           </div>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -69,7 +69,7 @@ export default function LoginPage() {
             {isVerified && (
               <div className="flex items-center gap-2 bg-green-50 text-green-800 border border-green-200 text-sm p-3 rounded-md">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                Email confirmado com sucesso! Faça login para acessar sua conta.
+                {t('emailVerifiedSuccess')}
               </div>
             )}
             {errorKey && (
@@ -87,7 +87,7 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -99,16 +99,16 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password">{t('password')}</Label>
                 <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                  Esqueceu a senha?
+                  {t('forgotPassword')}
                 </Link>
               </div>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Sua senha"
+                  placeholder={t('yourPassword')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -128,7 +128,7 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Entrar
+              {t('login')}
             </Button>
 
             <div className="relative w-full">
@@ -145,9 +145,9 @@ export default function LoginPage() {
             <SocialLoginButtons mode="login" />
 
             <p className="text-sm text-muted-foreground text-center">
-              Ainda não tem conta?{' '}
+              {t('dontHaveAccount')}{' '}
               <Link href={registerHref} className="text-primary underline hover:no-underline">
-                Cadastre-se grátis
+                {t('signupFree')}
               </Link>
             </p>
           </CardFooter>
