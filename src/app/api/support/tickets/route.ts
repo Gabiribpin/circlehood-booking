@@ -46,11 +46,14 @@ export async function POST(request: NextRequest) {
   if (!professional) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await request.json();
-  const { subject, message, priority = 'medium' } = body;
+  const { subject, message, priority: rawPriority = 'medium' } = body;
 
   if (!subject?.trim() || !message?.trim()) {
     return NextResponse.json({ error: 'Assunto e mensagem são obrigatórios' }, { status: 400 });
   }
+
+  const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+  const priority = VALID_PRIORITIES.includes(rawPriority) ? rawPriority : 'medium';
 
   // Create ticket with admin client (bypasses RLS for insert)
   const adminClient = createAdminClient();
