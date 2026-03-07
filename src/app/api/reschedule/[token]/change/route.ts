@@ -4,8 +4,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const rescheduleSchema = z.object({
-  new_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
-  new_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Invalid time format'),
+  new_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format').refine((val) => {
+    const [y, m, d] = val.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+  }, 'Invalid date'),
+  new_time: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format').refine((val) => {
+    const [h, m] = val.split(':').map(Number);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+  }, 'Time must be between 00:00 and 23:59'),
 });
 
 export async function POST(
@@ -45,6 +52,13 @@ export async function POST(
 
     if (tokenData.bookings.status === 'cancelled') {
       return NextResponse.json({ error: 'Agendamento já cancelado' }, { status: 400 });
+    }
+
+    // Rejeitar datas no passado
+    const now = new Date();
+    const requestedDate = new Date(`${new_date}T${new_time}:00`);
+    if (requestedDate <= now) {
+      return NextResponse.json({ error: 'Não é possível reagendar para uma data/horário no passado' }, { status: 400 });
     }
 
     // Verificar se novo horário está disponível
