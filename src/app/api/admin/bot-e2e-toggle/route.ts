@@ -17,25 +17,46 @@ function ghHeaders(token: string) {
   };
 }
 
+function getTokens(): string[] {
+  const tokens: string[] = [];
+  if (process.env.GH_PAT_ADMIN) tokens.push(process.env.GH_PAT_ADMIN);
+  if (process.env.GH_ACTIONS_TOKEN) tokens.push(process.env.GH_ACTIONS_TOKEN);
+  if (process.env.GITHUB_TOKEN) tokens.push(process.env.GITHUB_TOKEN);
+  return tokens;
+}
+
+async function tryFetch(url: string, tokens: string[], opts: RequestInit = {}): Promise<Response> {
+  for (const token of tokens) {
+    const res = await fetch(url, {
+      ...opts,
+      headers: { ...ghHeaders(token), ...(opts.headers || {}) },
+    });
+    if (res.status !== 403) return res;
+    // 403 → try next token
+  }
+  // All tokens returned 403 — return the last 403 response
+  return fetch(url, {
+    ...opts,
+    headers: { ...ghHeaders(tokens[tokens.length - 1]), ...(opts.headers || {}) },
+  });
+}
+
 export async function GET() {
   const cookieStore = await cookies();
   if (!(await validateAdminToken(cookieStore.get('admin_session')?.value))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const token = process.env.GH_ACTIONS_TOKEN;
-  if (!token) {
+  const tokens = getTokens();
+  if (tokens.length === 0) {
     return NextResponse.json({
       enabled: false,
-      error: 'GH_ACTIONS_TOKEN não configurado. Adicione um GitHub PAT (Fine-grained, permissão Actions: Read/Write) nas env vars do Vercel.',
+      error: 'Nenhum token configurado. Adicione um GitHub PAT (GH_PAT_ADMIN ou GH_ACTIONS_TOKEN) nas env vars do Vercel.',
     });
   }
 
   try {
-    const res = await fetch(ghUrl(`/${VAR_NAME}`), {
-      headers: ghHeaders(token),
-      cache: 'no-store',
-    });
+    const res = await tryFetch(ghUrl(`/${VAR_NAME}`), tokens, { cache: 'no-store' });
 
     if (res.status === 404) {
       return NextResponse.json({ enabled: false });
@@ -44,7 +65,7 @@ export async function GET() {
     if (res.status === 403) {
       return NextResponse.json({
         enabled: false,
-        error: 'GitHub 403: Token sem permissao. Recrie GH_ACTIONS_TOKEN com scope "Variables: Read and Write" (Fine-grained PAT → Repository permissions → Variables).',
+        error: 'Nenhum token tem permissao Variables. Configure um PAT com scope "Variables: Read and Write".',
       });
     }
 
@@ -65,10 +86,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const token = process.env.GH_ACTIONS_TOKEN;
-  if (!token) {
+  // Uses GH_PAT_ADMIN → GH_ACTIONS_TOKEN → GITHUB_TOKEN fallback chain
+  const tokens = getTokens();
+  if (tokens.length === 0) {
     return NextResponse.json({
-      error: 'GH_ACTIONS_TOKEN não configurado. Adicione um GitHub PAT nas env vars do Vercel.',
+      error: 'Nenhum token configurado. Adicione um GitHub PAT (GH_PAT_ADMIN ou GH_ACTIONS_TOKEN) nas env vars do Vercel.',
     }, { status: 500 });
   }
 
@@ -76,18 +98,17 @@ export async function PATCH(request: Request) {
   const newValue = body.enabled ? 'true' : 'false';
 
   try {
-    // Try to update existing variable
-    const res = await fetch(ghUrl(`/${VAR_NAME}`), {
+    const res = await tryFetch(ghUrl(`/${VAR_NAME}`), tokens, {
       method: 'PATCH',
-      headers: { ...ghHeaders(token), 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: VAR_NAME, value: newValue }),
     });
 
     if (res.status === 404) {
       // Variable doesn't exist yet — create it
-      const createRes = await fetch(ghUrl(''), {
+      const createRes = await tryFetch(ghUrl(''), tokens, {
         method: 'POST',
-        headers: { ...ghHeaders(token), 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: VAR_NAME, value: newValue }),
       });
       if (!createRes.ok) {
