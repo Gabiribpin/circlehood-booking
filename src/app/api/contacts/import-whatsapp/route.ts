@@ -4,6 +4,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
 import { decryptToken } from '@/lib/integrations/token-encryption';
+import { isRateLimited } from '@/lib/rate-limit';
 
 // Allow up to 60s — needed for large contact lists (Evolution API can be slow)
 export const maxDuration = 60;
@@ -44,6 +45,14 @@ export async function POST(_request: NextRequest) {
 
     if (!professional) {
       return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+    }
+
+    // Rate limit: 1 import per 5 minutes per professional
+    if (await isRateLimited(`rl:import-whatsapp:${professional.id}`, 1, 300)) {
+      return NextResponse.json(
+        { error: 'Importação recente já realizada. Aguarde 5 minutos.' },
+        { status: 429 }
+      );
     }
 
     // Fetch WhatsApp config (whatsapp_config uses user_id, not professional_id)
