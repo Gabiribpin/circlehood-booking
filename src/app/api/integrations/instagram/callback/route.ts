@@ -53,11 +53,24 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date()
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn)
 
+    // Buscar professional_id real
+    const { data: professional } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!professional) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?error=professional_not_found`
+      );
+    }
+
     // Salvar integração no banco
     const { error: dbError } = await supabase
       .from('integrations')
       .upsert({
-        professional_id: user.id,
+        professional_id: professional.id,
         type: 'instagram',
         access_token: encryptToken(longToken),
         refresh_token: null,
