@@ -525,7 +525,20 @@ export default function ExecutionWheelV3Page() {
       log(`Launch Gate: ${(issues as GHIssue[]).length} issues abertas (${availableCount} sem PR)`);
 
       const savedFocus = JSON.parse(localStorage.getItem(LS_FOCUS_V3) || 'null') as Focus | null;
-      if (!savedFocus) return;
+      if (!savedFocus) {
+        // Auto-select highest priority issue when no focus is set
+        const available = (issues as GHIssue[]).filter(
+          (i: GHIssue) => !issuesWithPR.has(i.number)
+        );
+        const next = pickNextFromList(available);
+        if (next) {
+          const f: Focus = { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+          setFocus(f);
+          setPhase('ready');
+          log(`Auto-foco: #${next.number} — ${next.title}`);
+        }
+        return;
+      }
 
       const issueInList = (issues as GHIssue[]).find((i: GHIssue) => i.number === savedFocus.number);
       const focusHasPR = issuesWithPR.has(savedFocus.number);
