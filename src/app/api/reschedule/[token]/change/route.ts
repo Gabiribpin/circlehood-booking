@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { isRateLimited } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -47,6 +48,11 @@ export async function POST(
       return NextResponse.json({ error: 'Agendamento já cancelado' }, { status: 400 });
     }
 
+    // Rate limit per booking: max 5 reschedules per hour
+    if (await isRateLimited(`reschedule:${tokenData.bookings.id}`, 5, 3600)) {
+      return NextResponse.json({ error: 'Muitas tentativas de reagendamento. Tente novamente mais tarde.' }, { status: 429 });
+    }
+
     // Verificar se novo horário está disponível
     const { data: existingBooking } = await supabase
       .from('bookings')
@@ -82,6 +88,14 @@ export async function POST(
         used_at: new Date().toISOString(),
       })
       .eq('id', tokenData.id);
+
+    // Invalidar tokens antigos não usados para este booking
+    await supabase
+      .from('reschedule_tokens')
+      .update({ used: true, used_at: new Date().toISOString() })
+      .eq('booking_id', tokenData.bookings.id)
+      .eq('used', false)
+      .neq('id', tokenData.id);
 
     // Criar novo token para o booking atualizado
     await supabase.from('reschedule_tokens').insert({
