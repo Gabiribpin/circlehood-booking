@@ -7,9 +7,14 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : '';
 
+// CSP: 'unsafe-inline' is required in script-src because Next.js injects inline
+// <script> tags for page data (__NEXT_DATA__) and Stripe.js also needs it.
+// TODO: migrate to nonce-based CSP when Next.js + Stripe fully support it.
+// 'unsafe-eval' was removed — neither Next.js (production) nor Stripe.js require it.
+// 'unsafe-inline' in style-src is needed for Next.js CSS-in-JS and Radix UI styles.
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${supabaseHostname ? `https://${supabaseHostname}` : 'https://*.supabase.co'}`,
   "font-src 'self'",
