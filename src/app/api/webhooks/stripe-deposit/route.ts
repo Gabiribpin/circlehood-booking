@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     case 'charge.refunded': {
       const charge = event.data.object as Stripe.Charge;
       if (charge.payment_intent) {
-        const isFullRefund = charge.refunded;
+        const isFullRefund = charge.amount_refunded === charge.amount;
         await supabase
           .from('payments')
           .update({
