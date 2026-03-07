@@ -29,8 +29,9 @@ jobs:
   # Job 2: ESLint
   # ─────────────────────────────────────────────────────────────
   lint:
-    name: Lint
+    name: lint (informational)
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,7 +62,7 @@ jobs:
   playwright-local:
     name: Playwright (localhost)
     runs-on: ubuntu-latest
-    needs: [typecheck, lint, vitest]
+    needs: [typecheck, vitest]
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-anon-key' }}

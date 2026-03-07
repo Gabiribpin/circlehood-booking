@@ -551,7 +551,6 @@ export default function ExecutionWheelV3Page() {
     } finally {
       setGhLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [log, focus]);
 
   // Dedup search
