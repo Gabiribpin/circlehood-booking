@@ -1,10 +1,10 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyWebhookSignature, parseWebhookEvent, OrderState } from '@/lib/integrations/revolut'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const signature = request.headers.get('Revolut-Signature')
   const body = await request.text()
