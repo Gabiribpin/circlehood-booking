@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isRateLimited } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -81,6 +82,11 @@ export async function GET(request: NextRequest) {
 const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (await isRateLimited(`testimonials:${ip}`, 5, 60)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10);
   if (contentLength > MAX_BODY_SIZE) {
     return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
