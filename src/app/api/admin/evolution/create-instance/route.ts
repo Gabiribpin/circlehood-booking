@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { evolutionConfig } from '@/lib/evolution/config';
 import { validateAdminToken } from '@/lib/admin/session';
+import { encryptToken } from '@/lib/integrations/token-encryption';
 
 const SALES_INSTANCE = process.env.EVOLUTION_INSTANCE_SALES ?? 'circlehood-sales';
 const SYSTEM_USER_ID = '00000000-0000-4000-a000-000000000000';
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
         user_id: SYSTEM_USER_ID,
         provider: 'evolution',
         evolution_api_url: evolutionConfig.baseUrl,
-        evolution_api_key: instanceToken,
+        evolution_api_key: encryptToken(instanceToken),
         evolution_instance: instanceName,
         business_phone: normalizedPhone,
         is_active: false,

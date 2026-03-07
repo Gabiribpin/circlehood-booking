@@ -4,6 +4,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendCancellationEmail } from '@/lib/resend';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
         logger.info('[cancel-notification] WhatsApp attempt:', { raw: booking.client_phone, normalized, url: evoUrl, hasApiKey: !!wc.evolution_api_key });
         const res = await fetch(evoUrl, {
           method: 'POST',
-          headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+          headers: { apikey: decryptToken(wc.evolution_api_key), 'Content-Type': 'application/json' },
           body: JSON.stringify({ number: normalized, text: message }),
         });
         const resBody = await res.text();
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       if (!whatsappSent && wc.provider === 'meta' && wc.phone_number_id) {
         const res = await fetch(`https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${wc.access_token}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${decryptToken(wc.access_token)}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messaging_product: 'whatsapp',
             to: booking.client_phone,

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { WhatsAppRateLimiter } from '@/lib/whatsapp/rate-limiter';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     await sendEvolutionMessage(to, message, {
       apiUrl: config.evolution_api_url,
-      apiKey: config.evolution_api_key,
+      apiKey: decryptToken(config.evolution_api_key),
       instance: config.evolution_instance || 'default',
     });
 

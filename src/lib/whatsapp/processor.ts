@@ -5,6 +5,7 @@ import { sendEvolutionMessage } from './evolution';
 import { createClient } from '@supabase/supabase-js';
 import { ConversationCache } from '@/lib/redis/conversation-cache';
 import type { WhatsAppProvider } from './types';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export async function processWhatsAppMessage(
   from: string,
@@ -84,13 +85,13 @@ export async function processWhatsAppMessage(
     if (provider === 'evolution') {
       await sendEvolutionMessage(from, response, {
         apiUrl: config.evolution_api_url,
-        apiKey: config.evolution_api_key,
+        apiKey: decryptToken(config.evolution_api_key),
         instance: config.evolution_instance,
       });
     } else {
       const whatsapp = new WhatsAppClient({
         phoneNumberId: config.phone_number_id,
-        accessToken: config.access_token,
+        accessToken: decryptToken(config.access_token),
       });
       await whatsapp.sendMessage(from, response);
       await whatsapp.markAsRead(messageId);

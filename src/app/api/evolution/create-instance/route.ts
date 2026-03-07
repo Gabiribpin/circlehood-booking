@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { evolutionConfig } from '@/lib/evolution/config';
+import { encryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   try {
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         provider: 'evolution',
         evolution_api_url: evolutionConfig.baseUrl,
-        evolution_api_key: instanceToken,
+        evolution_api_key: encryptToken(instanceToken),
         evolution_instance: instanceName,
         business_phone: normalizedPhone,
         is_active: false,

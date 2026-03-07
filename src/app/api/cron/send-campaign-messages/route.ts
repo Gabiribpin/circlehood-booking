@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 const BATCH_SIZE = 30; // max mensagens por execução (evitar timeout)
 
@@ -161,7 +162,7 @@ async function sendEvolution(phone: string, message: string, wc: any) {
   const url = `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { apikey: wc.evolution_api_key, 'Content-Type': 'application/json' },
+    headers: { apikey: decryptToken(wc.evolution_api_key), 'Content-Type': 'application/json' },
     body: JSON.stringify({ number: normalized, text: message }),
   });
   if (!res.ok) throw new Error(`Evolution ${res.status}: ${await res.text()}`);
@@ -171,7 +172,7 @@ async function sendMeta(phone: string, message: string, wc: any) {
   const url = `https://graph.facebook.com/v18.0/${wc.phone_number_id}/messages`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${wc.access_token}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${decryptToken(wc.access_token)}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to: phone,

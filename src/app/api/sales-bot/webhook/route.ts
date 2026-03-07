@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 export const maxDuration = 60;
 
@@ -114,7 +115,7 @@ async function getEvolutionConfig(supabase: ReturnType<typeof createSupabase>) {
     .maybeSingle();
 
   if (exact?.evolution_api_url && exact?.evolution_api_key) {
-    return { apiUrl: exact.evolution_api_url, apiKey: exact.evolution_api_key, instance: salesInstance };
+    return { apiUrl: exact.evolution_api_url, apiKey: decryptToken(exact.evolution_api_key), instance: salesInstance };
   }
 
   // 2. Fallback: qualquer config válida no mesmo servidor
@@ -128,7 +129,7 @@ async function getEvolutionConfig(supabase: ReturnType<typeof createSupabase>) {
 
   if (!fallback?.evolution_api_url || !fallback?.evolution_api_key) return null;
 
-  return { apiUrl: fallback.evolution_api_url, apiKey: fallback.evolution_api_key, instance: salesInstance };
+  return { apiUrl: fallback.evolution_api_url, apiKey: decryptToken(fallback.evolution_api_key), instance: salesInstance };
 }
 
 /** Envia mensagem via Evolution API (configuração lida do banco) */

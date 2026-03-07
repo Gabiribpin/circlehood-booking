@@ -5,6 +5,7 @@ import { isEvolutionPayload, isMetaPayload } from '@/lib/whatsapp/types';
 import { parseEvolutionPhone, sendEvolutionMessage } from '@/lib/whatsapp/evolution';
 import { createClient } from '@supabase/supabase-js';
 import { validateEvolutionWebhook } from '@/lib/webhooks/signature';
+import { decryptToken } from '@/lib/integrations/token-encryption';
 
 const AUDIO_REPLY =
   'Desculpe, ainda não consigo ouvir áudios 🎙️ Por favor, envie sua mensagem por texto e ficarei feliz em ajudar! 😊';
@@ -22,7 +23,7 @@ async function getEvolutionConfig(instance: string) {
   if (!data) return null;
   return {
     apiUrl: data.evolution_api_url,
-    apiKey: data.evolution_api_key,
+    apiKey: decryptToken(data.evolution_api_key),
     instance: data.evolution_instance,
   };
 }
