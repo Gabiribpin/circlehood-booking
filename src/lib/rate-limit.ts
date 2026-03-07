@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { parseRedisUrl } from '@/lib/redis/parse-url';
 
 const REDIS_URL = process.env.STORAGE_URL || process.env.REDIS_URL;
 
@@ -7,7 +8,8 @@ let redis: Redis | null = null;
 function getRedis(): Redis | null {
   if (!REDIS_URL) return null;
   if (redis) return redis;
-  redis = new Redis(REDIS_URL, {
+  redis = new Redis({
+    ...parseRedisUrl(REDIS_URL),
     maxRetriesPerRequest: 1,
     connectTimeout: 3000,
     commandTimeout: 3000,

@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import Redis from 'ioredis';
+import { parseRedisUrl } from './parse-url';
 import { redisKey } from './prefix';
 
 export interface ConversationMessage {
@@ -21,7 +22,8 @@ function getRedis(): Redis | null {
   if (!isConfigured) return null;
   if (redis) return redis;
 
-  redis = new Redis(REDIS_CONNECTION_URL!, {
+  redis = new Redis({
+    ...parseRedisUrl(REDIS_CONNECTION_URL!),
     maxRetriesPerRequest: 1,     // Falha rápido (não 3 tentativas lentas)
     connectTimeout: 3000,         // 3s timeout de conexão
     commandTimeout: 3000,         // 3s timeout por comando

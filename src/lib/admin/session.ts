@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'crypto';
 import Redis from 'ioredis';
+import { parseRedisUrl } from '@/lib/redis/parse-url';
 
 const SESSION_EXPIRY_HOURS = 8;
 const SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 60 * 60;
@@ -21,7 +22,8 @@ let redis: Redis | null = null;
 function getRedis(): Redis | null {
   if (!REDIS_URL) return null;
   if (redis) return redis;
-  redis = new Redis(REDIS_URL, {
+  redis = new Redis({
+    ...parseRedisUrl(REDIS_URL),
     maxRetriesPerRequest: 1,
     connectTimeout: 3000,
     commandTimeout: 3000,
