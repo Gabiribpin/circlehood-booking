@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 
 const ALLOWED_ENVS = ['test', 'development'];
 
@@ -18,12 +19,23 @@ function serviceRoleClient() {
   );
 }
 
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 export async function GET(request: Request) {
+  // Hard block: never allow in Vercel production
+  if (process.env.VERCEL_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available' }, { status: 403 });
+  }
+
   const testSecret = process.env.E2E_TEST_SECRET;
+  const headerSecret = request.headers.get('x-test-secret') ?? '';
   if (
     !ALLOWED_ENVS.includes(process.env.NODE_ENV ?? '') ||
     !testSecret ||
-    request.headers.get('x-test-secret') !== testSecret
+    !safeEqual(headerSecret, testSecret)
   ) {
     return NextResponse.json({ error: 'Not available' }, { status: 403 });
   }
