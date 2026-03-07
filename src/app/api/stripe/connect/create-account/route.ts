@@ -27,6 +27,13 @@ export async function POST(_request: NextRequest) {
       return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
     }
 
+    if (!user.email_confirmed_at) {
+      return NextResponse.json(
+        { error: 'Email must be verified before connecting Stripe' },
+        { status: 403 }
+      );
+    }
+
     const stripe = getStripeServer();
     if (!stripe) {
       logger.error('[stripe/connect/create-account] STRIPE_SECRET_KEY not set');
