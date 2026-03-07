@@ -25,9 +25,8 @@ describe('Cron: expire-pending-payments (issue #5)', () => {
     expect(source).toContain('export async function POST');
   });
 
-  it('is protected by CRON_SECRET via Bearer token', () => {
-    expect(source).toContain("request.headers.get('authorization')");
-    expect(source).toContain('Bearer ${cronSecret}');
+  it('is protected by CRON_SECRET via timing-safe comparison', () => {
+    expect(source).toContain('verifyCronSecret');
     expect(source).toContain('status: 401');
   });
 

@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { verifyCronSecret } from '@/lib/cron-auth';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/evolution';
@@ -7,11 +8,7 @@ import { decryptToken } from '@/lib/integrations/token-encryption';
 const BATCH_SIZE = 30; // max mensagens por execução (evitar timeout)
 
 export async function POST(request: NextRequest) {
-  // Verificar autorização do cron
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!verifyCronSecret(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
