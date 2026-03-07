@@ -2,6 +2,12 @@ import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { isRateLimited } from '@/lib/rate-limit';
+
+const TESTIMONIAL_RATE_LIMIT = 5; // max public submissions per window
+const TESTIMONIAL_RATE_WINDOW = 3600; // 1 hour in seconds
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // GET - Buscar depoimentos
 export async function GET(request: NextRequest) {
@@ -86,6 +92,21 @@ export async function POST(request: NextRequest) {
 
   // ── Fluxo público (professional_id no body → visitante enviando depoimento) ──
   if (bodyProfessionalId) {
+    // Rate limiting por IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (await isRateLimited(`testimonial:${ip}`, TESTIMONIAL_RATE_LIMIT, TESTIMONIAL_RATE_WINDOW)) {
+      return NextResponse.json(
+        { error: 'Too many submissions. Try again later.' },
+        { status: 429 }
+      );
+    }
+
+    // Email format validation (if client_email provided)
+    const clientEmail = body.client_email;
+    if (clientEmail && !EMAIL_REGEX.test(clientEmail)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+    }
+
     try {
       const adminClient = createAdminClient();
 
