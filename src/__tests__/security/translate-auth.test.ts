@@ -28,7 +28,7 @@ describe('/api/translate — security', () => {
   });
 
   it('applies rate limiting per user', () => {
-    expect(content).toMatch(/isRateLimited\(`translate:\$\{user\.id\}`/);
+    expect(content).toMatch(/isRateLimited\(`rl:translate:\$\{user\.id\}`/);
   });
 
   it('returns 429 when rate limited', () => {

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   // Rate limiting por IP — 10 attempts per hour
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (await isRateLimited(`verify:${ip}`, 10, 3600)) {
+  if (await isRateLimited(`rl:verify-email:${ip}`, 10, 3600)) {
     return NextResponse.redirect(`${baseUrl}/login?error=too_many_attempts`);
   }
 
