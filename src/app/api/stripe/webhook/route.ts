@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logger } from '@/lib/logger';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -26,6 +27,14 @@ export async function POST(request: NextRequest) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+  }
+
+  // Reject events older than 5 minutes (replay attack protection)
+  const EVENT_MAX_AGE_SECONDS = 300;
+  const eventAge = Math.floor(Date.now() / 1000) - event.created;
+  if (eventAge > EVENT_MAX_AGE_SECONDS) {
+    logger.warn('[stripe/webhook] rejected stale event', { id: event.id, age: eventAge });
+    return NextResponse.json({ error: 'Event too old' }, { status: 400 });
   }
 
   const supabase = createAdminClient();
