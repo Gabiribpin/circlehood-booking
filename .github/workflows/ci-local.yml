@@ -1,0 +1,61 @@
+name: CI Local
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Job 1: TypeScript type checking — sem deps externas
+  # ─────────────────────────────────────────────────────────────
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx tsc --noEmit
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 2: ESLint — informational only (not a merge gate)
+  # ─────────────────────────────────────────────────────────────
+  lint:
+    name: lint (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  # ─────────────────────────────────────────────────────────────
+  # Job 3: Vitest (unit tests) — sem deps externas
+  # ─────────────────────────────────────────────────────────────
+  vitest:
+    name: vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test

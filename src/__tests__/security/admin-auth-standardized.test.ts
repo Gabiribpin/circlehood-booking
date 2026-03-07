@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { globSync } from 'fs';
+
 
 /**
  * Tests for Issue #155: Standardize admin auth (3 different patterns)
