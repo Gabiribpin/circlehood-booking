@@ -28,6 +28,8 @@ async function getEvolutionConfig(instance: string) {
   };
 }
 
+const MAX_MESSAGE_AGE_SECONDS = 300; // 5 minutes
+
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
@@ -86,6 +88,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: 'ok' });
       }
 
+      // Replay protection: reject messages older than 5 minutes
+      const msgTimestamp = parseInt(body.data.messageTimestamp, 10);
+      if (msgTimestamp) {
+        const ageSeconds = Math.floor(Date.now() / 1000) - msgTimestamp;
+        if (ageSeconds > MAX_MESSAGE_AGE_SECONDS) {
+          logger.warn('[whatsapp/webhook] rejected stale message', { age: ageSeconds, id: body.data.key.id });
+          return NextResponse.json({ status: 'ok' });
+        }
+      }
+
       const text =
         body.data.message?.conversation ||
         body.data.message?.extendedTextMessage?.text;
@@ -131,6 +143,16 @@ export async function POST(request: NextRequest) {
         const from = message.from;
         const text = message.text?.body;
         const messageId = message.id;
+
+        // Replay protection: reject messages older than 5 minutes
+        const metaTimestamp = typeof message.timestamp === 'string' ? parseInt(message.timestamp, 10) : message.timestamp;
+        if (metaTimestamp) {
+          const ageSeconds = Math.floor(Date.now() / 1000) - metaTimestamp;
+          if (ageSeconds > MAX_MESSAGE_AGE_SECONDS) {
+            logger.warn('[whatsapp/webhook] rejected stale Meta message', { age: ageSeconds, id: messageId });
+            return NextResponse.json({ status: 'ok' });
+          }
+        }
 
         // Ignore audio messages (no STT yet)
         if (message.type === 'audio' || message.type === 'voice') {
