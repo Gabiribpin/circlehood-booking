@@ -31,12 +31,9 @@ describe('GDPR job uses Vercel preview URL (issue #54)', () => {
     expect(ciYml).toContain('environment_url');
   });
 
-  it('fails the job when preview is unavailable instead of falling back (#57)', () => {
+  it('falls back to PROD_URL when preview is unavailable (#235)', () => {
     expect(ciYml).toContain('https://booking.circlehood-tech.com');
-    // Must NOT silently fall back to production — must exit 1
-    expect(ciYml).not.toContain('usando produção como fallback');
-    expect(ciYml).toContain('deploy não ficou pronto');
-    expect(ciYml).toContain('exit 1');
+    expect(ciYml).toContain('usando PROD_URL como fallback');
   });
 
   it('verifies preview URL responds before using it', () => {
