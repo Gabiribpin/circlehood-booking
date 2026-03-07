@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set('admin_session', token, {
     httpOnly: true,
     secure: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     expires,
   });
