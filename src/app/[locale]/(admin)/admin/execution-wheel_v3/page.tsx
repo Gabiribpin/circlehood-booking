@@ -942,24 +942,31 @@ export default function ExecutionWheelV3Page() {
         </div>
       )}
 
-      {/* Audit prompt when no issues */}
-      {openCount === 0 && !ghLoading && (
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">
-            Sem issues abertas. Projeto aparentemente estavel.
+      {/* Audit mode when all issues resolved */}
+      {(openCount === 0 || pendingCount === 0) && !ghLoading && (
+        <div className="rounded-xl border-2 border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 p-6 space-y-4 text-center">
+          <div className="text-4xl">&#127881;</div>
+          <h2 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+            Todas as issues resolvidas!
+          </h2>
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+            {openCount === 0
+              ? 'Nenhuma issue aberta. Projeto estavel.'
+              : `${openCount} issues abertas, todas com PR. Aguardando merge.`}
           </p>
           <button
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(generateAuditPrompt());
-                log('Prompt de auditoria copiado');
+                log('Prompt de Auditoria copiado');
               } catch {
                 log('ERRO: falha ao copiar.');
               }
             }}
-            className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-base font-bold px-6 py-3 transition-colors"
           >
-            Gerar Prompt Nova Auditoria
+            <Search className="h-5 w-5" />
+            Iniciar Nova Auditoria
           </button>
         </div>
       )}
