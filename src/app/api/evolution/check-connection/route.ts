@@ -21,12 +21,17 @@ export async function GET(request: NextRequest) {
     // Buscar token da instância no Supabase
     const { data: config } = await supabase
       .from('whatsapp_config')
-      .select('evolution_api_url, evolution_api_key')
+      .select('evolution_api_url, evolution_api_key, evolution_instance')
       .eq('user_id', user.id)
       .single();
 
     if (!config?.evolution_api_key) {
       return NextResponse.json({ connected: false });
+    }
+
+    // Validate instance belongs to this user
+    if (config.evolution_instance !== instance) {
+      return NextResponse.json({ error: 'Instance not authorized' }, { status: 403 });
     }
 
     const res = await fetch(`${config.evolution_api_url}/instance/connectionState/${instance}`, {
