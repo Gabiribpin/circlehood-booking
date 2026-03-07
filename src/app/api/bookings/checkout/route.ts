@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const firstIssue = parsed.error.issues[0];
     return NextResponse.json(
-      { error: firstIssue?.message ?? 'Dados inválidos.', issues: parsed.error.issues },
+      { error: firstIssue?.message ?? 'Dados inválidos.' },
       { status: 400 }
     );
   }
@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
           { status: 422 }
         );
       }
-    } catch {
+    } catch (err) {
+      logger.error('[bookings/checkout] Stripe account check failed', err);
       return NextResponse.json(
         { error: 'Não foi possível verificar a conta Stripe do profissional.' },
         { status: 502 }
@@ -192,7 +193,8 @@ export async function POST(request: NextRequest) {
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+    logger.error('[bookings/checkout] booking insert failed', bookingError);
+    return NextResponse.json({ error: 'Erro ao criar agendamento. Tente novamente.' }, { status: 500 });
   }
 
   // ─── 10. Calcular sinal + taxa plataforma ────────────────────────────────
