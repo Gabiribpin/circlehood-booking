@@ -1240,10 +1240,16 @@ export default function ExecutionWheelV3Page() {
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300">
-                Issues Abertas ({ghIssues.filter((i) => !i.pull_request).length})
+                Issues Abertas ({pendingCount})
               </h3>
               <button
-                onClick={loadGhIssues}
+                onClick={() => {
+                  localStorage.removeItem(LS_FOCUS_V3);
+                  localStorage.removeItem('v3_issues_with_pr');
+                  setFocus(null);
+                  setIssuesWithPR(new Set());
+                  loadGhIssues();
+                }}
                 disabled={ghLoading}
                 className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-1.5 transition-colors"
               >
