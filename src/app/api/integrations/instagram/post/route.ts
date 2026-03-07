@@ -23,11 +23,22 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Buscar professional_id real
+  const { data: professional } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!professional) {
+    return NextResponse.json({ error: 'Professional not found' }, { status: 404 });
+  }
+
   // Buscar integração ativa
   const { data: integration, error: integrationError } = await supabase
     .from('integrations')
     .select('*')
-    .eq('professional_id', user.id)
+    .eq('professional_id', professional.id)
     .eq('type', 'instagram')
     .eq('is_active', true)
     .single()
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { data: post, error: postError } = await supabase
       .from('instagram_posts')
       .insert({
-        professional_id: user.id,
+        professional_id: professional.id,
         integration_id: integration.id,
         post_type: postType,
         caption,
@@ -107,7 +118,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('instagram_posts')
       .insert({
-        professional_id: user.id,
+        professional_id: professional.id,
         integration_id: integration.id,
         post_type: postType,
         caption,
