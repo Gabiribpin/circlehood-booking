@@ -114,7 +114,7 @@ export default function RegisterPage() {
     setError('');
 
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
+      setError(t('passwordMinLength'));
       return;
     }
 
@@ -127,13 +127,13 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (!slugAvailable) {
-      setError('Escolha um link disponível para sua página.');
+      setError(t('slugUnavailableError'));
       setLoading(false);
       return;
     }
 
     if (!termsAccepted) {
-      setError('Você deve aceitar os Termos de Uso para criar uma conta.');
+      setError(t('termsRequired'));
       setLoading(false);
       return;
     }
@@ -157,7 +157,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Erro ao criar conta.');
+        setError(data.error || t('signupError'));
         setLoading(false);
         return;
       }
@@ -169,7 +169,7 @@ export default function RegisterPage() {
       router.push('/verify-email-pending');
       router.refresh();
     } catch {
-      setError('Erro de conexão. Tente novamente.');
+      setError(t('connectionError'));
       setLoading(false);
     }
   }
@@ -181,11 +181,11 @@ export default function RegisterPage() {
           <div className="flex justify-center">
             <CircleHoodLogoFull />
           </div>
-          <CardTitle className="text-xl font-bold">Crie sua página profissional</CardTitle>
+          <CardTitle className="text-xl font-bold">{t('createYourPage')}</CardTitle>
           <CardDescription>
             {step === 1
-              ? 'Comece criando sua conta'
-              : 'Agora, configure seu negócio'}
+              ? t('startCreatingAccount')
+              : t('configureYourBusiness')}
           </CardDescription>
           <div className="flex justify-center gap-2 pt-2">
             <div className={`h-2 w-16 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
@@ -202,7 +202,7 @@ export default function RegisterPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('email')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -213,12 +213,12 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password">{t('password')}</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder={t('passwordMinChars')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -237,7 +237,7 @@ export default function RegisterPage() {
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full">
-                Continuar
+                {t('continue')}
               </Button>
 
               <div className="relative w-full">
@@ -254,9 +254,9 @@ export default function RegisterPage() {
               <SocialLoginButtons mode="register" />
 
               <p className="text-sm text-muted-foreground text-center">
-                Já tem conta?{' '}
+                {t('alreadyHaveAccount')}{' '}
                 <Link href="/login" className="text-primary underline hover:no-underline">
-                  Fazer login
+                  {t('doLogin')}
                 </Link>
               </p>
             </CardFooter>
@@ -271,7 +271,7 @@ export default function RegisterPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="businessName">Nome do negócio *</Label>
+                <Label htmlFor="businessName">{t('businessName')} *</Label>
                 <Input
                   id="businessName"
                   placeholder="Ex: Maria's Nails"
@@ -282,7 +282,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug">Link da sua página *</Label>
+                <Label htmlFor="slug">{t('pageLink')} *</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
                     booking.circlehood-tech.com/
@@ -291,7 +291,7 @@ export default function RegisterPage() {
                     id="slug"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="seu-negócio"
+                    placeholder="your-business"
                     required
                     minLength={3}
                   />
@@ -304,12 +304,12 @@ export default function RegisterPage() {
                   )}
                 </div>
                 {slugAvailable === false && (
-                  <p data-testid="slug-error" className="text-xs text-destructive">Este link já está em uso.</p>
+                  <p data-testid="slug-error" className="text-xs text-destructive">{t('slugTaken')}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="city">Cidade *</Label>
+                <Label htmlFor="city">{t('cityLabel')} *</Label>
                 <Input
                   id="city"
                   placeholder="Ex: Dublin, Lisboa, São Paulo"
@@ -320,10 +320,10 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
+                <Label htmlFor="category">{t('categoryLabel')}</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione sua área" />
+                    <SelectValue placeholder={t('selectCategory')} />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
@@ -336,7 +336,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="country">País *</Label>
+                <Label htmlFor="country">{t('countryLabel')} *</Label>
                 <Select
                   value={country}
                   onValueChange={(val) => {
@@ -345,7 +345,7 @@ export default function RegisterPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione seu país" />
+                    <SelectValue placeholder={t('selectCountry')} />
                   </SelectTrigger>
                   <SelectContent>
                     {COUNTRIES.map((c) => (
@@ -359,7 +359,7 @@ export default function RegisterPage() {
 
               <div className="bg-muted/50 p-3 rounded-md">
                 <p className="text-xs text-muted-foreground">
-                  💡 Você poderá adicionar bio, telefone, redes sociais e foto depois no painel!
+                  {t('registerTip')}
                 </p>
               </div>
 
@@ -372,21 +372,25 @@ export default function RegisterPage() {
                   className="mt-0.5 h-4 w-4 cursor-pointer"
                 />
                 <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                  Li e aceito os{' '}
-                  <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
-                    Termos de Uso
-                  </Link>
-                  {' '}e a{' '}
-                  <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
-                    Política de Privacidade
-                  </Link>
+                  {t.rich('acceptTermsRich', {
+                    termsLink: (chunks) => (
+                      <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                        {chunks}
+                      </Link>
+                    ),
+                    privacyLink: (chunks) => (
+                      <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
                 </label>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Criar minha página
+                {t('createMyPage')}
               </Button>
               <Button
                 type="button"
@@ -394,7 +398,7 @@ export default function RegisterPage() {
                 className="w-full"
                 onClick={() => setStep(1)}
               >
-                Voltar
+                {t('back')}
               </Button>
             </CardFooter>
           </form>

@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
+import { useTranslations } from 'next-intl';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -27,7 +29,7 @@ export default function ForgotPasswordPage() {
     });
 
     if (error) {
-      setError('Erro ao enviar email. Tente novamente.');
+      setError(t('resetEmailError'));
       setLoading(false);
       return;
     }
@@ -44,21 +46,21 @@ export default function ForgotPasswordPage() {
             <div className="flex justify-center mb-4">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
-            <CardTitle className="text-2xl font-bold">Email Enviado!</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t('emailSent')}</CardTitle>
             <CardDescription>
-              Enviamos um link de recuperação para <strong>{email}</strong>
+              {t('resetLinkSent', { email })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground text-center">
-              Verifique sua caixa de entrada (e spam) e clique no link para redefinir sua senha.
+              {t('checkInbox')}
             </p>
           </CardContent>
           <CardFooter>
             <Link href="/login" className="w-full">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar ao Login
+                {t('backToLogin')}
               </Button>
             </Link>
           </CardFooter>
@@ -74,9 +76,9 @@ export default function ForgotPasswordPage() {
           <div className="flex justify-center">
             <CircleHoodLogoCompact size="md" />
           </div>
-          <CardTitle className="text-xl font-bold">Esqueceu a senha?</CardTitle>
+          <CardTitle className="text-xl font-bold">{t('forgotPassword')}</CardTitle>
           <CardDescription>
-            Digite seu email e enviaremos um link para redefinir sua senha
+            {t('resetPasswordDesc')}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleResetPassword}>
@@ -87,7 +89,7 @@ export default function ForgotPasswordPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -101,11 +103,11 @@ export default function ForgotPasswordPage() {
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enviar Link de Recuperação
+              {t('sendResetLink')}
             </Button>
             <Link href="/login" className="text-sm text-muted-foreground text-center hover:text-primary">
               <ArrowLeft className="inline mr-1 h-3 w-3" />
-              Voltar ao login
+              {t('backToLogin')}
             </Link>
           </CardFooter>
         </form>
