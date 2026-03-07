@@ -6,6 +6,7 @@ import { SectionGallery } from './section-gallery';
 import { SectionTestimonials } from './section-testimonials';
 import { SectionFAQ } from './section-faq';
 import { ContactFooter } from './contact-footer';
+import { useTranslations } from 'next-intl';
 import type { Professional, Service } from '@/types/database';
 
 interface SectionRendererProps {
@@ -21,6 +22,8 @@ export function SectionRenderer({
   services,
   currency,
 }: SectionRendererProps) {
+  const t = useTranslations('public');
+
   // Não renderizar seções invisíveis
   if (!section.is_visible) {
     return null;
@@ -38,7 +41,7 @@ export function SectionRenderer({
       return (
         <div className="py-8">
           <h2 className="text-2xl font-bold mb-6 text-center px-4">
-            {(section.data as any).heading || 'Meus Serviços'}
+            {(section.data as any).heading || t('myServices')}
           </h2>
           <ServicesList services={services} currency={currency || 'EUR'} />
         </div>

@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { AboutData } from '@/lib/page-sections/types';
 import { Award, Star } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface SectionAboutProps {
   data: AboutData;
@@ -8,6 +9,7 @@ interface SectionAboutProps {
 }
 
 export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
+  const t = useTranslations('public');
   return (
     <section className="py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -37,7 +39,7 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
               <Star className="w-8 h-8 text-purple-600" />
               <div>
                 <p className="text-3xl font-bold text-purple-900">{data.yearsExperience}+</p>
-                <p className="text-purple-700">Anos de Experiência</p>
+                <p className="text-purple-700">{t('yearsOfExperience')}</p>
               </div>
             </div>
           </div>
@@ -45,7 +47,7 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
 
         {data.specialties && data.specialties.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-3">Especialidades</h3>
+            <h3 className="text-xl font-semibold mb-3">{t('specialties')}</h3>
             <div className="flex flex-wrap gap-2">
               {data.specialties.map((specialty, index) => (
                 <span
@@ -63,7 +65,7 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
           <div>
             <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
               <Award className="w-5 h-5" />
-              Certificações
+              {t('certifications')}
             </h3>
             <div className="space-y-3">
               {data.certifications.map((cert, index) => (

@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Service } from '@/types/database';
 
 interface ServicesListProps {
@@ -14,18 +15,20 @@ function formatPrice(price: number, currency: string) {
 }
 
 export function ServicesList({ services, currency }: ServicesListProps) {
+  const t = useTranslations('public');
+
   if (services.length === 0) {
     return (
       <section className="px-4 sm:px-6 py-6">
-        <h2 className="text-lg font-semibold mb-4">Serviços</h2>
-        <p className="text-muted-foreground text-sm">Nenhum servico cadastrado ainda.</p>
+        <h2 className="text-lg font-semibold mb-4">{t('services')}</h2>
+        <p className="text-muted-foreground text-sm">{t('noServicesYet')}</p>
       </section>
     );
   }
 
   return (
     <section className="px-4 sm:px-6 py-6">
-      <h2 className="text-lg font-semibold mb-4">Serviços</h2>
+      <h2 className="text-lg font-semibold mb-4">{t('services')}</h2>
       <div className="space-y-3">
         {services.map((service) => (
           <Card key={service.id}>

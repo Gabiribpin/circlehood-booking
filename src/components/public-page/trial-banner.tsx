@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { PublicPageStatus } from '@/lib/trial-helpers';
 
 type BannerReason = NonNullable<PublicPageStatus['reason']>;
@@ -7,11 +8,11 @@ interface TrialBannerProps {
   reason?: BannerReason;
 }
 
-const SUBTITLES: Record<BannerReason, string> = {
-  trial_expired: 'O período de teste expirou.',
-  payment_failed: 'Houve um problema com o pagamento da assinatura.',
-  manually_disabled: 'Esta página foi temporariamente desativada pelo profissional.',
-  not_found: 'Esta página não está disponível.',
+const SUBTITLE_KEYS: Record<BannerReason, string> = {
+  trial_expired: 'trialExpired',
+  payment_failed: 'paymentFailed',
+  manually_disabled: 'manuallyDisabled',
+  not_found: 'notFoundReason',
 };
 
 /**
@@ -19,6 +20,7 @@ const SUBTITLES: Record<BannerReason, string> = {
  * Accepts an optional `reason` to tailor the subtitle.
  */
 export function TrialBanner({ reason = 'trial_expired' }: TrialBannerProps) {
+  const t = useTranslations('public');
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm text-center space-y-6">
@@ -31,20 +33,20 @@ export function TrialBanner({ reason = 'trial_expired' }: TrialBannerProps) {
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">Página Indisponível</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageUnavailable')}</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
-            Esta página profissional está temporariamente indisponível.{' '}
-            {SUBTITLES[reason]}
+            {t('pageTemporarilyUnavailable')}{' '}
+            {t(SUBTITLE_KEYS[reason])}
           </p>
         </div>
 
         {/* Box for clients */}
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-left space-y-2">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Para clientes
+            {t('forClients')}
           </p>
           <p className="text-sm text-gray-600">
-            Por favor, entre em contato diretamente com o profissional por telefone ou WhatsApp para agendar.
+            {t('contactProfessionalDirectly')}
           </p>
         </div>
 

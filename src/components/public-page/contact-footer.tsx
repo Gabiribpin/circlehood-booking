@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { MessageCircle, Instagram, Phone, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Professional } from '@/types/database';
 
 interface ContactFooterProps {
@@ -8,6 +9,8 @@ interface ContactFooterProps {
 }
 
 export function ContactFooter({ professional }: ContactFooterProps) {
+  const t = useTranslations('public');
+
   const whatsappLink = professional.whatsapp
     ? `https://wa.me/${professional.whatsapp.replace(/\D/g, '')}`
     : null;
@@ -41,7 +44,7 @@ export function ContactFooter({ professional }: ContactFooterProps) {
           <Button asChild variant="outline" className="gap-2">
             <a href={`tel:${professional.phone}`}>
               <Phone className="h-4 w-4" />
-              Ligar
+              {t('call')}
             </a>
           </Button>
         )}
