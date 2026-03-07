@@ -543,11 +543,13 @@ export default function ExecutionWheelV3Page() {
       const issueInList = (issues as GHIssue[]).find((i: GHIssue) => i.number === savedFocus.number);
       const focusHasPR = issuesWithPR.has(savedFocus.number);
 
-      // Issue closed or has PR — advance to next without PR
-      if (!issueInList || focusHasPR) {
+      // Issue closed, has PR, or phase is done — advance to next without PR
+      if (!issueInList || focusHasPR || phase === 'done') {
         log(!issueInList
           ? `#${savedFocus.number} foi fechada. Avancando...`
-          : `#${savedFocus.number} tem PR aberto. Avancando...`
+          : phase === 'done'
+            ? `#${savedFocus.number} concluída. Avancando...`
+            : `#${savedFocus.number} tem PR aberto. Avancando...`
         );
         // Pick next issue that does NOT have an open PR
         const available = (issues as GHIssue[]).filter((i: GHIssue) =>
@@ -664,7 +666,8 @@ export default function ExecutionWheelV3Page() {
   }
 
   function pullNext() {
-    const next = pickNext(ghIssues);
+    const available = ghIssues.filter((i) => !issuesWithPR.has(i.number));
+    const next = pickNextFromList(available);
     if (next) {
       focusIssue(next);
     } else {
@@ -1271,14 +1274,14 @@ export default function ExecutionWheelV3Page() {
               </button>
             </div>
 
-            {ghIssues.filter((i) => !i.pull_request).length === 0 ? (
+            {ghIssues.filter((i) => !issuesWithPR.has(i.number)).length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-400">
                 {ghLoading ? 'Carregando...' : 'Nenhuma issue aberta.'}
               </div>
             ) : (
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {ghIssues
-                  .filter((i) => !i.pull_request)
+                  .filter((i) => !issuesWithPR.has(i.number))
                   .sort((a, b) => severityScore(getSeverity(labelsOf(a))) - severityScore(getSeverity(labelsOf(b))))
                   .map((issue) => {
                     const issueSev = getSeverity(labelsOf(issue));
