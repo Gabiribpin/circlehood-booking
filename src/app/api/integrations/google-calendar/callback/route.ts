@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server';
 import { getTokensFromCode } from '@/lib/integrations/google-calendar';
 import { encryptToken } from '@/lib/integrations/token-encryption';
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://booking.circlehood-tech.com';
+
+function safeRedirect(path: string): NextResponse {
+  return NextResponse.redirect(new URL(path, BASE_URL));
+}
+
 /**
  * Callback do OAuth Google Calendar
  * Recebe code e troca por access_token + refresh_token
@@ -15,21 +21,11 @@ export async function GET(request: NextRequest) {
 
   // Se usuário negou acesso
   if (error) {
-    return NextResponse.redirect(
-      new URL(
-        `/integrations?error=${encodeURIComponent('Google Calendar authorization denied')}`,
-        request.url
-      )
-    );
+    return safeRedirect(`/integrations?error=${encodeURIComponent('Google Calendar authorization denied')}`);
   }
 
   if (!code) {
-    return NextResponse.redirect(
-      new URL(
-        `/integrations?error=${encodeURIComponent('No authorization code received')}`,
-        request.url
-      )
-    );
+    return safeRedirect(`/integrations?error=${encodeURIComponent('No authorization code received')}`);
   }
 
   try {
@@ -41,9 +37,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.redirect(
-        new URL('/login?redirect=/integrations', request.url)
-      );
+      return safeRedirect('/login?redirect=/integrations');
     }
 
     // Buscar professional_id
@@ -54,9 +48,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!professional) {
-      return NextResponse.redirect(
-        new URL('/onboarding?redirect=/integrations', request.url)
-      );
+      return safeRedirect('/onboarding?redirect=/integrations');
     }
 
     // Trocar code por tokens
@@ -97,19 +89,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirecionar para página de integrações com sucesso
-    return NextResponse.redirect(
-      new URL(
-        '/integrations?success=google_calendar_connected',
-        request.url
-      )
-    );
+    return safeRedirect('/integrations?success=google_calendar_connected');
   } catch (error) {
     logger.error('Error in Google Calendar callback:', error);
-    return NextResponse.redirect(
-      new URL(
-        `/integrations?error=${encodeURIComponent('Failed to connect Google Calendar')}`,
-        request.url
-      )
-    );
+    return safeRedirect(`/integrations?error=${encodeURIComponent('Failed to connect Google Calendar')}`);
   }
 }
