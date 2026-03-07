@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isRateLimited } from '@/lib/rate-limit';
+
+const SLOTS_RATE_LIMIT = 100; // max requests per window
+const SLOTS_RATE_WINDOW = 60; // 1 minute in seconds
 
 export async function GET(request: NextRequest) {
+  // ─── Rate limiting por IP ──────────────────────────────────────────
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (await isRateLimited(`available-slots:${ip}`, SLOTS_RATE_LIMIT, SLOTS_RATE_WINDOW)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Try again later.' },
+      { status: 429 }
+    );
+  }
+
   const { searchParams } = request.nextUrl;
   const professionalId = searchParams.get('professional_id');
   const serviceId = searchParams.get('service_id');
