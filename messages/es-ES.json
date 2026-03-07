@@ -19,7 +19,8 @@
     "errorBoundaryTitle": "Algo salió mal",
     "errorBoundaryDescription": "Ocurrió un error inesperado. Inténtalo de nuevo.",
     "tryAgain": "Intentar de nuevo",
-    "backToDashboard": "Volver al panel"
+    "backToDashboard": "Volver al panel",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "nav": {
     "dashboard": "Panel",

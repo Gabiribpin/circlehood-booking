@@ -19,7 +19,8 @@
     "errorBoundaryTitle": "Something went wrong",
     "errorBoundaryDescription": "An unexpected error occurred. Please try again.",
     "tryAgain": "Try again",
-    "backToDashboard": "Back to dashboard"
+    "backToDashboard": "Back to dashboard",
+    "backToLogin": "Back to login"
   },
   "nav": {
     "dashboard": "Dashboard",
