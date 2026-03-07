@@ -65,8 +65,8 @@ async function sessionExists(sessionId: string, tokenTimestamp?: number): Promis
       // 2. Stored in another serverless instance's memory — should accept
       // We can't distinguish, so check if we know about this session locally.
       if (memorySessions.has(sessionId)) return false; // We stored it, then Redis lost it — expired
-      // Unknown session: on serverless, accept gracefully since HMAC+timestamp are already valid
-      return true;
+      // Unknown session: fail-secure — reject unknown tokens
+      return false;
     } catch { /* Redis error — fall through to memory */ }
   }
   // No Redis available
@@ -78,11 +78,8 @@ async function sessionExists(sessionId: string, tokenTimestamp?: number): Promis
     }
     return true;
   }
-  // Session not found in memory and no Redis. On serverless (Vercel), this happens
-  // when the session was stored in a different instance's memory. Since the token's
-  // HMAC signature and timestamp have already been validated by the caller, accept
-  // the token gracefully rather than locking the user out.
-  return true;
+  // Session not found in memory and no Redis — fail-secure: reject unknown tokens
+  return false;
 }
 
 async function deleteSession(sessionId: string): Promise<void> {

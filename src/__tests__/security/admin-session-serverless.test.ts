@@ -5,8 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  *
  * On Vercel, each serverless function has its own in-memory store.
  * A session created in one instance may not exist in another's memory.
- * Without Redis, validation must gracefully accept tokens with valid
- * HMAC+timestamp rather than locking out the user.
+ * Without Redis, validation fails secure — unknown sessions are rejected.
+ * Redis is required for cross-instance session persistence.
  */
 
 describe('Admin session serverless cross-instance behavior', () => {
@@ -31,7 +31,7 @@ describe('Admin session serverless cross-instance behavior', () => {
     expect(await validateAdminToken(token)).toBe(true);
   });
 
-  it('token is accepted in a fresh instance (simulating cross-instance)', async () => {
+  it('token is rejected in a fresh instance without Redis (fail-secure)', async () => {
     // Instance A generates the token
     const { generateAdminToken } = await import('@/lib/admin/session');
     const { token } = await generateAdminToken();
@@ -43,8 +43,8 @@ describe('Admin session serverless cross-instance behavior', () => {
     delete process.env.REDIS_URL;
 
     const { validateAdminToken } = await import('@/lib/admin/session');
-    // Instance B has no memory of this session, but HMAC+timestamp are valid
-    expect(await validateAdminToken(token)).toBe(true);
+    // Instance B has no memory of this session and no Redis — fail-secure rejects
+    expect(await validateAdminToken(token)).toBe(false);
   });
 
   it('revoked token is rejected in same instance', async () => {
