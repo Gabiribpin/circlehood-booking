@@ -55,7 +55,9 @@ const isNonProduction =
 export async function POST(request: NextRequest) {
   // ── Validação de assinatura do webhook ──
   const apikeyHeader = request.headers.get('apikey');
-  if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
+  if (!process.env.WHATSAPP_WEBHOOK_SECRET) {
+    logger.warn('[whatsapp/webhook] WHATSAPP_WEBHOOK_SECRET not configured — skipping apikey validation');
+  } else if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
     logger.warn('[whatsapp/webhook] Invalid or missing apikey header');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

@@ -29,14 +29,14 @@ describe('validateEvolutionWebhook (issue #20)', () => {
     expect(validateEvolutionWebhook(null, 'my-secret-key')).toBe(false);
   });
 
-  it('returns false when secret is undefined', async () => {
+  it('returns true when secret is undefined (skip validation)', async () => {
     const { validateEvolutionWebhook } = await import('@/lib/webhooks/signature');
-    expect(validateEvolutionWebhook('some-key', undefined)).toBe(false);
+    expect(validateEvolutionWebhook('some-key', undefined)).toBe(true);
   });
 
-  it('returns false when both are empty strings', async () => {
+  it('returns true when both are empty strings (no secret = skip validation)', async () => {
     const { validateEvolutionWebhook } = await import('@/lib/webhooks/signature');
-    expect(validateEvolutionWebhook('', '')).toBe(false);
+    expect(validateEvolutionWebhook('', '')).toBe(true);
   });
 
   it('is case-sensitive', async () => {

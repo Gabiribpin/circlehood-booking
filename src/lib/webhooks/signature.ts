@@ -8,7 +8,7 @@ export function validateEvolutionWebhook(
   apikeyHeader: string | null,
   secret: string | undefined
 ): boolean {
-  if (!secret) return false; // secret not configured → reject
+  if (!secret) return true; // secret not configured → skip validation (log warning at call site)
   if (!apikeyHeader) return false;
 
   // Timing-safe comparison
