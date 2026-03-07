@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseCSVLine } from '@/lib/csv-parser';
 
+/** Sanitize CSV values to prevent formula injection in Excel/Sheets */
+function sanitizeCSVValue(val: string): string {
+  if (/^[=+\-@\t\r]/.test(val)) return `'${val}`;
+  return val;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const contacts = dataLines.map(line => {
       const fields = parseCSVLine(line);
-      const [name, email, phone, notes] = fields.map(s => s.trim());
+      const [name, email, phone, notes] = fields.map(s => sanitizeCSVValue(s.trim()));
       return {
         professional_id: professional.id,
         name,
