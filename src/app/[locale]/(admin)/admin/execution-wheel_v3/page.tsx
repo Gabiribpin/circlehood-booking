@@ -68,13 +68,16 @@ interface Focus {
 }
 
 type V3Phase =
-  | 'ready'            // Issue aberta, sem branch
-  | 'awaiting-tests'   // Branch existe, CI local não rodou
-  | 'testing'          // CI local rodando
-  | 'local-ok'         // CI local passou
-  | 'ready-for-pr'     // Revisão ok, pronto para PR
-  | 'pr-open'          // PR aberto + auto-merge ativo
-  | 'done';            // CI verde → mergeado
+  | 'ready'              // Issue aberta, sem branch
+  | 'awaiting-tests'     // Branch existe, CI local não rodou
+  | 'testing'            // CI local rodando
+  | 'local-ok'           // CI local passou
+  | 'ready-for-pr'       // Revisão ok, pronto para PR
+  | 'pr-open'            // PR aberto + auto-merge ativo
+  | 'ci-failing'         // PR aberto + CI falhando
+  | 'ready-to-validate'  // PR aberto + CI verde (pronto para validar)
+  | 'awaiting-evidence'  // PR mergeado, issue ainda aberta
+  | 'done';              // CI verde → mergeado
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -84,13 +87,16 @@ const LS_PHASE_V3 = 'wheel_v3.phase';
 const PROJECT_URL = 'https://github.com/users/Gabiribpin/projects/7';
 
 const PHASE_CONFIG: Record<V3Phase, { emoji: string; label: string; color: string }> = {
-  'ready':           { emoji: '🔵', label: 'PRONTO PARA EXECUTAR',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  'awaiting-tests':  { emoji: '🟠', label: 'AGUARDANDO TESTES',      color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
-  'testing':         { emoji: '🔄', label: 'TESTANDO',                color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' },
-  'local-ok':        { emoji: '🟢', label: 'LOCAL OK',                color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-  'ready-for-pr':    { emoji: '🟣', label: 'PRONTO PARA PR',         color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
-  'pr-open':         { emoji: '🚀', label: 'PR ABERTO',               color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
-  'done':            { emoji: '✅', label: 'CONCLUÍDO',               color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  'ready':              { emoji: '🔵', label: 'PRONTO PARA EXECUTAR',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  'awaiting-tests':     { emoji: '🟠', label: 'AGUARDANDO TESTES',      color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' },
+  'testing':            { emoji: '🔄', label: 'TESTANDO',                color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' },
+  'local-ok':           { emoji: '🟢', label: 'LOCAL OK',                color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  'ready-for-pr':       { emoji: '🟣', label: 'PRONTO PARA PR',         color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+  'pr-open':            { emoji: '🚀', label: 'PR ABERTO',               color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  'ci-failing':         { emoji: '🟡', label: 'CI FALHANDO',             color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' },
+  'ready-to-validate':  { emoji: '🟢', label: 'PRONTO PARA VALIDAR',    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
+  'awaiting-evidence':  { emoji: '🟣', label: 'AGUARDANDO EVIDÊNCIA',   color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+  'done':               { emoji: '✅', label: 'CONCLUÍDO',               color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -299,6 +305,99 @@ function generateDeployPrompt(f: Focus): string {
     '4. O CI local (ci-local.yml) vai rodar no GitHub',
     '5. Quando verde -> merge automatico -> issue fecha',
     '6. Vercel nao e consultado.',
+  ].join('\n');
+}
+
+function generateFixCIPrompt(f: Focus): string {
+  return [
+    '# FIX CI MODE — Investigar e corrigir falha de CI',
+    '',
+    '## Contexto',
+    `O PR da issue #${f.number} (${f.title}) está com CI falhando.`,
+    'Preciso que você investigue e corrija sem minha intervenção.',
+    '',
+    '## Passos',
+    '',
+    '1. Identifique o PR com falha:',
+    '   gh pr list --state open',
+    '',
+    '2. Veja os checks do PR:',
+    '   gh pr checks [NÚMERO DO PR]',
+    '',
+    '3. Para cada job falhando, leia o log completo:',
+    '   gh run view [RUN_ID] --log-failed',
+    '',
+    '4. Classifique a falha:',
+    '   - ERRO DE CÓDIGO → corrija o código, commit, push',
+    '   - ERRO DE TESTE → analise se o teste está correto ou se o código quebrou o contrato',
+    '   - FLAKY TEST → rode novamente: gh run rerun [RUN_ID]',
+    '   - ERRO DE CONFIGURAÇÃO → verifique env vars e dependências',
+    '',
+    '5. Após corrigir, confirme que todos os checks passaram:',
+    '   gh pr checks [NÚMERO DO PR] --watch',
+    '',
+    '6. Se após 3 tentativas o CI ainda falhar com o mesmo erro,',
+    '   pare e descreva o problema para eu analisar manualmente.',
+    '',
+    '## Nunca faça',
+    '- Não force merge se CI ainda estiver falhando',
+    '- Não altere arquivos fora do escopo da issue original',
+    '- Não desative ou ignore checks de CI',
+  ].join('\n');
+}
+
+function generateValidationPrompt(f: Focus): string {
+  return [
+    `# Modo Validacao Final — Issue #${f.number}`,
+    `Titulo: ${f.title}`,
+    '',
+    'Nao confie na implementacao anterior.',
+    'Prove que a issue esta realmente resolvida.',
+    '',
+    '1) Liste todos os arquivos alterados.',
+    '2) Mostre o diff relevante.',
+    '3) Mostre o teste que cobre o problema.',
+    '4) Mostre o output completo do runner de testes.',
+    '5) Explique por que o bug nao pode mais ocorrer.',
+    '6) Liste possiveis regressoes e por que nao acontecem.',
+    '7) Confirme CI verde no GitHub (gh pr checks).',
+    '',
+    'Se qualquer item acima nao estiver completo,',
+    'a issue deve ser considerada NAO resolvida.',
+  ].join('\n');
+}
+
+function generateEvidencePrompt(f: Focus): string {
+  return [
+    `## Evidencia — Issue #${f.number}`,
+    '',
+    '### Arquivos alterados',
+    '```',
+    '(cole a lista de arquivos aqui)',
+    '```',
+    '',
+    '### Diff relevante',
+    '```diff',
+    '(cole o diff aqui)',
+    '```',
+    '',
+    '### Testes',
+    '```',
+    '(cole o output dos testes aqui)',
+    '```',
+    '',
+    '### Build',
+    '```',
+    '(cole o output do build aqui)',
+    '```',
+    '',
+    '### CI Status',
+    '```',
+    '(cole o resultado de gh pr checks aqui)',
+    '```',
+    '',
+    '---',
+    '_Evidencia gerada via Roda V3_',
   ].join('\n');
 }
 
@@ -596,14 +695,14 @@ export default function ExecutionWheelV3Page() {
       const data = await apiFetch(`/api/admin/github/issues?action=pr-status&branch=${encodeURIComponent(branch)}`);
 
       if (!data.hasPR) {
-        // No PR — check CI local workflow
         setPhase('ready');
       } else if (data.prState === 'merged') {
-        setPhase('done');
+        // PR merged but issue still open → needs evidence
+        setPhase('awaiting-evidence');
       } else if (data.prState === 'open' && data.ciStatus === 'failure') {
-        setPhase('pr-open'); // PR open, CI running or failing
+        setPhase('ci-failing');
       } else if (data.prState === 'open' && data.ciStatus === 'success') {
-        setPhase('done'); // will auto-merge
+        setPhase('ready-to-validate');
       } else if (data.prState === 'open') {
         setPhase('pr-open');
       } else {
@@ -700,6 +799,15 @@ export default function ExecutionWheelV3Page() {
           '  Corrija, commit, push — CI roda novamente.',
         ].join('\n');
         break;
+      case 'ci-failing':
+        text = generateFixCIPrompt(focus);
+        break;
+      case 'ready-to-validate':
+        text = generateValidationPrompt(focus);
+        break;
+      case 'awaiting-evidence':
+        text = generateEvidencePrompt(focus);
+        break;
       case 'done':
         text = `Issue #${focus.number} concluida. Selecione a proxima issue.`;
         break;
@@ -725,7 +833,7 @@ export default function ExecutionWheelV3Page() {
 
   // ─── Phase Transitions ────────────────────────────────────────────────
 
-  const PHASE_ORDER: V3Phase[] = ['ready', 'awaiting-tests', 'testing', 'local-ok', 'ready-for-pr', 'pr-open', 'done'];
+  const PHASE_ORDER: V3Phase[] = ['ready', 'awaiting-tests', 'testing', 'local-ok', 'ready-for-pr', 'pr-open', 'ci-failing', 'ready-to-validate', 'awaiting-evidence', 'done'];
 
   function advancePhase() {
     const idx = PHASE_ORDER.indexOf(phase);
