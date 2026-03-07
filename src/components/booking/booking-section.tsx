@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -67,6 +68,7 @@ export function BookingSection({
   depositValue = null,
   stripeAccountId = null,
 }: BookingSectionProps) {
+  const t = useTranslations('public');
   const availableDays = new Set(workingHours.map(wh => wh.day_of_week));
 
   const disableUnavailableDays = (date: Date) => {
@@ -126,7 +128,7 @@ export function BookingSection({
   // Passo 4 → 5 (ou confirmação direta se sem sinal)
   async function handleContinue() {
     if (!selectedService || !selectedDate || !selectedSlot || !formData.clientName || !formData.clientPhone) {
-      setError('Por favor, preencha todos os campos obrigatórios, incluindo o WhatsApp.');
+      setError(t('fillRequiredFields'));
       return;
     }
 
@@ -165,7 +167,7 @@ export function BookingSection({
 
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error || 'Erro ao iniciar pagamento. Tente novamente.');
+          setError(data.error || t('paymentInitError'));
           setSubmitting(false);
           return;
         }
@@ -176,7 +178,7 @@ export function BookingSection({
           return;
         }
       } catch {
-        setError('Erro de rede. Tente novamente.');
+        setError(t('networkError'));
       }
       setSubmitting(false);
       return;
@@ -195,7 +197,7 @@ export function BookingSection({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Erro ao iniciar pagamento. Tente novamente.');
+        setError(data.error || t('paymentInitError'));
         setSubmitting(false);
         return;
       }
@@ -209,7 +211,7 @@ export function BookingSection({
       });
       setStep(5);
     } catch {
-      setError('Erro de rede. Tente novamente.');
+      setError(t('networkError'));
     }
     setSubmitting(false);
   }
@@ -249,7 +251,7 @@ export function BookingSection({
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Erro ao criar agendamento.');
+        setError(data.error || t('bookingCreateError'));
         setSubmitting(false);
         return;
       }
@@ -257,7 +259,7 @@ export function BookingSection({
       // Confirmação: paso 5 (sem sinal) ou 6 (com sinal)
       setStep(requireDeposit ? 6 : 5);
     } catch {
-      setError('Erro ao criar agendamento. Tente novamente.');
+      setError(t('bookingCreateRetryError'));
     }
     setSubmitting(false);
   }
@@ -270,7 +272,7 @@ export function BookingSection({
 
   return (
     <section className="px-4 sm:px-6 py-6">
-      <h2 className="text-lg font-semibold mb-4">Agendar</h2>
+      <h2 className="text-lg font-semibold mb-4">{t('schedule')}</h2>
 
       {/* Step indicator */}
       {step < confirmationStep && (
@@ -278,11 +280,11 @@ export function BookingSection({
           {step > 1 && (
             <Button variant="ghost" size="sm" onClick={goBack} className="gap-1 px-2">
               <ArrowLeft className="h-4 w-4" />
-              Voltar
+              {t('back')}
             </Button>
           )}
           <span className="text-xs text-muted-foreground ml-auto">
-            Passo {step} de {totalSteps}
+            {t('stepOf', { step, total: totalSteps })}
           </span>
         </div>
       )}
@@ -292,7 +294,7 @@ export function BookingSection({
         <div className="space-y-3">
           {requireDeposit && (
             <div data-testid="deposit-info" className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 text-sm text-blue-800 dark:text-blue-300">
-              <span>Sinal de reserva exigido</span>
+              <span>{t('depositRequired')}</span>
             </div>
           )}
           {services.map((service) => (
@@ -369,17 +371,17 @@ export function BookingSection({
             <div data-testid="booking-summary" className="p-3 rounded-lg bg-muted/50 space-y-1">
               <p className="text-sm font-medium">{selectedService.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formattedDate} às {selectedSlot} &mdash;{' '}
+                {formattedDate} {t('atTime')} {selectedSlot} &mdash;{' '}
                 <span data-testid="service-price">{formatPrice(selectedService.price, currency)}</span>
               </p>
               {requireDeposit && (
                 <p data-testid="deposit-amount" className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                  Sinal: aguarda cálculo
+                  {t('depositPending')}
                 </p>
               )}
               {!requireDeposit && (
                 <p data-testid="payment-note" className="text-xs text-muted-foreground">
-                  Pagamento no local
+                  {t('paymentOnSite')}
                 </p>
               )}
             </div>
@@ -387,7 +389,7 @@ export function BookingSection({
             {/* Seleção de local para serviços "both" */}
             {(selectedService as any).service_location === 'both' && (
               <div className="space-y-2">
-                <Label>Local de atendimento</Label>
+                <Label>{t('serviceLocation')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -399,7 +401,7 @@ export function BookingSection({
                     }`}
                   >
                     <Building2 className="h-5 w-5" />
-                    No salão
+                    {t('inSalon')}
                   </button>
                   <button
                     type="button"
@@ -411,7 +413,7 @@ export function BookingSection({
                     }`}
                   >
                     <Home className="h-5 w-5" />
-                    Em casa
+                    {t('atHome')}
                   </button>
                 </div>
               </div>
@@ -422,25 +424,25 @@ export function BookingSection({
               <div className="space-y-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
                 <div className="flex items-center gap-2">
                   <Home className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Atendimento a domicílio</p>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{t('homeService')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="customerAddress">Endereço *</Label>
+                  <Label htmlFor="customerAddress">{t('addressLabel')}</Label>
                   <Input
                     id="customerAddress"
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="Rua, número, apt"
+                    placeholder={t('addressPlaceholder')}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="customerAddressCity">Cidade</Label>
+                  <Label htmlFor="customerAddressCity">{t('cityLabel')}</Label>
                   <Input
                     id="customerAddressCity"
                     value={customerAddressCity}
                     onChange={(e) => setCustomerAddressCity(e.target.value)}
-                    placeholder="Ex: Dublin"
+                    placeholder={t('cityPlaceholder')}
                   />
                 </div>
               </div>
@@ -464,7 +466,7 @@ export function BookingSection({
               }
             >
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {requireDeposit ? 'Continuar para pagamento' : 'Confirmar agendamento'}
+              {requireDeposit ? t('continueToPayment') : t('confirmBooking')}
             </Button>
           </CardContent>
         </Card>
@@ -478,7 +480,7 @@ export function BookingSection({
             <div className="p-3 rounded-lg bg-muted/50 space-y-1">
               <p className="text-sm font-medium">{selectedService?.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formattedDate} às {selectedSlot}
+                {formattedDate} {t('atTime')} {selectedSlot}
               </p>
             </div>
 
@@ -501,18 +503,18 @@ export function BookingSection({
         <Card>
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <h3 data-testid="success-message" className="text-xl font-semibold">Agendamento confirmado!</h3>
+            <h3 data-testid="success-message" className="text-xl font-semibold">{t('bookingSuccess')}</h3>
             <p className="text-sm text-muted-foreground">
-              {selectedService?.name} &mdash; {formattedDate} às {selectedSlot}
+              {selectedService?.name} &mdash; {formattedDate} {t('atTime')} {selectedSlot}
             </p>
             {depositInfo && (
               <p data-testid="payment-confirmed" className="text-sm font-medium text-green-700 dark:text-green-400">
-                Sinal pago com sucesso
+                {t('depositPaidSuccess')}
               </p>
             )}
             {formData.clientEmail && (
               <p className="text-xs text-muted-foreground">
-                Um email de confirmação foi enviado para {formData.clientEmail}.
+                {t('confirmationEmailSent', { email: formData.clientEmail })}
               </p>
             )}
             <Button
@@ -529,7 +531,7 @@ export function BookingSection({
                 setDepositInfo(null);
               }}
             >
-              Fazer outro agendamento
+              {t('bookAnother')}
             </Button>
           </CardContent>
         </Card>
