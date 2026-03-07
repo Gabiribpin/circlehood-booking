@@ -110,6 +110,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ hasPR: true, prState, ciStatus });
     }
 
+    if (action === 'open-pr-branches') {
+      const pulls = await ghFetch(
+        `/repos/${REPO}/pulls?state=open&per_page=100`,
+        token
+      );
+      const branches = (pulls || []).map((p: { head: { ref: string } }) => p.head.ref);
+      return NextResponse.json(branches);
+    }
+
     if (action === 'check') {
       await ghFetch(`/repos/${REPO}`, token);
       return NextResponse.json({ connected: true });
