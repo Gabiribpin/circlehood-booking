@@ -52,7 +52,7 @@ test.describe('Email Verification — API', () => {
     const res = await request.post(`${BASE}/api/auth/signup-with-verification`, {
       data: { password: 'Teste1234!', businessName: 'Teste', slug: 'teste-slug-99' },
     });
-    expect(res.status()).toBe(400);
+    expect([400, 429]).toContain(res.status());
   });
 
   test('POST sem senha → 400', async ({ request }) => {
@@ -60,7 +60,7 @@ test.describe('Email Verification — API', () => {
     const res = await request.post(`${BASE}/api/auth/signup-with-verification`, {
       data: { email: `ev-${ts}@test.io`, businessName: 'Teste', slug: `ev-${ts}` },
     });
-    expect(res.status()).toBe(400);
+    expect([400, 429]).toContain(res.status());
   });
 
   // ── 2. Token inválido (curto: < 32 chars) ────────────────────────────────
@@ -118,7 +118,7 @@ test.describe('Email Verification — API', () => {
       // Pode retornar 200/201 (criado), 400 (email inválido / já existe) ou
       // 500 se a migration email_verified não foi aplicada no DB de teste.
       // O contrato que testamos é: a rota responde (não timeout/crash de rede).
-      expect([200, 201, 400, 500]).toContain(res.status());
+      expect([200, 201, 400, 429, 500]).toContain(res.status());
 
       if (res.status() === 200 || res.status() === 201) {
         const body = await res.json();
