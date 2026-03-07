@@ -70,6 +70,29 @@ export async function POST(
       return NextResponse.json({ error: 'Não é possível reagendar para uma data/horário no passado' }, { status: 400 });
     }
 
+    // Verificar working hours do profissional
+    const dateObj = new Date(`${new_date}T00:00:00`);
+    const dayOfWeek = dateObj.getDay();
+
+    const { data: workingHours } = await supabase
+      .from('working_hours')
+      .select('start_time, end_time')
+      .eq('professional_id', tokenData.bookings.professional_id)
+      .eq('day_of_week', dayOfWeek);
+
+    if (!workingHours || workingHours.length === 0) {
+      return NextResponse.json({ error: 'Profissional não atende neste dia da semana' }, { status: 400 });
+    }
+
+    const requestedTime = `${new_time}:00`;
+    const withinWorkingHours = workingHours.some(
+      (wh) => requestedTime >= wh.start_time && requestedTime < wh.end_time
+    );
+
+    if (!withinWorkingHours) {
+      return NextResponse.json({ error: 'Horário fora do expediente do profissional' }, { status: 400 });
+    }
+
     // Verificar se novo horário está disponível
     const { data: existingBooking } = await supabase
       .from('bookings')
