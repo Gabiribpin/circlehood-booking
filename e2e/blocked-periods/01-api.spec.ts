@@ -208,24 +208,30 @@ test.describe('API — Bloqueio de Período (blocked_periods)', () => {
     const service = await getFirstActiveService();
     if (!service) test.skip(true, 'Sem serviços ativos');
 
-    // Bloquear apenas a próxima terça
-    const tuesday = farFutureWeekday(2);
+    // Usar segunda como base e calcular terça/quarta como offsets (mesma semana)
+    const monday = farFutureWeekday(1);
+    const mondayDate = new Date(monday + 'T12:00:00');
+    const tuesdayDate = new Date(mondayDate);
+    tuesdayDate.setDate(mondayDate.getDate() + 1);
+    const wednesdayDate = new Date(mondayDate);
+    wednesdayDate.setDate(mondayDate.getDate() + 2);
+    const tuesday = tuesdayDate.toISOString().split('T')[0];
+    const wednesday = wednesdayDate.toISOString().split('T')[0];
+
+    // Verificar que pelo menos segunda ou quarta tem slots antes de bloquear
+    const slotsMonBefore = await getAvailableSlots(request, service!.id, monday);
+    const slotsWedBefore = await getAvailableSlots(request, service!.id, wednesday);
+    if (slotsMonBefore.length === 0 && slotsWedBefore.length === 0) {
+      test.skip(true, 'Segunda e quarta sem slots (dias de folga?)');
+    }
+
+    // Bloquear apenas terça
     const periodId = await blockPeriod(tuesday, tuesday, 'Folga E2E');
     cleanupBlockedPeriods.push(periodId);
 
-    // Segunda (antes do bloqueio) deve ter slots
-    const monday = farFutureWeekday(1);
+    // Segunda e quarta (fora do bloqueio) devem manter slots
     const slotsMon = await getAvailableSlots(request, service!.id, monday);
-    // Só verifica se segunda é dia de trabalho
-    if (slotsMon.length === 0) {
-      // Segunda pode ser folga — verificar quarta (depois do bloqueio)
-    }
-
-    // Quarta (depois do bloqueio) deve ter slots
-    const wednesday = farFutureWeekday(3);
     const slotsWed = await getAvailableSlots(request, service!.id, wednesday);
-
-    // Pelo menos segunda ou quarta deve ter slots disponíveis
     const atLeastOneAvailable = slotsMon.length > 0 || slotsWed.length > 0;
     expect(atLeastOneAvailable).toBe(true);
 
