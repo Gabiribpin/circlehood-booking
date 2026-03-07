@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isRateLimited } from '@/lib/rate-limit';
 
 /**
  * GET /api/auth/verify-email?token=XXXX
@@ -8,9 +9,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * email as verified, and redirects to /login?verified=true.
  */
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get('token');
-
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://booking.circlehood-tech.com';
+
+  // Rate limiting por IP — 10 attempts per hour
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (await isRateLimited(`verify:${ip}`, 10, 3600)) {
+    return NextResponse.redirect(`${baseUrl}/login?error=too_many_attempts`);
+  }
+
+  const token = req.nextUrl.searchParams.get('token');
 
   if (!token || token.length < 32) {
     return NextResponse.redirect(`${baseUrl}/login?error=token_invalid`);
