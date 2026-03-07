@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { verifyCronSecret } from '@/lib/cron-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -118,10 +119,7 @@ function buildEmailHtml(businessName: string, daysRemaining: number, type: Notif
  * Protected by CRON_SECRET. Runs daily via Vercel cron.
  */
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!verifyCronSecret(request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
