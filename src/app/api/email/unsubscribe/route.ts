@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { isRateLimited } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -24,7 +25,9 @@ async function processUnsubscribe(token: string) {
     return { success: false as const };
   }
 
-  if (!professional.marketing_emails_opted_out) {
+  if (professional.marketing_emails_opted_out) {
+    logger.info('[email/unsubscribe] already opted out', { professionalId: professional.id });
+  } else {
     await supabase
       .from('professionals')
       .update({
@@ -32,6 +35,7 @@ async function processUnsubscribe(token: string) {
         marketing_opted_out_at: new Date().toISOString(),
       })
       .eq('id', professional.id);
+    logger.info('[email/unsubscribe] opted out', { professionalId: professional.id });
   }
 
   return { success: true as const, businessName: professional.business_name };
@@ -43,6 +47,11 @@ async function processUnsubscribe(token: string) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (await isRateLimited(`unsub:${ip}`, 10, 60)) {
+      return htmlResponse(429, page('Muitas tentativas', '<p>Tente novamente em alguns minutos.</p>'));
+    }
+
     const token = new URL(request.url).searchParams.get('token') ?? '';
 
     if (!TOKEN_REGEX.test(token)) {
@@ -81,6 +90,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (await isRateLimited(`unsub:${ip}`, 10, 60)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const token = new URL(request.url).searchParams.get('token') ?? '';
 
     if (!TOKEN_REGEX.test(token)) {
