@@ -39,16 +39,16 @@ describe('Broken views dropped (issue #208)', () => {
     expect(result.trim()).toBe('');
   });
 
-  it('original view definition referenced non-existent columns', () => {
-    // The original migration that created these views
+  it('original migration no longer creates broken views (removed for idempotency)', () => {
+    // The original migration was fixed to not create these broken views.
+    // They referenced columns that don't exist in professionals table.
     const original = readFileSync(
       resolve('supabase/migrations/20250218000002_sprint8_fase2_integrations.sql'),
       'utf-8'
     );
-    // These columns don't exist in professionals table
-    expect(original).toContain('p.name as professional_name');
-    expect(original).toContain('p.email as professional_email');
-    expect(original).toContain('p.instagram_handle');
+    expect(original).not.toContain('CREATE OR REPLACE VIEW email_campaign_performance');
+    expect(original).not.toContain('CREATE OR REPLACE VIEW instagram_performance');
+    expect(original).toContain('Views removed');
   });
 
   it('professionals table uses business_name not name', () => {
