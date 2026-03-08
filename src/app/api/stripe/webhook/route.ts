@@ -39,64 +39,78 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const professionalId = session.metadata?.professional_id;
-      if (professionalId) {
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const professionalId = session.metadata?.professional_id;
+        if (professionalId) {
+          await supabase
+            .from('professionals')
+            .update({
+              subscription_status: 'active',
+              stripe_customer_id: session.customer as string,
+            })
+            .eq('id', professionalId);
+        }
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+        const status = subscription.status;
+
+        let subStatus: string;
+        if (status === 'active' || status === 'trialing') {
+          subStatus = 'active';
+        } else if (status === 'canceled' || status === 'unpaid') {
+          subStatus = 'cancelled';
+        } else {
+          subStatus = 'expired';
+        }
+
         await supabase
           .from('professionals')
-          .update({
-            subscription_status: 'active',
-            stripe_customer_id: session.customer as string,
-          })
-          .eq('id', professionalId);
-      }
-      break;
-    }
-
-    case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = subscription.customer as string;
-      const status = subscription.status;
-
-      let subStatus: string;
-      if (status === 'active' || status === 'trialing') {
-        subStatus = 'active';
-      } else if (status === 'canceled' || status === 'unpaid') {
-        subStatus = 'cancelled';
-      } else {
-        subStatus = 'expired';
+          .update({ subscription_status: subStatus })
+          .eq('stripe_customer_id', customerId);
+        break;
       }
 
-      await supabase
-        .from('professionals')
-        .update({ subscription_status: subStatus })
-        .eq('stripe_customer_id', customerId);
-      break;
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        await supabase
+          .from('professionals')
+          .update({ subscription_status: 'cancelled' })
+          .eq('stripe_customer_id', customerId);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+
+        await supabase
+          .from('professionals')
+          .update({ subscription_status: 'expired' })
+          .eq('stripe_customer_id', customerId);
+        break;
+      }
     }
-
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = subscription.customer as string;
-
-      await supabase
-        .from('professionals')
-        .update({ subscription_status: 'cancelled' })
-        .eq('stripe_customer_id', customerId);
-      break;
-    }
-
-    case 'invoice.payment_failed': {
-      const invoice = event.data.object as Stripe.Invoice;
-      const customerId = invoice.customer as string;
-
-      await supabase
-        .from('professionals')
-        .update({ subscription_status: 'expired' })
-        .eq('stripe_customer_id', customerId);
-      break;
-    }
+  } catch (processingError: any) {
+    logger.error('[stripe/webhook] Error processing event:', processingError);
+    await supabase.from('cron_logs').insert({
+      job_name: 'webhook_stripe',
+      status: 'error',
+      error_message: processingError.message || 'Unknown error',
+      metadata: {
+        event_type: event.type,
+        event_id: event.id,
+      },
+    } as never);
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

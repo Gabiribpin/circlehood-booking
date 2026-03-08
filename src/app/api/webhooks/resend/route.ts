@@ -111,6 +111,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
   } catch (error: any) {
     logger.error('Error processing Resend webhook:', error)
+
+    // Log failure to cron_logs for monitoring
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin')
+      const adminSupabase = createAdminClient()
+      await adminSupabase.from('cron_logs').insert({
+        job_name: 'webhook_resend',
+        status: 'error',
+        error_message: error.message || 'Unknown error',
+        metadata: {
+          event_type: body?.type,
+          event_id: body?.data?.email_id,
+        },
+      } as never)
+    } catch (logError: any) {
+      logger.error('Failed to log webhook error:', logError.message)
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
