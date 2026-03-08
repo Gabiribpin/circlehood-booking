@@ -241,10 +241,13 @@ function generateExecutionPrompt(f: Focus, issueBody: string): string {
     '   PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test',
     '6. Rode os unit tests:',
     '   npm run test',
-    `7. Se tudo passar, faca commit:`,
+    `7. Se tudo passar, faca commit, push, PR e merge AUTOMATICAMENTE:`,
     `   git commit -m "fix: [descricao] (#${f.number})"`,
-    '   SEM Closes #X no commit',
-    '   NAO faca push ainda — aguarde aprovacao da usuaria',
+    `   git push -u origin ${branchName(f)}`,
+    `   gh pr create --title "fix: ${f.title}" --body "Closes #${f.number}" --base main`,
+    '   gh pr merge --merge --admin',
+    '   git checkout main && git pull',
+    `8. Avise: "Issue #${f.number} resolvida. Adicione a proxima issue."`,
   ].join('\n');
 }
 
