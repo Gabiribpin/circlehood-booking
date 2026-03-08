@@ -132,29 +132,23 @@ CREATE INDEX IF NOT EXISTS idx_email_recipients_message_id ON email_campaign_rec
 ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_campaign_recipients ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Profissional pode ver suas campanhas"
-  ON email_campaigns FOR SELECT
-  USING (professional_id = auth.uid());
-
-CREATE POLICY "Profissional pode criar campanhas"
-  ON email_campaigns FOR INSERT
-  WITH CHECK (professional_id = auth.uid());
-
-CREATE POLICY "Profissional pode atualizar suas campanhas"
-  ON email_campaigns FOR UPDATE
-  USING (professional_id = auth.uid());
-
-CREATE POLICY "Profissional pode deletar suas campanhas"
-  ON email_campaigns FOR DELETE
-  USING (professional_id = auth.uid());
-
-CREATE POLICY "Profissional pode ver destinatários de suas campanhas"
-  ON email_campaign_recipients FOR SELECT
-  USING (
-    campaign_id IN (
-      SELECT id FROM email_campaigns WHERE professional_id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode ver suas campanhas' AND tablename = 'email_campaigns') THEN
+    CREATE POLICY "Profissional pode ver suas campanhas" ON email_campaigns FOR SELECT USING (professional_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode criar campanhas' AND tablename = 'email_campaigns') THEN
+    CREATE POLICY "Profissional pode criar campanhas" ON email_campaigns FOR INSERT WITH CHECK (professional_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode atualizar suas campanhas' AND tablename = 'email_campaigns') THEN
+    CREATE POLICY "Profissional pode atualizar suas campanhas" ON email_campaigns FOR UPDATE USING (professional_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode deletar suas campanhas' AND tablename = 'email_campaigns') THEN
+    CREATE POLICY "Profissional pode deletar suas campanhas" ON email_campaigns FOR DELETE USING (professional_id = auth.uid());
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode ver destinatários de suas campanhas' AND tablename = 'email_campaign_recipients') THEN
+    CREATE POLICY "Profissional pode ver destinatários de suas campanhas" ON email_campaign_recipients FOR SELECT USING (campaign_id IN (SELECT id FROM email_campaigns WHERE professional_id = auth.uid()));
+  END IF;
+END $$;
 
 -- Trigger para atualizar updated_at
 CREATE OR REPLACE FUNCTION update_email_campaign_updated_at()
@@ -165,10 +159,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER email_campaigns_updated_at
-  BEFORE UPDATE ON email_campaigns
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_campaign_updated_at();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_campaigns_updated_at') THEN
+    CREATE TRIGGER email_campaigns_updated_at BEFORE UPDATE ON email_campaigns FOR EACH ROW EXECUTE FUNCTION update_email_campaign_updated_at();
+  END IF;
+END $$;
 
 -- =====================================================
 -- 3. INSTAGRAM - Automação de posts e stories
@@ -241,9 +236,11 @@ CREATE INDEX IF NOT EXISTS idx_instagram_posts_trigger ON instagram_posts(trigge
 -- RLS
 ALTER TABLE instagram_posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Profissional pode gerenciar seus posts no Instagram"
-  ON instagram_posts FOR ALL
-  USING (professional_id = auth.uid());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode gerenciar seus posts no Instagram' AND tablename = 'instagram_posts') THEN
+    CREATE POLICY "Profissional pode gerenciar seus posts no Instagram" ON instagram_posts FOR ALL USING (professional_id = auth.uid());
+  END IF;
+END $$;
 
 -- Trigger: Auto-post no Instagram quando cancelar booking (vaga disponível)
 CREATE OR REPLACE FUNCTION auto_post_instagram_on_vacancy()
@@ -307,11 +304,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger só dispara em cancelamentos (não em deleções)
-CREATE TRIGGER instagram_auto_post_vacancy
-  AFTER UPDATE OF status ON bookings
-  FOR EACH ROW
-  WHEN (OLD.status != 'cancelled' AND NEW.status = 'cancelled')
-  EXECUTE FUNCTION auto_post_instagram_on_vacancy();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'instagram_auto_post_vacancy') THEN
+    CREATE TRIGGER instagram_auto_post_vacancy AFTER UPDATE OF status ON bookings FOR EACH ROW WHEN (OLD.status != 'cancelled' AND NEW.status = 'cancelled') EXECUTE FUNCTION auto_post_instagram_on_vacancy();
+  END IF;
+END $$;
 
 -- =====================================================
 -- 4. REVOLUT - Sistema de pagamentos alternativo
@@ -365,9 +362,11 @@ CREATE INDEX IF NOT EXISTS idx_revolut_payments_status ON revolut_payments(statu
 -- RLS
 ALTER TABLE revolut_payments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Profissional pode ver seus pagamentos Revolut"
-  ON revolut_payments FOR SELECT
-  USING (professional_id = auth.uid());
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Profissional pode ver seus pagamentos Revolut' AND tablename = 'revolut_payments') THEN
+    CREATE POLICY "Profissional pode ver seus pagamentos Revolut" ON revolut_payments FOR SELECT USING (professional_id = auth.uid());
+  END IF;
+END $$;
 
 -- Adicionar preferência de pagamento em professionals
 ALTER TABLE professionals
@@ -375,10 +374,11 @@ ADD COLUMN IF NOT EXISTS payment_provider text DEFAULT 'stripe' CHECK (payment_p
 ADD COLUMN IF NOT EXISTS revolut_merchant_id text;
 
 -- Trigger para atualizar updated_at
-CREATE TRIGGER revolut_payments_updated_at
-  BEFORE UPDATE ON revolut_payments
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_campaign_updated_at();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'revolut_payments_updated_at') THEN
+    CREATE TRIGGER revolut_payments_updated_at BEFORE UPDATE ON revolut_payments FOR EACH ROW EXECUTE FUNCTION update_email_campaign_updated_at();
+  END IF;
+END $$;
 
 -- =====================================================
 -- 5. Atualizar tabela integrations com novos tipos
@@ -401,43 +401,9 @@ ADD COLUMN IF NOT EXISTS email_from_email text;
 -- 6. Views úteis para analytics
 -- =====================================================
 
--- View: Performance de campanhas de email
-CREATE OR REPLACE VIEW email_campaign_performance AS
-SELECT
-  ec.id,
-  ec.professional_id,
-  ec.name,
-  ec.subject,
-  ec.sent_at,
-  ec.total_recipients,
-  ec.total_sent,
-  ec.total_delivered,
-  ec.total_opened,
-  ec.total_clicked,
-  ec.open_rate,
-  ec.click_rate,
-  p.name as professional_name,
-  p.email as professional_email
-FROM email_campaigns ec
-JOIN professionals p ON p.id = ec.professional_id
-WHERE ec.status = 'sent';
-
--- View: Performance de posts no Instagram
-CREATE OR REPLACE VIEW instagram_performance AS
-SELECT
-  ip.id,
-  ip.professional_id,
-  ip.post_type,
-  ip.posted_at,
-  ip.likes_count,
-  ip.comments_count,
-  ip.reach,
-  ip.engagement_rate,
-  p.name as professional_name,
-  p.instagram_handle
-FROM instagram_posts ip
-JOIN professionals p ON p.id = ip.professional_id
-WHERE ip.status = 'posted';
+-- Views removed: email_campaign_performance and instagram_performance
+-- These reference generated columns that may not exist on the actual table.
+-- Migration 20260305000001_drop_broken_views.sql drops them later anyway.
 
 -- =====================================================
 -- 7. Funções utilitárias
