@@ -446,7 +446,7 @@ function generateAuditPrompt(): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ExecutionWheelV3Page() {
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState('launch');
   const [logs, setLogs] = useState<string[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -469,6 +469,8 @@ export default function ExecutionWheelV3Page() {
 
   // Focus state
   const [focus, setFocus] = useState<Focus | null>(null);
+  const [autoFocused, setAutoFocused] = useState(false);
+  const autoFocusedRef = useRef(false);
 
   // V3 Phase state
   const [phase, setPhase] = useState<V3Phase>('ready');
@@ -493,7 +495,10 @@ export default function ExecutionWheelV3Page() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_FOCUS_V3);
-      if (saved) setFocus(JSON.parse(saved));
+      if (saved) {
+        setFocus(JSON.parse(saved));
+        setActiveTab('focus');
+      }
       const savedPhase = localStorage.getItem(LS_PHASE_V3);
       if (savedPhase) setPhase(savedPhase as V3Phase);
       const savedSync = localStorage.getItem(LS_SYNC_STATUS);
@@ -659,6 +664,22 @@ export default function ExecutionWheelV3Page() {
       const issues = await apiFetch('/api/admin/github/issues?action=list');
       setGhIssues(issues);
       log(`Launch Gate: ${issues.length} issues abertas`);
+
+      // Auto-focus: se não há foco salvo, selecionar automaticamente
+      setFocus((currentFocus) => {
+        if (currentFocus || autoFocusedRef.current) return currentFocus;
+        const openIssues = issues.filter((i: GHIssue) => !i.pull_request);
+        const next = pickNext(openIssues);
+        if (next) {
+          autoFocusedRef.current = true;
+          setAutoFocused(true);
+          setActiveTab('focus');
+          setPhase('ready');
+          log(`Issue auto-selecionada: #${next.number} — ${next.title}`);
+          return { number: next.number, title: next.title, url: next.html_url, labels: labelsOf(next), node_id: next.node_id };
+        }
+        return null;
+      });
 
       // Check if focused issue was closed
       setFocus((currentFocus) => {
@@ -1637,6 +1658,18 @@ export default function ExecutionWheelV3Page() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Main focus card */}
               <div className="lg:col-span-2 space-y-4">
+                {autoFocused && (
+                  <div className="flex items-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                    <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
+                    Auto-selecionada por prioridade
+                    <button
+                      onClick={() => setAutoFocused(false)}
+                      className="ml-auto text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 space-y-4">
                   <div>
                     <div className="text-lg font-bold text-slate-900 dark:text-white">
