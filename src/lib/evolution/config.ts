@@ -1,4 +1,4 @@
 export const evolutionConfig = {
-  baseUrl: 'https://realisticlobster-evolution.cloudfy.live',
-  globalApiKey: 'OOiMlhlCpCRT744u14JlAk2FuIgijqfp',
+  baseUrl: process.env.EVOLUTION_API_URL ?? '',
+  globalApiKey: process.env.EVOLUTION_API_KEY ?? '',
 };
