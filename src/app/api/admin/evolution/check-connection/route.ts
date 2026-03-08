@@ -2,7 +2,6 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { evolutionConfig } from '@/lib/evolution/config';
 import { validateAdminToken } from '@/lib/admin/session';
 import { decryptToken } from '@/lib/integrations/token-encryption';
 
