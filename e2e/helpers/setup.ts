@@ -32,12 +32,17 @@ export async function cleanTestState() {
   }
 
   // 3. Limpar Redis (Tier 1) — conversa + greeting lock (TTL 30s pode vazar entre testes)
+  // Keys em produção têm prefixo "production:" (via redisKey() em src/lib/redis/prefix.ts)
   if (TEST.REDIS_URL) {
     try {
       const redis = new Redis(TEST.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
+      const cacheKey = `${TEST.USER_ID}_${TEST.PHONE}`;
       await redis.del(
-        `conversation:${TEST.USER_ID}_${TEST.PHONE}`,
-        `greeting_lock:${TEST.USER_ID}_${TEST.PHONE}`,
+        `production:conversation:${cacheKey}`,
+        `production:greeting_lock:${cacheKey}`,
+        // Legacy keys sem prefixo (caso existam)
+        `conversation:${cacheKey}`,
+        `greeting_lock:${cacheKey}`,
       );
       redis.disconnect();
     } catch (e) {
