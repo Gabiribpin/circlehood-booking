@@ -217,7 +217,67 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 // ─── Prompt Generators ──────────────────────────────────────────────────────
 
+function isManualConfigIssue(f: Focus, issueBody: string): boolean {
+  const text = `${f.title} ${issueBody}`.toLowerCase();
+  const manualKeywords = [
+    'stripe dashboard', 'vercel env', 'env var', 'environment variable',
+    'configurar no', 'criar no dashboard', 'copiar o', 'copiar os',
+    'whsec_', 'secret_', 'manual', 'configuração manual',
+    'dashboard do stripe', 'painel do stripe', 'painel vercel',
+    'dns', 'domínio', 'domain', 'ssl', 'certificado',
+  ];
+  const codeKeywords = [
+    'criar arquivo', 'criar rota', 'implementar', 'adicionar função',
+    'refatorar', 'migration', 'component', 'endpoint novo',
+    'nova rota', 'novo componente', 'alterar código',
+  ];
+  const hasManual = manualKeywords.some((k) => text.includes(k));
+  const hasCode = codeKeywords.some((k) => text.includes(k));
+  // If has manual indicators and no code indicators, it's manual
+  if (hasManual && !hasCode) return true;
+  // Also check if issue body explicitly says "no code changes"
+  if (text.includes('sem alteração de código') || text.includes('sem código') || text.includes('no code')) return true;
+  return false;
+}
+
 function generateExecutionPrompt(f: Focus, issueBody: string): string {
+  if (isManualConfigIssue(f, issueBody)) {
+    return [
+      '# EXECUTION MODE v3 — Configuração Manual',
+      '',
+      '## Issue a resolver',
+      `#${f.number} — ${f.title}`,
+      `Link: ${f.url}`,
+      `Labels: ${f.labels.join(', ') || '(nenhuma)'}`,
+      '',
+      'Contexto da issue:',
+      issueBody,
+      '',
+      '## Classificação: CONFIGURAÇÃO MANUAL (sem código)',
+      '',
+      'Esta issue NÃO requer alterações de código.',
+      'Os endpoints/arquivos necessários JÁ existem no codebase.',
+      '',
+      '## Passos',
+      '',
+      '1. Leia a issue completamente',
+      '2. Verifique que os arquivos/endpoints referenciados já existem no codebase',
+      '3. Liste EXATAMENTE o que precisa ser configurado manualmente:',
+      '   - Dashboards externos (Stripe, Vercel, DNS, etc.)',
+      '   - Env vars a serem adicionadas',
+      '   - Configurações de terceiros',
+      '4. Apresente um checklist claro para o usuário executar',
+      '5. Após o usuário confirmar que configurou, feche a issue:',
+      `   gh issue close ${f.number} --comment "Resolvido via configuração manual. Checklist executado pelo operador."`,
+      `6. Avise: "Issue #${f.number} resolvida (config manual). Próxima issue."`,
+      '',
+      '## NUNCA faça',
+      '- NÃO crie branch para issues de configuração manual',
+      '- NÃO faça commit vazio ou PR sem alterações',
+      '- NÃO rode testes (não há mudanças para testar)',
+    ].join('\n');
+  }
+
   return [
     '# EXECUTION MODE v3 — Local First',
     '',
