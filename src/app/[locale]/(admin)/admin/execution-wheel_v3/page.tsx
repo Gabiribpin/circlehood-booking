@@ -217,31 +217,90 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 // ─── Prompt Generators ──────────────────────────────────────────────────────
 
-function isManualConfigIssue(f: Focus, issueBody: string): boolean {
+type IssueClassification = 'code' | 'manual-config' | 'manual-test';
+
+function classifyIssue(f: Focus, issueBody: string): IssueClassification {
   const text = `${f.title} ${issueBody}`.toLowerCase();
-  const manualKeywords = [
+
+  const codeKeywords = [
+    'criar arquivo', 'criar rota', 'implementar', 'adicionar função',
+    'refatorar', 'migration', 'component', 'endpoint novo',
+    'nova rota', 'novo componente', 'alterar código',
+  ];
+  const hasCode = codeKeywords.some((k) => text.includes(k));
+
+  // Manual test: requires human interaction with real services
+  const testKeywords = [
+    'testar end-to-end', 'testar e2e', 'teste end-to-end', 'teste e2e',
+    'conta real', 'contas reais', 'pagamento real', 'teste manual',
+    'testar com conta', 'testar em produção', 'teste em produção',
+    'onboarding abre', 'completa onboarding', 'conta bancária real',
+    'payout aparece', 'critério de aceitação',
+    'end-to-end com conta', 'testar stripe connect',
+  ];
+  const hasTest = testKeywords.some((k) => text.includes(k));
+  if (hasTest && !hasCode) return 'manual-test';
+
+  // Manual config: dashboard/env var changes
+  const configKeywords = [
     'stripe dashboard', 'vercel env', 'env var', 'environment variable',
     'configurar no', 'criar no dashboard', 'copiar o', 'copiar os',
     'whsec_', 'secret_', 'manual', 'configuração manual',
     'dashboard do stripe', 'painel do stripe', 'painel vercel',
     'dns', 'domínio', 'domain', 'ssl', 'certificado',
   ];
-  const codeKeywords = [
-    'criar arquivo', 'criar rota', 'implementar', 'adicionar função',
-    'refatorar', 'migration', 'component', 'endpoint novo',
-    'nova rota', 'novo componente', 'alterar código',
-  ];
-  const hasManual = manualKeywords.some((k) => text.includes(k));
-  const hasCode = codeKeywords.some((k) => text.includes(k));
-  // If has manual indicators and no code indicators, it's manual
-  if (hasManual && !hasCode) return true;
-  // Also check if issue body explicitly says "no code changes"
-  if (text.includes('sem alteração de código') || text.includes('sem código') || text.includes('no code')) return true;
-  return false;
+  const hasConfig = configKeywords.some((k) => text.includes(k));
+  if (hasConfig && !hasCode) return 'manual-config';
+
+  // Explicit markers
+  if (text.includes('sem alteração de código') || text.includes('sem código') || text.includes('no code')) return 'manual-config';
+
+  return 'code';
+}
+
+function generateManualTestPrompt(f: Focus, issueBody: string): string {
+  return [
+    '# EXECUTION MODE v3 — Teste Manual',
+    '',
+    '## Issue a resolver',
+    `#${f.number} — ${f.title}`,
+    `Link: ${f.url}`,
+    `Labels: ${f.labels.join(', ') || '(nenhuma)'}`,
+    '',
+    'Contexto da issue:',
+    issueBody,
+    '',
+    '## Classificação: TESTE MANUAL (requer interação humana)',
+    '',
+    'Esta issue requer testes com contas/serviços reais que não podem ser automatizados.',
+    'O código já está implementado — o objetivo é validar o fluxo completo.',
+    '',
+    '## Passos',
+    '',
+    '1. Leia a issue completamente',
+    '2. Verifique que o código/endpoints referenciados já existem no codebase',
+    '3. Extraia da issue o roteiro de teste passo a passo',
+    '4. Apresente um checklist claro para o operador executar manualmente',
+    '5. Identifique o que pode ser verificado via CLI (logs, DB, API status)',
+    '6. Após o operador confirmar que testou com sucesso, feche a issue:',
+    `   gh issue close ${f.number} --comment "Testado manualmente em produção. Fluxo validado pelo operador."`,
+    `7. Avise: "Issue #${f.number} resolvida (teste manual). Próxima issue."`,
+    '',
+    '## NUNCA faça',
+    '- NÃO crie branch para issues de teste manual',
+    '- NÃO faça commit vazio ou PR sem alterações de código',
+    '- NÃO tente simular pagamentos/onboarding reais — instrua o operador',
+  ].join('\n');
 }
 
 function generateExecutionPrompt(f: Focus, issueBody: string): string {
-  if (isManualConfigIssue(f, issueBody)) {
+  const classification = classifyIssue(f, issueBody);
+
+  if (classification === 'manual-test') {
+    return generateManualTestPrompt(f, issueBody);
+  }
+
+  if (classification === 'manual-config') {
     return [
       '# EXECUTION MODE v3 — Configuração Manual',
       '',
