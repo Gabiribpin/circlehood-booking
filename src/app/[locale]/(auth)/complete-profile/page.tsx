@@ -130,13 +130,13 @@ export default function CompleteProfilePage() {
     setLoading(true);
 
     if (!slugAvailable) {
-      setError('Escolha um link disponível para sua página.');
+      setError(t('slugUnavailableError'));
       setLoading(false);
       return;
     }
 
     if (!termsAccepted) {
-      setError('Você deve aceitar os Termos de Uso para criar uma conta.');
+      setError(t('termsRequired'));
       setLoading(false);
       return;
     }
@@ -163,7 +163,7 @@ export default function CompleteProfilePage() {
           router.push(data.redirect);
           return;
         }
-        setError(data.error || 'Erro ao criar perfil.');
+        setError(data.error || t('errorCreateProfile'));
         setLoading(false);
         return;
       }
@@ -171,7 +171,7 @@ export default function CompleteProfilePage() {
       router.push(data.redirect || '/subscribe');
       router.refresh();
     } catch {
-      setError('Erro de conexão. Tente novamente.');
+      setError(t('connectionError'));
       setLoading(false);
     }
   }
@@ -204,7 +204,7 @@ export default function CompleteProfilePage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="businessName">Nome do negócio *</Label>
+              <Label htmlFor="businessName">{t('businessName')} *</Label>
               <Input
                 id="businessName"
                 placeholder="Ex: Maria's Nails"
@@ -215,7 +215,7 @@ export default function CompleteProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">Link da sua página *</Label>
+              <Label htmlFor="slug">{t('pageLink')} *</Label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   booking.circlehood-tech.com/
@@ -237,12 +237,12 @@ export default function CompleteProfilePage() {
                 )}
               </div>
               {slugAvailable === false && (
-                <p className="text-xs text-destructive">Este link já está em uso.</p>
+                <p className="text-xs text-destructive">{t('slugTaken')}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">Cidade *</Label>
+              <Label htmlFor="city">{t('cityLabel')} *</Label>
               <Input
                 id="city"
                 placeholder="Ex: Dublin, Lisboa, São Paulo"
@@ -253,10 +253,10 @@ export default function CompleteProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
+              <Label htmlFor="category">{t('categoryLabel')}</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione sua área" />
+                  <SelectValue placeholder={t('selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((cat) => (
@@ -269,7 +269,7 @@ export default function CompleteProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="country">País *</Label>
+              <Label htmlFor="country">{t('countryLabel')} *</Label>
               <Select
                 value={country}
                 onValueChange={(val) => {
@@ -278,7 +278,7 @@ export default function CompleteProfilePage() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione seu país" />
+                  <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
                 <SelectContent>
                   {COUNTRIES.map((c) => (
@@ -292,7 +292,7 @@ export default function CompleteProfilePage() {
 
             <div className="bg-muted/50 p-3 rounded-md">
               <p className="text-xs text-muted-foreground">
-                Você poderá adicionar bio, telefone, redes sociais e foto depois no painel!
+                {t('registerTip')}
               </p>
             </div>
 
@@ -305,21 +305,25 @@ export default function CompleteProfilePage() {
                 className="mt-0.5 h-4 w-4 cursor-pointer"
               />
               <label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                Li e aceito os{' '}
-                <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
-                  Termos de Uso
-                </Link>
-                {' '}e a{' '}
-                <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
-                  Política de Privacidade
-                </Link>
+                {t.rich('acceptTermsRich', {
+                  termsLink: (chunks) => (
+                    <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                      {chunks}
+                    </Link>
+                  ),
+                  privacyLink: (chunks) => (
+                    <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </label>
             </div>
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Criar minha página
+              {t('createMyPage')}
             </Button>
           </CardFooter>
         </form>
