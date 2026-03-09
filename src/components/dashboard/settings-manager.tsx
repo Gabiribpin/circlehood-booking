@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight, Globe, Trash2, Download } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -412,18 +419,18 @@ export function SettingsManager({
             <Label htmlFor="locale" className="flex items-center gap-2">
               <Globe className="h-4 w-4" /> {t('languageLabel')}
             </Label>
-            <select
-              id="locale"
-              value={selectedLocale}
-              onChange={(e) => setSelectedLocale(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              {LOCALE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedLocale} onValueChange={setSelectedLocale}>
+              <SelectTrigger id="locale">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LOCALE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
               {t('languageHint')}
             </p>

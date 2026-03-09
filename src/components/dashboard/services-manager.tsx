@@ -24,7 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Clock, Loader2, Sparkles, Home } from 'lucide-react';
+import { Plus, Pencil, Trash2, Clock, Loader2, Sparkles, Home, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Service } from '@/types/database';
 
 interface ServicesManagerProps {
@@ -52,6 +53,7 @@ export function ServicesManager({
   const supabase = createClient();
   const t = useTranslations('services');
   const tc = useTranslations('common');
+  const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -147,9 +149,13 @@ export function ServicesManager({
         body: JSON.stringify({ serviceName: name, businessName, category }),
       });
       const data = await res.json();
-      if (data.description) setDescription(data.description);
+      if (!res.ok || data.error) {
+        toast({ title: t('aiError'), description: data.error || '', variant: 'destructive' });
+      } else if (data.description) {
+        setDescription(data.description);
+      }
     } catch {
-      // silently fail
+      toast({ title: t('aiError'), variant: 'destructive' });
     }
     setGeneratingDesc(false);
   }
@@ -220,14 +226,16 @@ export function ServicesManager({
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
                       onClick={() => toggleActive(service)}
                       title={service.is_active ? t('deactivate') : t('activate')}
                     >
-                      <span className="text-xs">
-                        {service.is_active ? 'Off' : 'On'}
-                      </span>
+                      {service.is_active ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
