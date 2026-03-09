@@ -368,7 +368,7 @@ export default async function DashboardPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {currencySymbol}{todayRevenueTotal.toFixed(0)}
+                          {currencySymbol}{todayRevenueTotal.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -384,7 +384,7 @@ export default async function DashboardPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {currencySymbol}{weekRevenueTotal.toFixed(0)}
+                          {currencySymbol}{weekRevenueTotal.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -400,7 +400,7 @@ export default async function DashboardPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
                         <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {currencySymbol}{monthRevenueTotal.toFixed(0)}
+                          {currencySymbol}{monthRevenueTotal.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -437,9 +437,22 @@ export default async function DashboardPage() {
               <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground">{t('noBookingsToday')}</p>
               <p className="text-sm text-muted-foreground mt-1">{t('sharePageHint')}</p>
-              <Button asChild variant="outline" className="mt-4" size="sm">
-                <Link href="/services">{t('addServices')}</Link>
-              </Button>
+              {(totalServices ?? 0) > 0 ? (
+                <Button asChild variant="outline" className="mt-4" size="sm">
+                  <a
+                    href={`/${professional.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1.5" />
+                    {t('shareYourLink')}
+                  </a>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" className="mt-4" size="sm">
+                  <Link href="/services">{t('addServices')}</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
