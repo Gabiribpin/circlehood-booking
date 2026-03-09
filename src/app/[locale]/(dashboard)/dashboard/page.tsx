@@ -32,7 +32,7 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   const t = await getTranslations('dashboard');
 

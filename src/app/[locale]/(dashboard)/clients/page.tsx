@@ -16,7 +16,7 @@ export default async function ClientsPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   return <ClientsPageClient professionalId={professional.id} />;
 }

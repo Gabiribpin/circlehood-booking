@@ -16,7 +16,7 @@ export default async function WhatsAppConfigPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   // Pre-fetch existing config to avoid client-side loading flash
   const [{ data: whatsappConfig }, { data: aiData }, { data: bcData }] = await Promise.all([

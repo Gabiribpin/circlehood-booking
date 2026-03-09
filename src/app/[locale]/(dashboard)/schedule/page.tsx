@@ -16,7 +16,7 @@ export default async function SchedulePage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   const { data: workingHours } = await supabase
     .from('working_hours')

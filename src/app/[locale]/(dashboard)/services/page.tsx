@@ -16,7 +16,7 @@ export default async function ServicesPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   const { data: services } = await supabase
     .from('services')
