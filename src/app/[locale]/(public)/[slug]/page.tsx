@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 import { BookingSection } from '@/components/booking/booking-section';
 import { TrialBanner } from '@/components/public-page/trial-banner';
 import { SectionRenderer } from '@/components/public-page/section-renderer';
@@ -75,17 +76,23 @@ async function getProfessional(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const data = await getProfessional(slug);
+  const t = await getTranslations('public');
 
   if (!data) {
-    return { title: 'Página não encontrada' };
+    return { title: t('pageNotFound') };
   }
 
   const { professional, services } = data;
 
-  const title = `${professional.business_name} | Agendamento Online`;
+  const title = `${professional.business_name} | ${t('onlineBooking')}`;
   const description =
     professional.bio ||
-    `Agende ${professional.category || 'serviços'} com ${professional.business_name} em ${professional.city}. ${services.length} serviços disponíveis.`;
+    t('metaDescription', {
+      category: professional.category || t('services'),
+      name: professional.business_name,
+      city: professional.city || '',
+      count: services.length,
+    });
 
   const url = `https://booking.circlehood-tech.com/${professional.slug}`;
 
@@ -96,9 +103,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       professional.business_name,
       professional.category,
       professional.city,
-      'agendamento online',
+      t('onlineBooking'),
       'booking',
-      'dublin',
       ...services.slice(0, 5).map((s) => s.name),
     ].filter((k): k is string => Boolean(k)),
     openGraph: {
@@ -107,7 +113,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: 'website',
       url,
       siteName: 'CircleHood Booking',
-      locale: 'pt_BR',
       ...(professional.profile_image_url && {
         images: [
           {
@@ -289,8 +294,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
     telephone: professional.phone || '',
     address: {
       '@type': 'PostalAddress',
-      addressLocality: professional.city || 'Dublin',
-      addressCountry: 'IE',
+      ...(professional.city && { addressLocality: professional.city }),
+      ...(professional.country && { addressCountry: professional.country }),
     },
     ...(professional.profile_image_url && {
       image: professional.profile_image_url,
