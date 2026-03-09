@@ -1,177 +1,141 @@
+import { Hero } from '@/components/public-page/hero';
+import { ServicesList } from '@/components/public-page/services-list';
+import { ContactFooter } from '@/components/public-page/contact-footer';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  MapPin,
-  Clock,
-  Phone,
-  Instagram,
-  MessageCircle,
-  Star,
-} from 'lucide-react';
+import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
+import type { Professional, Service } from '@/types/database';
+import type { Metadata } from 'next';
 
-const DEMO_SERVICES = [
-  {
-    id: '1',
-    name: 'Manicure Completa',
-    description: 'Manicure com esmaltação em gel, incluindo cutículas e hidratação',
-    duration: 60,
-    price: 35,
-  },
-  {
-    id: '2',
-    name: 'Pedicure Spa',
-    description: 'Pedicure relaxante com esfoliação, hidratação profunda e esmaltação',
-    duration: 75,
-    price: 45,
-  },
-  {
-    id: '3',
-    name: 'Unhas em Gel com Design',
-    description: 'Alongamento em gel com decoração personalizada e nail art',
-    duration: 120,
-    price: 80,
-  },
-];
+function buildDemoProfessional(bio: string): Professional {
+  return {
+    id: 'demo-000',
+    user_id: 'demo-000',
+    slug: 'demo',
+    business_name: "Maria's Nails",
+    category: 'Nail Tech',
+    bio,
+    phone: '+353871234567',
+    whatsapp: '+353871234567',
+    instagram: 'mariasnails',
+    profile_image_url: null,
+    cover_image_url: null,
+    address: null,
+    city: 'Dublin',
+    country: 'Ireland',
+    currency: 'EUR',
+    timezone: 'Europe/Dublin',
+    is_active: true,
+    trial_ends_at: '2099-12-31T23:59:59Z',
+    subscription_status: 'active',
+    stripe_customer_id: null,
+    created_at: '2024-01-01T00:00:00Z',
+  };
+}
+
+function buildDemoServices(t: ReturnType<typeof useTranslations>): Service[] {
+  return [
+    {
+      id: 'demo-s1',
+      professional_id: 'demo-000',
+      name: t('demoService1'),
+      description: t('demoService1Desc'),
+      duration_minutes: 60,
+      price: 35,
+      is_active: true,
+      sort_order: 0,
+      created_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: 'demo-s2',
+      professional_id: 'demo-000',
+      name: t('demoService2'),
+      description: t('demoService2Desc'),
+      duration_minutes: 75,
+      price: 45,
+      is_active: true,
+      sort_order: 1,
+      created_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: 'demo-s3',
+      professional_id: 'demo-000',
+      name: t('demoService3'),
+      description: t('demoService3Desc'),
+      duration_minutes: 120,
+      price: 80,
+      is_active: true,
+      sort_order: 2,
+      created_at: '2024-01-01T00:00:00Z',
+    },
+  ];
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('public');
+  return {
+    title: "Maria's Nails - Demo | CircleHood",
+    description: t('demoBannerDescription'),
+  };
+}
 
 export default function DemoPage() {
+  const t = useTranslations('public');
+
+  const professional = buildDemoProfessional(t('demoBio'));
+  const services = buildDemoServices(t);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white dark:from-gray-900 dark:to-gray-950">
-      {/* Hero / Profile Section */}
-      <div className="relative">
-        <div className="h-32 bg-gradient-to-r from-pink-400 to-purple-400" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="-mt-16 sm:-mt-20">
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4">
-              <Avatar className="h-32 w-32 border-4 border-white shadow-xl">
-                <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-pink-400 to-purple-400 text-white">
-                  MN
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-center sm:text-left pb-2">
-                <h1 className="text-3xl font-bold">Maria's Nails</h1>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
-                  <Badge className="bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-100">
-                    Nail Tech
-                  </Badge>
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    Dublin, Ireland
-                  </span>
-                  <div className="flex items-center gap-1 text-sm text-yellow-600">
-                    <Star className="h-4 w-4 fill-yellow-500" />
-                    <Star className="h-4 w-4 fill-yellow-500" />
-                    <Star className="h-4 w-4 fill-yellow-500" />
-                    <Star className="h-4 w-4 fill-yellow-500" />
-                    <Star className="h-4 w-4 fill-yellow-500" />
-                    <span className="ml-1 text-muted-foreground">(127)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-5xl mx-auto">
+        {/* Same Hero as real public pages */}
+        <Hero professional={professional} />
 
-            {/* Bio */}
-            <Card className="mt-6">
-              <CardContent className="p-6">
-                <p className="text-muted-foreground leading-relaxed">
-                  Olá! Sou a Maria, nail tech profissional com mais de 8 anos de experiência.
-                  Especializada em unhas em gel, nail art e designs personalizados.
-                  Atendo em estúdio particular no centro de Dublin com ambiente aconchegante
-                  e todos os cuidados de higiene. Venha se sentir especial! 💅✨
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Contact Info */}
-            <div className="flex flex-wrap gap-3 mt-4">
-              <a
-                href="https://wa.me/353871234567"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent transition-colors text-sm"
-              >
-                <MessageCircle className="h-4 w-4 text-green-600" />
-                WhatsApp
-              </a>
-              <a
-                href="tel:+353871234567"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent transition-colors text-sm"
-              >
-                <Phone className="h-4 w-4" />
-                Ligar
-              </a>
-              <a
-                href="https://instagram.com/mariasnails"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border hover:bg-accent transition-colors text-sm"
-              >
-                <Instagram className="h-4 w-4 text-pink-600" />
-                @mariasnails
-              </a>
-            </div>
-
-            {/* Services */}
-            <div className="mt-8">
-              <h2 className="text-2xl font-bold mb-4">Serviços</h2>
-              <div className="grid gap-4">
-                {DEMO_SERVICES.map((service) => (
-                  <Card key={service.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold">{service.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {service.description}
-                          </p>
-                          <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-                            <Clock className="h-4 w-4" />
-                            {service.duration} min
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-primary">
-                            €{service.price}
-                          </p>
-                          <Button className="mt-3" asChild>
-                            <Link href="/register">
-                              Agendar
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            {/* Demo Banner */}
-            <Card className="mt-8 mb-8 border-primary/50 bg-primary/5">
-              <CardContent className="p-6 text-center">
-                <p className="text-lg font-semibold mb-2">
-                  Esta é uma página de demonstração
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Crie sua própria página profissional como esta em minutos!
-                </p>
-                <Button size="lg" asChild>
-                  <Link href="/register">
-                    Criar Minha Página Grátis
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Services — same ServicesList component */}
+        <div className="max-w-lg mx-auto py-8 px-4">
+          <ServicesList services={services} currency={professional.currency} />
         </div>
+
+        {/* Contact — same ContactFooter component */}
+        <div className="max-w-lg mx-auto">
+          <ContactFooter professional={professional} />
+        </div>
+
+        {/* Demo Banner */}
+        <div className="max-w-lg mx-auto px-4">
+          <Card className="border-primary/50 bg-primary/5">
+            <CardContent className="p-6 text-center">
+              <p className="text-lg font-semibold mb-2">
+                {t('demoBanner')}
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t('demoBannerDescription')}
+              </p>
+              <Button size="lg" asChild>
+                <Link href="/register">
+                  {t('demoCTA')}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Footer */}
+        <footer className="text-center py-6 border-t mt-8">
+          <a
+            href="https://circlehood-tech.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <CircleHoodLogoCompact size="xs" />
+            <span>Powered by <strong>CircleHood Tech</strong></span>
+          </a>
+        </footer>
       </div>
     </div>
   );
 }
-
-export const metadata = {
-  title: "Maria's Nails - Demo | CircleHood",
-  description: 'Página de demonstração de profissional no CircleHood Booking',
-};

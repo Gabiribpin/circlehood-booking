@@ -299,7 +299,17 @@
     "yearsOfExperience": "Años de Experiencia",
     "yourEmail": "Tu correo",
     "yourName": "Tu nombre",
-    "yourPhone": "Tu teléfono"
+    "yourPhone": "Tu teléfono",
+    "demoBanner": "Esta es una página de demostración",
+    "demoBannerDescription": "¡Crea tu propia página profesional como esta en minutos!",
+    "demoCTA": "Crear Mi Página Gratis",
+    "demoBio": "¡Hola! Soy Maria, nail tech profesional con más de 8 años de experiencia. Especializada en uñas de gel, nail art y diseños personalizados. Atiendo en estudio privado en el centro de Dublín con ambiente acogedor y todos los cuidados de higiene. ¡Ven a sentirte especial!",
+    "demoService1": "Manicura Completa",
+    "demoService1Desc": "Manicura con esmaltado en gel, incluyendo cutículas e hidratación",
+    "demoService2": "Pedicura Spa",
+    "demoService2Desc": "Pedicura relajante con exfoliación, hidratación profunda y esmaltado",
+    "demoService3": "Uñas de Gel con Diseño",
+    "demoService3Desc": "Extensiones de gel con decoración personalizada y nail art"
   },
   "whatsapp": {
     "usageTitle": "Uso de WhatsApp (Hoy)",

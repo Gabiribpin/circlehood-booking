@@ -299,7 +299,17 @@
     "yearsOfExperience": "Anos de Experiência",
     "yourEmail": "Seu e-mail",
     "yourName": "Seu nome",
-    "yourPhone": "Seu telefone"
+    "yourPhone": "Seu telefone",
+    "demoBanner": "Esta é uma página de demonstração",
+    "demoBannerDescription": "Crie sua própria página profissional como esta em minutos!",
+    "demoCTA": "Criar Minha Página Grátis",
+    "demoBio": "Olá! Sou a Maria, nail tech profissional com mais de 8 anos de experiência. Especializada em unhas em gel, nail art e designs personalizados. Atendo em estúdio particular no centro de Dublin com ambiente aconchegante e todos os cuidados de higiene. Venha se sentir especial!",
+    "demoService1": "Manicure Completa",
+    "demoService1Desc": "Manicure com esmaltação em gel, incluindo cutículas e hidratação",
+    "demoService2": "Pedicure Spa",
+    "demoService2Desc": "Pedicure relaxante com esfoliação, hidratação profunda e esmaltação",
+    "demoService3": "Unhas em Gel com Design",
+    "demoService3Desc": "Alongamento em gel com decoração personalizada e nail art"
   },
   "whatsapp": {
     "usageTitle": "Uso do WhatsApp (Hoje)",

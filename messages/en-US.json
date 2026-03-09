@@ -299,7 +299,17 @@
     "yearsOfExperience": "Years of Experience",
     "yourEmail": "Your email",
     "yourName": "Your name",
-    "yourPhone": "Your phone"
+    "yourPhone": "Your phone",
+    "demoBanner": "This is a demo page",
+    "demoBannerDescription": "Create your own professional page like this in minutes!",
+    "demoCTA": "Create My Free Page",
+    "demoBio": "Hi! I'm Maria, a professional nail tech with over 8 years of experience. I specialize in gel nails, nail art and custom designs. I work from a private studio in central Dublin with a cozy atmosphere and full hygiene care. Come feel special!",
+    "demoService1": "Full Manicure",
+    "demoService1Desc": "Gel polish manicure including cuticle care and moisturizing",
+    "demoService2": "Spa Pedicure",
+    "demoService2Desc": "Relaxing pedicure with exfoliation, deep moisturizing and polish",
+    "demoService3": "Gel Nails with Design",
+    "demoService3Desc": "Gel nail extensions with custom decoration and nail art"
   },
   "whatsapp": {
     "usageTitle": "WhatsApp Usage (Today)",
