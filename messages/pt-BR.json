@@ -1244,7 +1244,13 @@
     "sectionTypeGallery": "Galeria",
     "sectionTypeTestimonials": "Depoimentos",
     "sectionTypeFaq": "Perguntas Frequentes",
-    "sectionTypeContact": "Contato"
+    "sectionTypeContact": "Contato",
+    "hideSection": "Ocultar",
+    "showSection": "Mostrar",
+    "editSection": "Editar",
+    "translating": "Traduzindo...",
+    "translated": "Traduzido!",
+    "translateAuto": "Traduzir Automaticamente"
   },
   "nextSteps": {
     "title": "Parabéns! Você está pronto para receber clientes!",

@@ -2,6 +2,7 @@
 import { logger } from '@/lib/logger';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export function AutoTranslateButton({
   fromLanguage = 'pt',
   onTranslated,
 }: AutoTranslateButtonProps) {
+  const t = useTranslations('pageEditor');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -62,17 +64,17 @@ export function AutoTranslateButton({
       {loading ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Traduzindo...
+          {t('translating')}
         </>
       ) : done ? (
         <>
           <Sparkles className="h-3.5 w-3.5 text-green-500" />
-          Traduzido!
+          {t('translated')}
         </>
       ) : (
         <>
           <Sparkles className="h-3.5 w-3.5" />
-          Traduzir Automaticamente
+          {t('translateAuto')}
         </>
       )}
     </Button>
