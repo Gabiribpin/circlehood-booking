@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,12 +88,7 @@ export function PaymentSettings({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('depositTitle')}</CardTitle>
-        <CardDescription>{t('depositDesc')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <div className="space-y-5">
         {!stripeConnected && (
           <div data-testid="stripe-required-warning" className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900">
             <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
@@ -203,7 +197,6 @@ export function PaymentSettings({
           )}
           {saved ? t('saved') : t('save')}
         </Button>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

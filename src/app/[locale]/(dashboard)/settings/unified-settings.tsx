@@ -9,6 +9,7 @@ import { WhatsAppConfigClient, AiAssistantSection } from '@/app/[locale]/(dashbo
 import { EmailNotificationsManager } from '@/components/dashboard/email-notifications-manager';
 import { SimplifiedPaymentSetup } from '@/components/settings/SimplifiedPaymentSetup';
 import { PaymentSettings } from '@/components/dashboard/payment-settings';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { PlanPrice } from '@/lib/pricing';
 import type { Professional } from '@/types/database';
 
@@ -124,20 +125,43 @@ export function UnifiedSettings({
         </TabsContent>
 
         <TabsContent value="pagamentos">
-          <div className="space-y-6 pt-2">
-            <SimplifiedPaymentSetup
-              currentMethod={professional.payment_method ?? null}
-              currentKey={professional.manual_payment_key ?? null}
-              currentCountry={professional.payment_country ?? null}
-            />
-            <PaymentSettings
-              requireDeposit={professional.require_deposit ?? false}
-              depositType={(professional.deposit_type as 'percentage' | 'fixed' | null) ?? null}
-              depositValue={professional.deposit_value ?? null}
-              currency={professional.currency ?? 'EUR'}
-              stripeConnected={stripeConnected}
-            />
-          </div>
+          <Card className="mt-2">
+            <CardHeader>
+              <CardTitle>{t('paymentTitle')}</CardTitle>
+              <CardDescription>{t('paymentDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* Step 1 — Payment method */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                  <h3 className="font-semibold text-sm">{t('paymentStep1')}</h3>
+                </div>
+                <SimplifiedPaymentSetup
+                  currentMethod={professional.payment_method ?? null}
+                  currentKey={professional.manual_payment_key ?? null}
+                  currentCountry={professional.payment_country ?? null}
+                />
+              </section>
+
+              <hr className="border-border" />
+
+              {/* Step 2 — Deposit */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                  <h3 className="font-semibold text-sm">{t('paymentStep2')}</h3>
+                </div>
+                <PaymentSettings
+                  requireDeposit={professional.require_deposit ?? false}
+                  depositType={(professional.deposit_type as 'percentage' | 'fixed' | null) ?? null}
+                  depositValue={professional.deposit_value ?? null}
+                  currency={professional.currency ?? 'EUR'}
+                  stripeConnected={stripeConnected}
+                />
+              </section>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="whatsapp">
