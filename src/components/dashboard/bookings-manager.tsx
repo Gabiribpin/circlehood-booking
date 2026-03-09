@@ -304,11 +304,19 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
       <h1 className="text-2xl font-bold">{t('title')}</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="all">{t('tabAll')}</TabsTrigger>
-          <TabsTrigger value="confirmed">{t('tabConfirmed')}</TabsTrigger>
-          <TabsTrigger value="cancelled">{t('tabCancelled')}</TabsTrigger>
-          <TabsTrigger value="completed">{t('tabCompleted')}</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="all">
+            {t('tabAll')} ({bookings.length})
+          </TabsTrigger>
+          <TabsTrigger value="confirmed">
+            {t('tabConfirmed')} ({bookings.filter(b => b.status === 'confirmed').length})
+          </TabsTrigger>
+          <TabsTrigger value="cancelled">
+            {t('tabCancelled')} ({bookings.filter(b => b.status === 'cancelled').length})
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            {t('tabCompleted')} ({bookings.filter(b => b.status === 'completed').length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
