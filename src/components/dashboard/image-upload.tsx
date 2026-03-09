@@ -51,12 +51,15 @@ export function ImageUpload({
 
       const compressedFile = await imageCompression(file, options);
 
-      // Generate unique filename
-      const fileExt = compressedFile.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-
       // Upload to Supabase Storage
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Generate unique filename with user folder for RLS isolation
+      const fileExt = compressedFile.name.split('.').pop();
+      const fileName = `${user.id}/${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(fileName, compressedFile, {
