@@ -1,14 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { PageEditor } from './page-editor';
+import { QrCodeDownload } from '@/components/dashboard/qr-code-download';
 
-export const metadata = {
-  title: 'Editor de Página | CircleHood Booking',
-  description: 'Personalize sua página pública',
-};
+export async function generateMetadata() {
+  const t = await getTranslations('pageEditor');
+  return {
+    title: `${t('pageTitle')} | CircleHood Booking`,
+    description: t('pageDescription'),
+  };
+}
 
 export default async function MyPageEditorPage() {
   const supabase = await createClient();
+  const t = await getTranslations('pageEditor');
 
   // Auth check
   const {
@@ -40,9 +46,9 @@ export default async function MyPageEditorPage() {
   return (
     <div className="container mx-auto py-6 px-4 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Editor de Página</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
         <p className="text-muted-foreground mt-2">
-          Personalize sua página pública e veja em tempo real
+          {t('pageDescription')}
         </p>
         <a
           href={`/${professional.slug}`}
@@ -50,9 +56,11 @@ export default async function MyPageEditorPage() {
           rel="noopener noreferrer"
           className="text-sm text-blue-600 hover:underline mt-2 inline-block"
         >
-          Ver página pública →
+          {t('viewPage')} →
         </a>
       </div>
+
+      <QrCodeDownload slug={professional.slug} businessName={professional.business_name} />
 
       <PageEditor
         professionalId={professional.id}

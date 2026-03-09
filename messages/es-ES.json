@@ -1092,6 +1092,8 @@
     "waitlistBadge": "Notificar"
   },
   "pageEditor": {
+    "pageTitle": "Mi Página Pública",
+    "pageDescription": "Personaliza tu página pública y previsualiza en tiempo real",
     "pageSections": "Secciones de la Página",
     "saving": "Guardando...",
     "saveOrder": "Guardar Orden",
