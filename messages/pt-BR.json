@@ -597,6 +597,7 @@
   "support": {
     "title": "Central de Suporte",
     "subtitle": "Abra chamados e acompanhe respostas da nossa equipe",
+    "slaHint": "Respondemos em até 24 horas úteis.",
     "newTicket": "Novo chamado",
     "loading": "Carregando chamados...",
     "noTickets": "Nenhum chamado aberto ainda.",
@@ -1415,7 +1416,8 @@
     "todayAt2": "Hoje às 02:00",
     "cronHistory": "Histórico de Cron Jobs",
     "processed": "{count} processados",
-    "notificationsHistory": "Histórico de Notificações"
+    "notificationsHistory": "Histórico de Notificações",
+    "noNotifications": "Nenhuma notificação enviada ainda"
   },
   "notificationsPage": {
     "title": "Notificações",
@@ -1430,6 +1432,7 @@
     "feedFailed": "{type} não entregue para {recipient} ({channel})",
     "feedErrorReason": "{reason}",
     "noLogs": "Nenhuma notificação nos últimos 30 dias",
+    "noLogsHint": "Quando seus clientes receberem confirmações ou lembretes, elas aparecerão aqui.",
     "noLogsFiltered": "Nenhuma notificação com este filtro",
     "retry": "Reenviar",
     "retryErrorMsg": "Erro ao reenviar",

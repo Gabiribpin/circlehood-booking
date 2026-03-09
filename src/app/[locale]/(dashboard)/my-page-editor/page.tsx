@@ -54,7 +54,7 @@ export default async function MyPageEditorPage() {
           href={`/${professional.slug}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline mt-2 inline-block"
+          className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block"
         >
           {t('viewPage')} →
         </a>
