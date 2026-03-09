@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 import { CreditCard, Check, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SubscribePage() {
   const t = useTranslations('auth');
@@ -24,11 +25,11 @@ export default function SubscribePage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError(data.error || 'Erro ao iniciar checkout.');
+        setError(data.error || t('subscribeCheckoutError'));
         setLoading(false);
       }
     } catch {
-      setError('Erro de conexao. Tente novamente.');
+      setError(t('connectionError'));
       setLoading(false);
     }
   }
@@ -55,7 +56,7 @@ export default function SubscribePage() {
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">CircleHood Booking Pro</span>
-                <span className="text-lg font-bold">25,00/mth</span>
+                <span className="text-lg font-bold">{t('subscribePrice')}</span>
               </div>
               <div className="space-y-2">
                 {[
@@ -108,6 +109,15 @@ export default function SubscribePage() {
             <p className="text-[11px] text-muted-foreground text-center">
               {t('subscribeNote')}
             </p>
+
+            <div className="text-center">
+              <Link
+                href="/dashboard"
+                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+              >
+                {t('subscribeContinueTrial')}
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
