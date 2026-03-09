@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
 
   if (status) query = query.eq('status', status);
   if (type) query = query.eq('type', type);
-  if (search) query = query.ilike('title', `%${search}%`);
+  if (search) {
+    const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    query = query.ilike('title', `%${escaped}%`);
+  }
 
   const { data, error } = await query;
 

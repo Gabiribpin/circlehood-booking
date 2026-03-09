@@ -42,7 +42,7 @@ interface BookingSectionProps {
   requireDeposit?: boolean;
   depositType?: 'percentage' | 'fixed' | null;
   depositValue?: number | null;
-  stripeAccountId?: string | null;
+  hasStripeConnect?: boolean;
 }
 
 interface DepositInfo {
@@ -66,7 +66,7 @@ export function BookingSection({
   requireDeposit = false,
   depositType = null,
   depositValue = null,
-  stripeAccountId = null,
+  hasStripeConnect = false,
 }: BookingSectionProps) {
   const t = useTranslations('public');
   const availableDays = new Set(workingHours.map(wh => wh.day_of_week));
@@ -157,7 +157,7 @@ export function BookingSection({
     };
 
     // Com sinal + Stripe Connect: redirecionar para Checkout
-    if (stripeAccountId) {
+    if (hasStripeConnect) {
       try {
         const res = await fetch('/api/bookings/checkout', {
           method: 'POST',

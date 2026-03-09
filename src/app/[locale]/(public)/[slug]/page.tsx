@@ -23,7 +23,7 @@ async function getProfessional(slug: string) {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*, stripe_account_id')
+    .select('*')
     .eq('slug', slug)
     .eq('is_active', true)
     .single();
@@ -260,7 +260,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
                 requireDeposit={depositReady}
                 depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
                 depositValue={professional.deposit_value ?? null}
-                stripeAccountId={(professional as any).stripe_account_id ?? null}
+                hasStripeConnect={!!(professional as any).stripe_account_id}
               />
               <SectionTestimonials
                 data={{ heading: 'Depoimentos', displayMode: 'grid', showRatings: true, showPhotos: true, maxToShow: 6 }}
@@ -358,7 +358,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
               requireDeposit={depositReady}
               depositType={professional.deposit_type as 'percentage' | 'fixed' | null ?? null}
               depositValue={professional.deposit_value ?? null}
-              stripeAccountId={(professional as any).stripe_account_id ?? null}
+              hasStripeConnect={!!(professional as any).stripe_account_id}
             />
           </div>
         )}

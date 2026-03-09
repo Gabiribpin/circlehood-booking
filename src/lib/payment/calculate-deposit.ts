@@ -14,7 +14,9 @@ export function calculateDeposit(
   if (depositType === 'percentage') {
     return Math.round((servicePrice * depositValue) / 100 * 100) / 100;
   }
-  return Math.round(depositValue * 100) / 100;
+  // Cap fixed deposit to service price
+  const capped = Math.min(depositValue, servicePrice);
+  return Math.round(capped * 100) / 100;
 }
 
 /**
