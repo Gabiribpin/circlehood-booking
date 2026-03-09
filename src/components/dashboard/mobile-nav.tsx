@@ -13,7 +13,6 @@ import {
   UserCheck,
   QrCode,
   BarChart3,
-  FileEdit,
   ImageIcon,
   MessageSquare,
   Settings,
@@ -38,7 +37,7 @@ interface MobileNavProps {
 
 // data-tour-id values for guided tour — only items visible in the bottom bar
 const TOUR_IDS: Partial<Record<string, string>> = {
-  '/my-page': 'my-page',
+  '/my-page-editor': 'my-page',
   '/services': 'services',
 };
 
@@ -50,7 +49,7 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
   const MAIN_ITEMS = [
     { href: '/dashboard' as const, label: t('dashboard'), icon: LayoutDashboard },
     { href: '/bookings' as const, label: t('bookings'), icon: CalendarDays },
-    { href: '/my-page' as const, label: t('myPage'), icon: Palette },
+    { href: '/my-page-editor' as const, label: t('myPage'), icon: Palette },
     { href: '/services' as const, label: t('services'), icon: Scissors },
   ];
 
@@ -59,7 +58,6 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
     { href: '/clients' as const, label: t('clients'), icon: UserCheck },
     { href: '/marketing' as const, label: t('marketing'), icon: QrCode },
     { href: '/analytics' as const, label: t('analytics'), icon: BarChart3 },
-    { href: '/my-page-editor' as const, label: t('pageEditor'), icon: FileEdit },
     { href: '/gallery' as const, label: t('gallery'), icon: ImageIcon },
     { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
     { href: '/notifications' as const, label: t('notifications'), icon: Bell },

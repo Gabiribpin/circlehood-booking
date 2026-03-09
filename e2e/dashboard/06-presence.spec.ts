@@ -6,21 +6,18 @@ import { TEST } from '../helpers/config';
 
 const BASE = TEST.BASE_URL;
 
-test.describe('Dashboard — Editor de Página', () => {
-  test('my-page carrega sem erro', async ({ page }) => {
+test.describe('Dashboard — Minha Página Pública', () => {
+  test('my-page redireciona para my-page-editor', async ({ page }) => {
     await page.goto(`${BASE}/my-page`);
+    await page.waitForURL(/my-page-editor/, { timeout: 15_000 });
     await expect(page.locator('body')).not.toContainText(/erro interno|500/i, { timeout: 15_000 });
-    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('my-page-editor carrega heading correto', async ({ page }) => {
     await page.goto(`${BASE}/my-page-editor`);
     await expect(
-      page.getByRole('heading', { name: /editor de página/i })
+      page.getByRole('heading', { name: /minha página pública|my public page|mi página pública/i })
     ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole('link', { name: /ver página pública/i })
-    ).toBeVisible();
   });
 });
 

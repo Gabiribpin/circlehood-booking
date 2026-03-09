@@ -91,6 +91,7 @@ describe('i18n: pageEditor namespace — section-configurator keys', () => {
 
 describe('i18n: pageEditor namespace — my-page-editor keys', () => {
   const EXPECTED_KEYS = [
+    'pageTitle', 'pageDescription',
     'publicPage', 'viewLive', 'pageInfo',
     'images', 'profilePhoto', 'coverImage', 'changeCover',
     'bio', 'generateWithAI', 'bioPlaceholder',

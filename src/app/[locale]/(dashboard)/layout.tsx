@@ -19,7 +19,6 @@ import {
   Users,
   QrCode,
   BarChart3,
-  FileEdit,
   ImageIcon,
   MessageSquare,
   Phone,
@@ -32,7 +31,7 @@ const TOUR_IDS: Partial<Record<string, string>> = {
   '/services': 'services',
   '/schedule': 'schedule',
   '/whatsapp-config': 'whatsapp',
-  '/my-page': 'my-page',
+  '/my-page-editor': 'my-page',
 };
 
 // Nav item definitions — labels injected at render time via t()
@@ -46,10 +45,9 @@ const NAV_ITEM_DEFS = [
   { href: '/analytics', tKey: 'analytics', icon: BarChart3 },
   { href: '/notifications', tKey: 'notifications', icon: Bell },
   { href: '/whatsapp-config', tKey: 'whatsapp', icon: Phone },
-  { href: '/my-page-editor', tKey: 'pageEditor', icon: FileEdit },
+  { href: '/my-page-editor', tKey: 'myPage', icon: Palette },
   { href: '/gallery', tKey: 'gallery', icon: ImageIcon },
   { href: '/testimonials', tKey: 'testimonials', icon: MessageSquare },
-  { href: '/my-page', tKey: 'myPage', icon: Palette },
   { href: '/settings', tKey: 'settings', icon: Settings },
   { href: '/support', tKey: 'support', icon: LifeBuoy },
 ] as const;
