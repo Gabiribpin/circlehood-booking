@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
-    return NextResponse.json({ instanceName, qrCode, pairingCode, token: instanceToken });
+    return NextResponse.json({ instanceName, qrCode, pairingCode });
   } catch (error) {
     logger.error('create-instance error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
