@@ -549,7 +549,11 @@
     "tabPayments": "Pagos",
     "tabWhatsapp": "WhatsApp",
     "tabAssistant": "Asistente Virtual",
-    "tabNotifications": "Notificaciones"
+    "tabNotifications": "Notificaciones",
+    "paymentTitle": "Pagos",
+    "paymentDescription": "Configura cómo recibir pagos y cuándo cobrar",
+    "paymentStep1": "¿Cómo quieres cobrar?",
+    "paymentStep2": "¿Cobrar señal por adelantado?"
   },
   "schedule": {
     "title": "Horarios",

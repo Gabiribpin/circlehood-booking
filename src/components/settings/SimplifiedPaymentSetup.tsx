@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -210,13 +209,7 @@ export function SimplifiedPaymentSetup({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('setupTitle')}</CardTitle>
-        <CardDescription>{t('setupDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-
+    <div className="space-y-6">
         {/* Status salvo anteriormente */}
         {savedMethod && status === 'idle' && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
@@ -426,8 +419,6 @@ export function SimplifiedPaymentSetup({
             t('setupBtnAuto')
           )}
         </Button>
-
-      </CardContent>
-    </Card>
+    </div>
   );
 }

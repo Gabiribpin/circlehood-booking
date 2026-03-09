@@ -549,7 +549,11 @@
     "tabPayments": "Payments",
     "tabWhatsapp": "WhatsApp",
     "tabAssistant": "Virtual Assistant",
-    "tabNotifications": "Notifications"
+    "tabNotifications": "Notifications",
+    "paymentTitle": "Payments",
+    "paymentDescription": "Set up how to receive payments and when to charge",
+    "paymentStep1": "How do you want to get paid?",
+    "paymentStep2": "Charge an advance deposit?"
   },
   "schedule": {
     "title": "Schedule",
