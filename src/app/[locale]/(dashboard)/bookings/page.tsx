@@ -16,7 +16,7 @@ export default async function BookingsPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   const { data: bookings } = await supabase
     .from('bookings')

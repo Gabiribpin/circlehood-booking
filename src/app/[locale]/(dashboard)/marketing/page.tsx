@@ -17,7 +17,7 @@ export default async function MarketingPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   // Fetch saved QR codes
   const { data: savedQRCodes } = await supabase

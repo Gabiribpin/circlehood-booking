@@ -34,7 +34,7 @@ export default async function DashboardLayout({
 
   // OAuth user without professional record → complete profile
   if (!professional) {
-    redirect('/complete-profile');
+    redirect('/onboarding');
   }
 
   // Block dashboard access if email not verified yet

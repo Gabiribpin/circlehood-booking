@@ -22,7 +22,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   const trialDaysLeft = Math.max(
     0,

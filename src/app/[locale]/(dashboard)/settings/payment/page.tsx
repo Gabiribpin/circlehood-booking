@@ -20,7 +20,7 @@ export default async function PaymentSettingsPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (!professional) redirect('/register');
+  if (!professional) redirect('/onboarding');
 
   // Check if Stripe Connect account is fully onboarded
   const { data: connectAccount } = await supabase
