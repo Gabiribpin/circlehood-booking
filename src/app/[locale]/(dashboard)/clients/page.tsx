@@ -141,10 +141,10 @@ function CRMView() {
     const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
     if (days === 0) return t('visitedToday');
     if (days === 1) return t('visitedYesterday');
-    if (days < 7) return `há ${days} dias`;
-    if (days < 30) return `há ${Math.floor(days / 7)} sem.`;
-    if (days < 365) return `há ${Math.floor(days / 30)} meses`;
-    return `há ${Math.floor(days / 365)} ano(s)`;
+    if (days < 7) return t('daysAgo', { count: days });
+    if (days < 30) return t('weeksAgo', { count: Math.floor(days / 7) });
+    if (days < 365) return t('monthsAgo', { count: Math.floor(days / 30) });
+    return t('yearsAgo', { count: Math.floor(days / 365) });
   }
 
   useEffect(() => { loadClients(); }, []);
@@ -222,7 +222,7 @@ function CRMView() {
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        {contacts.length} {contacts.length === 1 ? 'cliente' : 'clientes'} no total
+        {t('totalClients', { count: contacts.length })}
       </p>
 
       <div className="relative">
@@ -284,7 +284,7 @@ function CRMView() {
                     <p className="text-xs text-muted-foreground">{t('lastVisit')}</p>
                     <p className="text-xs font-medium mt-0.5">
                       {c.lastBookingDate
-                        ? `${formatLastVisit(c.lastBookingDate)} · ${c.totalBookings} ${c.totalBookings !== 1 ? 'visitas' : 'visita'}`
+                        ? `${formatLastVisit(c.lastBookingDate)} · ${t('visitCount', { count: c.totalBookings })}`
                         : t('noBookings')}
                     </p>
                   </div>
@@ -445,7 +445,7 @@ function ManageView() {
     if (error) { toast({ title: t('errorBotUpdate'), description: error.message, variant: 'destructive' }); return; }
     toast({
       title: val ? t('botActivated') : t('botDeactivated'),
-      description: `${selectedIds.size} contato${selectedIds.size !== 1 ? 's' : ''} atualizado${selectedIds.size !== 1 ? 's' : ''}`,
+      description: t('bulkBotUpdated', { count: selectedIds.size }),
     });
     setContacts((prev) => prev.map((c) => selectedIds.has(c.id) ? { ...c, use_bot: val } : c));
     setSelectedIds(new Set());
@@ -541,7 +541,7 @@ function ManageView() {
                   <Label htmlFor="c-notes">{t('notesLabel')}</Label>
                   <Textarea id="c-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={t('notesPlaceholder')} />
                 </div>
-                <RegionSelector value={regions} onChange={setRegions} label="Regiões de Dublin" />
+                <RegionSelector value={regions} onChange={setRegions} label={t('regionsLabel')} />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>{tc('cancel')}</Button>
@@ -558,7 +558,7 @@ function ManageView() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               <CardTitle>
-                {filtered.length} {filtered.length === 1 ? 'Contato' : 'Contatos'}
+                {t('contactCount', { count: filtered.length })}
               </CardTitle>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -586,7 +586,7 @@ function ManageView() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2 pt-2 flex-wrap">
               <span className="text-sm text-muted-foreground">
-                {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+                {t('selectedCount', { count: selectedIds.size })}
               </span>
               <Button size="sm" variant="outline" onClick={() => bulkUpdateBot(true)}>
                 {t('botFilterOn')} ({selectedIds.size})
@@ -622,9 +622,9 @@ function ManageView() {
                   </TableHead>
                   <TableHead>{t('colName')}</TableHead>
                   <TableHead>{t('colPhone')}</TableHead>
-                  <TableHead>{t('colEmail')}</TableHead>
-                  <TableHead>{t('birthdayLabel')}</TableHead>
-                  <TableHead>{t('colCategory')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('colEmail')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('birthdayLabel')}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t('colCategory')}</TableHead>
                   <TableHead className="text-center">{t('colBot')}</TableHead>
                   <TableHead className="text-right">{t('colActions')}</TableHead>
                 </TableRow>
@@ -638,13 +638,13 @@ function ManageView() {
                         checked={selectedIds.has(c.id)}
                         onChange={() => toggleSelect(c.id)}
                         className="cursor-pointer"
-                        aria-label={`Selecionar ${c.name}`}
+                        aria-label={t('selectContact', { name: c.name })}
                       />
                     </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell className="font-mono text-sm">{c.phone}</TableCell>
-                    <TableCell>{c.email || '-'}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{c.email || '-'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {c.birthday ? (
                         <span className="flex items-center gap-1 text-sm">
                           {formatBirthdayDisplay(c.birthday)}
@@ -652,12 +652,12 @@ function ManageView() {
                         </span>
                       ) : '-'}
                     </TableCell>
-                    <TableCell>{c.category || '-'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{c.category || '-'}</TableCell>
                     <TableCell className="text-center">
                       <Switch
                         checked={c.use_bot ?? true}
                         onCheckedChange={(val) => updateUseBot(c.id, val)}
-                        aria-label={`Bot ${c.use_bot ?? true ? 'ativo' : 'inativo'} para ${c.name}`}
+                        aria-label={t('botAriaLabel', { status: (c.use_bot ?? true) ? t('botActive') : t('botInactive'), name: c.name })}
                       />
                     </TableCell>
                     <TableCell className="text-right">
