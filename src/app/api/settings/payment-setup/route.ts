@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateIBAN } from '@/lib/validators/iban';
+import { encryptToken } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -76,11 +77,11 @@ export async function POST(request: NextRequest) {
       .from('professionals')
       .update({
         payment_method: 'stripe_pending',
-        payment_full_name: full_name.trim(),
-        payment_dob: dob,
-        payment_iban: iban?.replace(/\s+/g, '').toUpperCase() || null,
-        payment_address_line1: address_line1.trim(),
-        payment_address_line2: address_line2?.trim() || null,
+        payment_full_name: encryptToken(full_name.trim()),
+        payment_dob: encryptToken(dob),
+        payment_iban: iban?.trim() ? encryptToken(iban.replace(/\s+/g, '').toUpperCase()) : null,
+        payment_address_line1: encryptToken(address_line1.trim()),
+        payment_address_line2: address_line2?.trim() ? encryptToken(address_line2.trim()) : null,
         payment_city: city.trim(),
         payment_postal_code: postal_code.trim(),
         payment_country: (country || 'IE').toUpperCase(),
