@@ -306,6 +306,7 @@ export default function RegisterPage() {
                 {slugAvailable === false && (
                   <p data-testid="slug-error" className="text-xs text-destructive">{t('slugTaken')}</p>
                 )}
+                <p className="text-xs text-muted-foreground">{t('slugHint')}</p>
               </div>
 
               <div className="space-y-2">

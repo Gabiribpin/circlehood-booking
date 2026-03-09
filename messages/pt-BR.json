@@ -106,6 +106,7 @@
     "signupError": "Erro ao criar conta.",
     "signupFree": "Cadastre-se grátis",
     "slugTaken": "Este link já está em uso.",
+    "slugHint": "Este será o endereço da sua página pública. Pode alterá-lo depois nas configurações.",
     "slugUnavailableError": "Escolha um link disponível para sua página.",
     "socialLoginError": "Erro ao conectar com {provider}. Tente novamente.",
     "startCreatingAccount": "Comece criando sua conta",
@@ -347,7 +348,15 @@
     "demoService2": "Pedicure Spa",
     "demoService2Desc": "Pedicure relaxante com esfoliação, hidratação profunda e esmaltação",
     "demoService3": "Unhas em Gel com Design",
-    "demoService3Desc": "Alongamento em gel com decoração personalizada e nail art"
+    "demoService3Desc": "Alongamento em gel com decoração personalizada e nail art",
+    "successTitle": "Agendamento confirmado!",
+    "successDescription": "O seu pagamento foi processado com sucesso e o agendamento foi confirmado.",
+    "successConfirmationNote": "Receberá uma confirmação em breve por email e/ou WhatsApp.",
+    "backToProfessional": "Voltar à página do profissional",
+    "cancelledPaymentTitle": "Pagamento cancelado",
+    "cancelledPaymentDescription": "O pagamento foi cancelado. O seu agendamento não foi confirmado.",
+    "cancelledRetryNote": "Pode tentar novamente quando quiser.",
+    "tryAgainBooking": "Tentar novamente"
   },
   "whatsapp": {
     "usageTitle": "Uso do WhatsApp (Hoje)",

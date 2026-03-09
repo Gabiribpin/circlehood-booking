@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   const { data: prof } = await supabase
     .from('professionals')
     .select(
-      'subscription_status, trial_ends_at, stripe_account_id, currency, require_deposit, deposit_type, deposit_value'
+      'subscription_status, trial_ends_at, stripe_account_id, currency, require_deposit, deposit_type, deposit_value, slug'
     )
     .eq('id', professional_id)
     .single();
@@ -248,8 +248,8 @@ export async function POST(request: NextRequest) {
           type: 'deposit',
         },
         customer_email: client_email,
-        success_url: `${BASE_URL}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${BASE_URL}/booking/cancel`,
+        success_url: `${BASE_URL}/booking/success?session_id={CHECKOUT_SESSION_ID}&slug=${encodeURIComponent(prof.slug as string || '')}`,
+        cancel_url: `${BASE_URL}/booking/cancel?slug=${encodeURIComponent(prof.slug as string || '')}`,
       },
       { idempotencyKey }
     );
