@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 
 // One-time endpoint to create storage buckets in production.
 // Protected: only runs if SETUP_SECRET matches.
@@ -10,7 +11,8 @@ export async function POST(request: Request) {
   try {
   const { secret } = await request.json();
 
-  if (secret !== process.env.SETUP_SECRET) {
+  const expected = process.env.SETUP_SECRET ?? '';
+  if (!secret || !expected || !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
