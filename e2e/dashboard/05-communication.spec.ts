@@ -24,6 +24,10 @@ test.describe('Dashboard — WhatsApp Config', () => {
     await expect(
       page.getByRole('heading', { name: /configurações/i }).first()
     ).toBeVisible({ timeout: 15_000 });
+    // Click tab explicitly to handle hydration delay (useSearchParams defaults to 'conta' during SSR)
+    const assistenteTab = page.getByRole('tab', { name: /assistente/i });
+    await expect(assistenteTab).toBeVisible({ timeout: 10_000 });
+    await assistenteTab.click();
     await expect(
       page.locator('#greeting_message, #instructions').first()
     ).toBeVisible({ timeout: 10_000 });
