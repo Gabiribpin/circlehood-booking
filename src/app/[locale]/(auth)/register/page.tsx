@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, HelpCircle } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
 import { COUNTRY_CODES, CATEGORY_KEYS, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
@@ -282,7 +282,15 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug">{t('pageLink')} *</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="slug">{t('pageLink')} *</Label>
+                  <span className="relative group">
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-3 py-1.5 bg-popover text-popover-foreground text-xs rounded-md shadow-md border opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                      {t('slugTooltip')}
+                    </span>
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
                     booking.circlehood-tech.com/

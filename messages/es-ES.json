@@ -107,6 +107,7 @@
     "signupFree": "Regístrate gratis",
     "slugTaken": "Este enlace ya está en uso.",
     "slugHint": "Esta será la dirección de tu página pública. Puedes cambiarla después en configuración.",
+    "slugTooltip": "Enlace único que tus clientes usan para reservar",
     "slugUnavailableError": "Elige un enlace disponible para tu página.",
     "socialLoginError": "Error al conectar con {provider}. Inténtalo de nuevo.",
     "startCreatingAccount": "Empieza creando tu cuenta",
@@ -409,6 +410,10 @@
     "cancelledPaymentDescription": "El pago fue cancelado. Su reserva no ha sido confirmada.",
     "cancelledRetryNote": "Puede intentar de nuevo cuando quiera.",
     "tryAgainBooking": "Intentar de nuevo",
+    "depositPayError": "Error al procesar el pago.",
+    "depositPayNotConfirmed": "Pago no confirmado. Inténtelo de nuevo.",
+    "depositInfo": "Señal de reserva: {symbol}{amount}. Pago seguro via Stripe.",
+    "depositPayButton": "Pagar señal {symbol}{amount}",
     "pageNotFound": "Página no encontrada",
     "onlineBooking": "Reserva Online",
     "metaDescription": "Reserva {category} con {name} en {city}. {count, plural, one {# servicio disponible} other {# servicios disponibles}}."
