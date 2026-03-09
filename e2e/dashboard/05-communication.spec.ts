@@ -7,8 +7,13 @@ import { TEST } from '../helpers/config';
 const BASE = TEST.BASE_URL;
 
 test.describe('Dashboard — WhatsApp Config', () => {
-  test('carrega heading Configuração WhatsApp', async ({ page }) => {
+  test('carrega heading Configuração WhatsApp na aba WhatsApp', async ({ page }) => {
     await page.goto(`${BASE}/settings?tab=whatsapp`);
+    // Wait for unified settings page to load
+    await expect(
+      page.getByRole('heading', { name: /configurações/i }).first()
+    ).toBeVisible({ timeout: 15_000 });
+    // WhatsApp tab should be active, rendering its own heading
     await expect(
       page.getByRole('heading', { name: /configuração whatsapp/i })
     ).toBeVisible({ timeout: 15_000 });
@@ -16,7 +21,11 @@ test.describe('Dashboard — WhatsApp Config', () => {
 
   test('abas Conexão e IA presentes', async ({ page }) => {
     await page.goto(`${BASE}/settings?tab=whatsapp`);
-    // Abas podem ser role="tab" (Radix UI)
+    // Wait for WhatsApp content to render inside tab
+    await expect(
+      page.getByRole('heading', { name: /configuração whatsapp/i })
+    ).toBeVisible({ timeout: 15_000 });
+    // Inner tabs from WhatsAppConfigClient
     const conexaoTab = page.getByRole('tab', { name: /conexão/i }).or(
       page.getByRole('button', { name: /conexão/i })
     );
@@ -25,6 +34,9 @@ test.describe('Dashboard — WhatsApp Config', () => {
 
   test('aba Assistente Virtual abre área de instruções', async ({ page }) => {
     await page.goto(`${BASE}/settings?tab=whatsapp`);
+    await expect(
+      page.getByRole('heading', { name: /configuração whatsapp/i })
+    ).toBeVisible({ timeout: 15_000 });
     const aiTab = page.getByRole('tab', { name: /assistente virtual|ia|automações/i }).or(
       page.getByRole('button', { name: /assistente virtual|ia|automações/i })
     );

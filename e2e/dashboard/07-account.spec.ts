@@ -14,12 +14,16 @@ test.describe('Dashboard — Configurações', () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test('mostra cards de Plano e Conta', async ({ page }) => {
+  test('mostra abas de Conta e Assinatura', async ({ page }) => {
     await page.goto(`${BASE}/settings`);
+    // Tabs are visible on the unified settings page
+    await expect(page.getByRole('tab', { name: /conta/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('tab', { name: /assinatura/i })).toBeVisible();
+    // Click Assinatura tab to check subscription content
+    await page.getByRole('tab', { name: /assinatura/i }).click();
     await expect(
       page.getByText(/plano.*assinatura|assinatura.*plano/i).first()
     ).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Conta').first()).toBeVisible();
   });
 
   test('campos de nome e slug visíveis', async ({ page }) => {

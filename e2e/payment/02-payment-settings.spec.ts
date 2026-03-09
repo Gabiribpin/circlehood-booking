@@ -31,7 +31,10 @@ async function goToPaymentSettings(page: any) {
   if (page.url().includes('/subscribe')) {
     throw new Error('Redirect to /subscribe — subscription inactive. Auth setup should set subscription_status=active.');
   }
-  await expect(page.locator('h1, [data-testid="page-title"]').first()).toBeVisible({ timeout: 15000 });
+  // Wait for unified settings page heading
+  await expect(page.locator('h1').first()).toBeVisible({ timeout: 15000 });
+  // Wait for Pagamentos tab content to render (PaymentSettings component)
+  await expect(page.getByRole('tab', { name: /pagamentos/i })).toBeVisible({ timeout: 10000 });
 }
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
