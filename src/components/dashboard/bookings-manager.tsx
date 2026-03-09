@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CalendarDays, Phone, Mail, MessageCircle, MapPin, Home, XCircle } from 'lucide-react';
+import { CalendarDays, Phone, Mail, MessageCircle, MapPin, Home, XCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,6 +52,10 @@ interface BookingsManagerProps {
   bookings: BookingWithService[];
   currency: string;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,7 +96,7 @@ function BookingCard({
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h3 className="font-medium">{booking.client_name}</h3>
               <Badge variant={config.variant} className="text-[10px]">{config.label}</Badge>
             </div>
@@ -104,7 +109,7 @@ function BookingCard({
             </p>
 
             {booking.service_location === 'at_home' && (
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
                 <Badge variant="outline" className="text-[10px] gap-1">
                   <Home className="h-2.5 w-2.5" /> {t('atHome')}
                 </Badge>
@@ -149,7 +154,12 @@ function BookingCard({
                 <>
                   <a
                     href={`https://wa.me/${booking.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                      `Olá ${booking.client_name}! Confirmando seu agendamento: ${booking.services?.name} em ${dateStr} às ${booking.start_time.slice(0, 5)}. Até lá!`
+                      t('waConfirmMsg', {
+                        name: booking.client_name,
+                        service: booking.services?.name || '',
+                        date: dateStr,
+                        time: booking.start_time.slice(0, 5),
+                      })
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -172,13 +182,17 @@ function BookingCard({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 shrink-0">
             {booking.status === 'confirmed' && booking.client_phone && (
               <Button variant="outline" size="sm"
                 className="gap-1 bg-green-50 dark:bg-green-900/10 hover:bg-green-100 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900"
                 asChild>
                 <a href={`https://wa.me/${booking.client_phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                  `Olá ${booking.client_name}! Lembrando que você tem um agendamento amanhã: ${booking.services?.name} às ${booking.start_time.slice(0, 5)}. Te espero!`
+                  t('waReminderMsg', {
+                    name: booking.client_name,
+                    service: booking.services?.name || '',
+                    time: booking.start_time.slice(0, 5),
+                  })
                 )}`} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-3 w-3" /> {t('reminder')}
                 </a>
@@ -212,19 +226,21 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
   const t = useTranslations('bookings');
   const tc = useTranslations('common');
   const [tab, setTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   const [cancellingBooking, setCancellingBooking] = useState<BookingWithService | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [sendNotification, setSendNotification] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
-  // Cancel templates — message content sent to clients (kept in PT-BR)
   const CANCEL_TEMPLATES = [
-    'Tive uma emergência familiar',
-    'Estou com um problema de saúde',
-    'Houve um imprevisto no trabalho',
-    'Condições climáticas desfavoráveis',
-    'Preciso remarcar por motivos pessoais',
+    t('cancelTemplate1'),
+    t('cancelTemplate2'),
+    t('cancelTemplate3'),
+    t('cancelTemplate4'),
+    t('cancelTemplate5'),
   ];
 
   async function handleStatusChange(bookingId: string, status: string) {
@@ -297,14 +313,79 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
     }
   }
 
-  const filtered = tab === 'all' ? bookings : bookings.filter((b) => b.status === tab);
+  // ─── Filtering & Pagination ───────────────────────────────────────────────
+
+  const filtered = useMemo(() => {
+    let result = tab === 'all' ? bookings : bookings.filter((b) => b.status === tab);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (b) =>
+          b.client_name.toLowerCase().includes(q) ||
+          b.services?.name.toLowerCase().includes(q) ||
+          b.client_phone?.includes(q) ||
+          b.client_email?.toLowerCase().includes(q),
+      );
+    }
+
+    if (dateFilter) {
+      result = result.filter((b) => b.booking_date === dateFilter);
+    }
+
+    return result;
+  }, [bookings, tab, searchQuery, dateFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Reset page when filters change
+  function handleTabChange(value: string) {
+    setTab(value);
+    setPage(1);
+  }
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+    setPage(1);
+  }
+
+  function handleDateChange(value: string) {
+    setDateFilter(value);
+    setPage(1);
+  }
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full grid grid-cols-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Input
+          type="date"
+          value={dateFilter}
+          onChange={(e) => handleDateChange(e.target.value)}
+          className="w-full sm:w-44"
+        />
+        {dateFilter && (
+          <Button variant="ghost" size="sm" onClick={() => handleDateChange('')}>
+            {t('clearDate')}
+          </Button>
+        )}
+      </div>
+
+      <Tabs value={tab} onValueChange={handleTabChange}>
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="all">
             {t('tabAll')} ({bookings.length})
           </TabsTrigger>
@@ -320,16 +401,18 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
-          {filtered.length === 0 ? (
+          {paginated.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">{t('noBookings')}</p>
+                <p className="text-muted-foreground">
+                  {searchQuery || dateFilter ? t('noResults') : t('noBookings')}
+                </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {filtered.map((booking) => (
+              {paginated.map((booking) => (
                 <BookingCard
                   key={booking.id}
                   booking={booking}
@@ -342,6 +425,40 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-sm text-muted-foreground">
+            {t('paginationInfo', {
+              from: (safePage - 1) * PAGE_SIZE + 1,
+              to: Math.min(safePage * PAGE_SIZE, filtered.length),
+              total: filtered.length,
+            })}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {safePage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Cancel dialog */}
       <Dialog open={!!cancellingBooking} onOpenChange={(open) => { if (!open) setCancellingBooking(null); }}>
@@ -405,13 +522,13 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
             {sendNotification && cancellingBooking?.client_phone && (
               <div className="bg-muted rounded-lg p-3 text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">{t('messagePreview')}</p>
-                <p>Olá {cancellingBooking.client_name}! 😔</p>
-                <p>Infelizmente precisamos cancelar seu agendamento:</p>
+                <p>{t('waCancelMsg1', { name: cancellingBooking.client_name })}</p>
+                <p>{t('waCancelMsg2')}</p>
                 <p>📅 {cancellingBooking.booking_date.split('-').reverse().join('/')} às {cancellingBooking.start_time.slice(0, 5)}</p>
                 <p>✂️ {cancellingBooking.services?.name}</p>
-                {cancellationReason && <p>Motivo: {cancellationReason}</p>}
-                <p>Pedimos desculpas pelo transtorno! 🙏</p>
-                <p>Gostaria de remarcar? Estou à disposição! 😊</p>
+                {cancellationReason && <p>{t('waCancelReason', { reason: cancellationReason })}</p>}
+                <p>{t('waCancelMsg3')}</p>
+                <p>{t('waCancelMsg4')}</p>
               </div>
             )}
           </div>
