@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
@@ -9,6 +10,7 @@ import { Mail, RefreshCw, LogOut, CheckCircle2, AlertCircle } from 'lucide-react
 
 export default function VerifyEmailPendingPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -24,13 +26,13 @@ export default function VerifyEmailPendingPage() {
 
       if (!res.ok) {
         setResendStatus('error');
-        setErrorMsg(data.error || 'Erro ao reenviar. Tente novamente.');
+        setErrorMsg(data.error || t('verifyEmailResendError'));
       } else {
         setResendStatus('sent');
       }
     } catch {
       setResendStatus('error');
-      setErrorMsg('Erro de conexão. Tente novamente.');
+      setErrorMsg(t('connectionError'));
     } finally {
       setResending(false);
     }
@@ -41,6 +43,13 @@ export default function VerifyEmailPendingPage() {
     router.push('/login');
     router.refresh();
   }
+
+  const steps = [
+    t('verifyEmailStep1'),
+    t('verifyEmailStep2'),
+    t('verifyEmailStep3'),
+    t('verifyEmailStep4'),
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4 py-8">
@@ -54,24 +63,18 @@ export default function VerifyEmailPendingPage() {
               <Mail className="h-8 w-8 text-amber-500" />
             </div>
           </div>
-          <CardTitle className="text-xl">Confirme seu email</CardTitle>
+          <CardTitle className="text-xl">{t('verifyEmailTitle')}</CardTitle>
           <CardDescription className="text-sm leading-relaxed">
-            Enviamos um link de confirmação para o seu email.
-            Clique no link para ativar sua conta e acessar o painel.
+            {t('verifyEmailDesc')}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
           {/* Steps */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-            <p className="text-sm font-medium">Como confirmar:</p>
+            <p className="text-sm font-medium">{t('verifyEmailHowTo')}</p>
             <ol className="space-y-2">
-              {[
-                'Abra sua caixa de entrada',
-                'Procure o email de "CircleHood Booking"',
-                'Clique em "Confirmar Email"',
-                'Volte aqui e faça login',
-              ].map((step, i) => (
+              {steps.map((step, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-medium">
                     {i + 1}
@@ -86,7 +89,7 @@ export default function VerifyEmailPendingPage() {
           {resendStatus === 'sent' && (
             <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              Novo link enviado! Verifique sua caixa de entrada.
+              {t('verifyEmailResent')}
             </div>
           )}
 
@@ -110,7 +113,7 @@ export default function VerifyEmailPendingPage() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Reenviar email de confirmação
+              {t('verifyEmailResendBtn')}
             </Button>
 
             <Button
@@ -119,12 +122,12 @@ export default function VerifyEmailPendingPage() {
               className="w-full text-muted-foreground"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Sair da conta
+              {t('verifyEmailLogoutBtn')}
             </Button>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            Não recebeu o email? Verifique a pasta de spam ou clique em &ldquo;Reenviar&rdquo; acima.
+            {t('verifyEmailSpamTip')}
           </p>
         </CardContent>
       </Card>
