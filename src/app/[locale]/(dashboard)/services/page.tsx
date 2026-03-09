@@ -12,7 +12,7 @@ export default async function ServicesPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, currency, business_name, category')
     .eq('user_id', user.id)
     .single();
 

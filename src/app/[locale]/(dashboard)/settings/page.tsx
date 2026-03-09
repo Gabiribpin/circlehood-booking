@@ -18,7 +18,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, business_name, slug, locale, subscription_status, trial_ends_at, stripe_customer_id, account_number, created_at, currency')
     .eq('user_id', user.id)
     .single();
 

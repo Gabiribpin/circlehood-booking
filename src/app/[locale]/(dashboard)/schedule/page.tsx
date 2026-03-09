@@ -12,7 +12,7 @@ export default async function SchedulePage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id')
     .eq('user_id', user.id)
     .single();
 

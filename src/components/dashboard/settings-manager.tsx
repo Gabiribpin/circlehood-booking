@@ -27,8 +27,14 @@ const LOCALE_OPTIONS = [
   { value: 'es-ES', label: '🇪🇸 Español' },
 ];
 
+type SettingsProfessional = Pick<Professional, 'business_name' | 'slug' | 'subscription_status' | 'trial_ends_at' | 'stripe_customer_id'> & {
+  locale?: string | null;
+  account_number?: string | null;
+  created_at: string;
+};
+
 interface SettingsManagerProps {
-  professional: Professional;
+  professional: SettingsProfessional;
   trialDaysLeft: number;
   trialExpired: boolean;
   success?: boolean;
