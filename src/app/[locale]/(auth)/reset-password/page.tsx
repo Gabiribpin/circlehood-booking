@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,7 +22,6 @@ export default function ResetPasswordPage() {
   const [validSession, setValidSession] = useState(false);
 
   useEffect(() => {
-    // Verificar se há uma sessão de recuperação válida
     const checkSession = async () => {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -28,24 +29,24 @@ export default function ResetPasswordPage() {
       if (session) {
         setValidSession(true);
       } else {
-        setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+        setError(t('resetPasswordExpired'));
       }
     };
 
     checkSession();
-  }, []);
+  }, [t]);
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
     if (password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+      setError(t('resetPasswordMinLength'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError(t('resetPasswordMismatch'));
       return;
     }
 
@@ -57,7 +58,7 @@ export default function ResetPasswordPage() {
     });
 
     if (error) {
-      setError('Erro ao redefinir senha. Tente novamente.');
+      setError(t('resetPasswordError'));
       setLoading(false);
       return;
     }
@@ -65,7 +66,6 @@ export default function ResetPasswordPage() {
     setSuccess(true);
     setLoading(false);
 
-    // Redirecionar para dashboard após 2 segundos
     setTimeout(() => {
       router.push('/dashboard');
     }, 2000);
@@ -79,14 +79,14 @@ export default function ResetPasswordPage() {
             <div className="flex justify-center mb-4">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
-            <CardTitle className="text-2xl font-bold">Senha Redefinida!</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t('resetPasswordSuccess')}</CardTitle>
             <CardDescription>
-              Sua senha foi alterada com sucesso.
+              {t('resetPasswordSuccessDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground text-center">
-              Redirecionando para o dashboard...
+              {t('resetPasswordRedirecting')}
             </p>
           </CardContent>
         </Card>
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Link Inválido</CardTitle>
+            <CardTitle className="text-2xl font-bold">{t('resetPasswordInvalidLink')}</CardTitle>
             <CardDescription>
               {error}
             </CardDescription>
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
           <CardFooter>
             <Link href="/forgot-password" className="w-full">
               <Button className="w-full">
-                Solicitar Novo Link
+                {t('resetPasswordRequestNew')}
               </Button>
             </Link>
           </CardFooter>
@@ -120,9 +120,9 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Nova Senha</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('resetPasswordTitle')}</CardTitle>
           <CardDescription>
-            Digite sua nova senha abaixo
+            {t('resetPasswordDesc')}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleResetPassword}>
@@ -133,22 +133,22 @@ export default function ResetPasswordPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="password">Nova Senha</Label>
+              <Label htmlFor="password">{t('resetPasswordLabel')}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t('resetPasswordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <Label htmlFor="confirmPassword">{t('resetPasswordConfirmLabel')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Digite a senha novamente"
+                placeholder={t('resetPasswordConfirmPlaceholder')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -158,7 +158,7 @@ export default function ResetPasswordPage() {
           <CardFooter>
             <Button type="submit" className="w-full" disabled={loading || !validSession}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Redefinir Senha
+              {t('resetPasswordBtn')}
             </Button>
           </CardFooter>
         </form>
