@@ -12,7 +12,7 @@ export default async function BookingsPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('id, currency')
+    .select('id, currency, slug')
     .eq('user_id', user.id)
     .single();
 
@@ -23,12 +23,14 @@ export default async function BookingsPage() {
     .select('*, services(name, price)')
     .eq('professional_id', professional.id)
     .order('booking_date', { ascending: false })
-    .order('start_time', { ascending: false });
+    .order('start_time', { ascending: false })
+    .limit(200);
 
   return (
     <BookingsManager
       bookings={bookings || []}
       currency={professional.currency}
+      slug={professional.slug}
     />
   );
 }

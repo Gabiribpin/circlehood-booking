@@ -51,6 +51,7 @@ interface BookingWithService {
 interface BookingsManagerProps {
   bookings: BookingWithService[];
   currency: string;
+  slug?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ function BookingCard({
 
 // ─── BookingsManager ──────────────────────────────────────────────────────────
 
-export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
+export function BookingsManager({ bookings, currency, slug }: BookingsManagerProps) {
   const router = useRouter();
   const supabase = createClient();
   const { toast } = useToast();
@@ -405,9 +406,23 @@ export function BookingsManager({ bookings, currency }: BookingsManagerProps) {
             <Card>
               <CardContent className="text-center py-8">
                 <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  {searchQuery || dateFilter ? t('noResults') : t('noBookings')}
-                </p>
+                {bookings.length === 0 && !searchQuery && !dateFilter ? (
+                  <>
+                    <p className="text-muted-foreground">{t('noBookingsEmpty')}</p>
+                    {slug && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {t('noBookingsShareCta')}{' '}
+                        <a href={`/${slug}`} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+                          {t('noBookingsShareLink')}
+                        </a>
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">
+                    {searchQuery || dateFilter ? t('noResults') : t('noBookings')}
+                  </p>
+                )}
               </CardContent>
             </Card>
           ) : (
