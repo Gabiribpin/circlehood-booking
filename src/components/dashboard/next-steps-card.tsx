@@ -275,7 +275,7 @@ export function NextStepsCard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { window.location.href = '/whatsapp-config'; }}
+                onClick={() => { window.location.href = '/settings?tab=whatsapp'; }}
               >
                 {t('configureWhatsApp')}
               </Button>

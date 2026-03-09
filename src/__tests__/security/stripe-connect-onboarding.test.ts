@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const SLUG_PAGE = path.resolve(__dirname, '../../app/[locale]/(public)/[slug]/page.tsx');
-const PAYMENT_PAGE = path.resolve(__dirname, '../../app/[locale]/(dashboard)/settings/payment/page.tsx');
+const SETTINGS_PAGE = path.resolve(__dirname, '../../app/[locale]/(dashboard)/settings/page.tsx');
 const PT_BR = path.resolve(__dirname, '../../../messages/pt-BR.json');
 const EN_US = path.resolve(__dirname, '../../../messages/en-US.json');
 const ES_ES = path.resolve(__dirname, '../../../messages/es-ES.json');
@@ -37,8 +37,8 @@ describe('[slug]/page.tsx — deposit blocked until Stripe Connect verified', ()
   });
 });
 
-describe('settings/payment/page.tsx — stripeConnected from DB', () => {
-  const content = fs.readFileSync(PAYMENT_PAGE, 'utf-8');
+describe('settings/page.tsx — stripeConnected from DB (unified settings)', () => {
+  const content = fs.readFileSync(SETTINGS_PAGE, 'utf-8');
 
   it('queries stripe_connect_accounts for charges_enabled', () => {
     expect(content).toContain("from('stripe_connect_accounts')");
@@ -47,11 +47,6 @@ describe('settings/payment/page.tsx — stripeConnected from DB', () => {
 
   it('computes stripeConnected from charges_enabled (not hardcoded)', () => {
     expect(content).toContain('connectAccount?.charges_enabled === true');
-    expect(content).not.toContain('stripeConnected={false}');
-  });
-
-  it('passes stripeConnected to PaymentSettings', () => {
-    expect(content).toContain('stripeConnected={stripeConnected}');
   });
 });
 

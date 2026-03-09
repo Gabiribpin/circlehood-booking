@@ -18,8 +18,8 @@ describe('Onboarding — payment step exists', () => {
     expect(content).toContain("tKey: 'Payment'");
   });
 
-  it('payment step links to /settings/payment', () => {
-    expect(content).toContain("href: '/settings/payment'");
+  it('payment step links to /settings?tab=pagamentos', () => {
+    expect(content).toContain("href: '/settings?tab=pagamentos'");
   });
 
   it('payment step is optional (not required)', () => {

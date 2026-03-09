@@ -172,7 +172,7 @@ export default async function DashboardPage() {
     { id: 'phone',     label: t('setupPhone'),      done: !!(professional.phone),                href: '/settings' },
     { id: 'services',  label: t('setupServices'),   done: (totalServices ?? 0) > 0,              href: '/services' },
     { id: 'schedule',  label: t('setupSchedule'),   done: (workingHoursCount ?? 0) > 0,          href: '/schedule' },
-    { id: 'whatsapp',  label: t('setupWhatsapp'),   done: whatsappConfig?.is_active === true,    href: '/whatsapp-config' },
+    { id: 'whatsapp',  label: t('setupWhatsapp'),   done: whatsappConfig?.is_active === true,    href: '/settings?tab=whatsapp' },
   ];
 
   const setupOptional = [

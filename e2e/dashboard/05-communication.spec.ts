@@ -8,14 +8,14 @@ const BASE = TEST.BASE_URL;
 
 test.describe('Dashboard — WhatsApp Config', () => {
   test('carrega heading Configuração WhatsApp', async ({ page }) => {
-    await page.goto(`${BASE}/whatsapp-config`);
+    await page.goto(`${BASE}/settings?tab=whatsapp`);
     await expect(
       page.getByRole('heading', { name: /configuração whatsapp/i })
     ).toBeVisible({ timeout: 15_000 });
   });
 
   test('abas Conexão e IA presentes', async ({ page }) => {
-    await page.goto(`${BASE}/whatsapp-config`);
+    await page.goto(`${BASE}/settings?tab=whatsapp`);
     // Abas podem ser role="tab" (Radix UI)
     const conexaoTab = page.getByRole('tab', { name: /conexão/i }).or(
       page.getByRole('button', { name: /conexão/i })
@@ -24,7 +24,7 @@ test.describe('Dashboard — WhatsApp Config', () => {
   });
 
   test('aba Assistente Virtual abre área de instruções', async ({ page }) => {
-    await page.goto(`${BASE}/whatsapp-config`);
+    await page.goto(`${BASE}/settings?tab=whatsapp`);
     const aiTab = page.getByRole('tab', { name: /assistente virtual|ia|automações/i }).or(
       page.getByRole('button', { name: /assistente virtual|ia|automações/i })
     );

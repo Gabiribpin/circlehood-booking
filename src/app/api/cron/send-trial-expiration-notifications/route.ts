@@ -31,8 +31,8 @@ function buildEmailHtml(businessName: string, daysRemaining: number, type: Notif
   const color = getUrgencyColor(type);
   const escaped = businessName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const upgradeUrl = process.env.NEXT_PUBLIC_BASE_URL
-    ? `${process.env.NEXT_PUBLIC_BASE_URL}/settings/payment`
-    : 'https://booking.circlehood-tech.com/settings/payment';
+    ? `${process.env.NEXT_PUBLIC_BASE_URL}/settings?tab=pagamentos`
+    : 'https://booking.circlehood-tech.com/settings?tab=pagamentos';
 
   const title =
     type === 'day_1'

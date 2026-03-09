@@ -29,12 +29,12 @@ async function resetPaymentSettings() {
 
 /** Navega para a página, aguarda o h1 e retorna o Switch do sinal. */
 async function gotoPayment(page: import('@playwright/test').Page) {
-  await page.goto(`${BASE}/settings/payment`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/settings?tab=pagamentos`, { waitUntil: 'domcontentloaded' });
   // Dashboard layout may redirect to /subscribe if subscription inactive
   if (page.url().includes('/subscribe')) {
     throw new Error('Redirect to /subscribe — subscription inactive. Auth setup should set subscription_status=active.');
   }
-  await expect(page.locator('h1').first()).toContainText('Pagamentos', { timeout: 20_000 });
+  await expect(page.locator('h1').first()).toContainText('Configurações', { timeout: 20_000 });
   const sw = page.getByRole('switch').first();
   await sw.waitFor({ state: 'visible', timeout: 15_000 });
   return sw;
