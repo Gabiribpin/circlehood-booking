@@ -10,6 +10,7 @@ import {
 import { getStripe } from '@/lib/stripe/client';
 import { Button } from '@/components/ui/button';
 import { Loader2, ShieldCheck } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface InnerFormProps {
   amount: number;
@@ -29,6 +30,7 @@ function InnerForm({ amount, currency, onSuccess, onError }: InnerFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('public');
 
   const sym = currencySymbols[currency?.toUpperCase()] ?? currency;
 
@@ -49,14 +51,14 @@ function InnerForm({ amount, currency, onSuccess, onError }: InnerFormProps) {
     setLoading(false);
 
     if (result.error) {
-      onError(result.error.message ?? 'Erro ao processar pagamento.');
+      onError(result.error.message ?? t('depositPayError'));
       return;
     }
 
     if (result.paymentIntent?.status === 'succeeded') {
       onSuccess(result.paymentIntent.id);
     } else {
-      onError('Pagamento não confirmado. Tente novamente.');
+      onError(t('depositPayNotConfirmed'));
     }
   }
 
@@ -65,7 +67,7 @@ function InnerForm({ amount, currency, onSuccess, onError }: InnerFormProps) {
       <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 flex items-start gap-2">
         <ShieldCheck className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
         <p className="text-sm text-blue-800 dark:text-blue-300">
-          Sinal de reserva: <strong>{sym}{amount.toFixed(2)}</strong>. Pagamento seguro via Stripe.
+          {t('depositInfo', { symbol: sym, amount: amount.toFixed(2) })}
         </p>
       </div>
 
@@ -73,7 +75,7 @@ function InnerForm({ amount, currency, onSuccess, onError }: InnerFormProps) {
 
       <Button type="submit" className="w-full" disabled={loading || !stripe}>
         {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-        Pagar sinal {sym}{amount.toFixed(2)}
+        {t('depositPayButton', { symbol: sym, amount: amount.toFixed(2) })}
       </Button>
     </form>
   );
@@ -96,6 +98,8 @@ export function PaymentForm({
   onError,
 }: PaymentFormProps) {
   const stripePromise = getStripe();
+  const locale = useLocale();
+  const stripeLocale = locale === 'pt-BR' ? 'pt-BR' : locale === 'es-ES' ? 'es' : 'en';
 
   return (
     <Elements
@@ -103,7 +107,7 @@ export function PaymentForm({
       options={{
         clientSecret,
         appearance: { theme: 'stripe' },
-        locale: 'pt-BR',
+        locale: stripeLocale as 'pt-BR' | 'es' | 'en',
       }}
     >
       <InnerForm

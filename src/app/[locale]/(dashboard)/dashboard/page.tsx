@@ -292,7 +292,7 @@ export default async function DashboardPage() {
       <AlertsWidget />
 
       {/* Stats — only show when there's data */}
-      {((todayBookings ?? 0) > 0 || (weekBookings ?? 0) > 0 || (monthBookings ?? 0) > 0 || (totalServices ?? 0) > 0) && (
+      {((todayBookings ?? 0) > 0 || (weekBookings ?? 0) > 0 || (monthBookings ?? 0) > 0) && (
         <div className="space-y-4">
           <div>
             <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionBookings')}</h2>

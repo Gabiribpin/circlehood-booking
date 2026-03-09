@@ -107,6 +107,7 @@
     "signupFree": "Cadastre-se grátis",
     "slugTaken": "Este link já está em uso.",
     "slugHint": "Este será o endereço da sua página pública. Pode alterá-lo depois nas configurações.",
+    "slugTooltip": "Link único que os seus clientes usam para agendar",
     "slugUnavailableError": "Escolha um link disponível para sua página.",
     "socialLoginError": "Erro ao conectar com {provider}. Tente novamente.",
     "startCreatingAccount": "Comece criando sua conta",
@@ -409,6 +410,10 @@
     "cancelledPaymentDescription": "O pagamento foi cancelado. O seu agendamento não foi confirmado.",
     "cancelledRetryNote": "Pode tentar novamente quando quiser.",
     "tryAgainBooking": "Tentar novamente",
+    "depositPayError": "Erro ao processar pagamento.",
+    "depositPayNotConfirmed": "Pagamento não confirmado. Tente novamente.",
+    "depositInfo": "Sinal de reserva: {symbol}{amount}. Pagamento seguro via Stripe.",
+    "depositPayButton": "Pagar sinal {symbol}{amount}",
     "pageNotFound": "Página não encontrada",
     "onlineBooking": "Agendamento Online",
     "metaDescription": "Agende {category} com {name} em {city}. {count, plural, one {# serviço disponível} other {# serviços disponíveis}}."

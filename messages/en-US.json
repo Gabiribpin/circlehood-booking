@@ -107,6 +107,7 @@
     "signupFree": "Sign up free",
     "slugTaken": "This link is already taken.",
     "slugHint": "This will be your public page address. You can change it later in settings.",
+    "slugTooltip": "Unique link your clients use to book with you",
     "slugUnavailableError": "Choose an available link for your page.",
     "socialLoginError": "Error connecting with {provider}. Please try again.",
     "startCreatingAccount": "Start by creating your account",
@@ -409,6 +410,10 @@
     "cancelledPaymentDescription": "The payment was cancelled. Your booking has not been confirmed.",
     "cancelledRetryNote": "You can try again anytime.",
     "tryAgainBooking": "Try again",
+    "depositPayError": "Error processing payment.",
+    "depositPayNotConfirmed": "Payment not confirmed. Please try again.",
+    "depositInfo": "Booking deposit: {symbol}{amount}. Secure payment via Stripe.",
+    "depositPayButton": "Pay deposit {symbol}{amount}",
     "pageNotFound": "Page not found",
     "onlineBooking": "Online Booking",
     "metaDescription": "Book {category} with {name} in {city}. {count, plural, one {# service available} other {# services available}}."
