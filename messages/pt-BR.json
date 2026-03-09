@@ -23,6 +23,11 @@
     "backToLogin": "Voltar ao login"
   },
   "nav": {
+    "groupMain": "Principal",
+    "groupPage": "Minha Página",
+    "groupCommunication": "Comunicação",
+    "groupGrowth": "Crescimento",
+    "groupAccount": "Conta",
     "dashboard": "Painel",
     "services": "Serviços",
     "bookings": "Agendamentos",
