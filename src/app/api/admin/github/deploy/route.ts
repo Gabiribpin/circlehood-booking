@@ -50,6 +50,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Prevent command injection via branch name
+  if (!/^[a-zA-Z0-9/_.-]+$/.test(branch)) {
+    return NextResponse.json(
+      { error: 'Invalid branch name' },
+      { status: 400 }
+    );
+  }
+
   const steps: string[] = [];
 
   try {
