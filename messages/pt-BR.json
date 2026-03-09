@@ -407,7 +407,10 @@
     "cancelledPaymentTitle": "Pagamento cancelado",
     "cancelledPaymentDescription": "O pagamento foi cancelado. O seu agendamento não foi confirmado.",
     "cancelledRetryNote": "Pode tentar novamente quando quiser.",
-    "tryAgainBooking": "Tentar novamente"
+    "tryAgainBooking": "Tentar novamente",
+    "pageNotFound": "Página não encontrada",
+    "onlineBooking": "Agendamento Online",
+    "metaDescription": "Agende {category} com {name} em {city}. {count, plural, one {# serviço disponível} other {# serviços disponíveis}}."
   },
   "whatsapp": {
     "usageTitle": "Uso do WhatsApp (Hoje)",

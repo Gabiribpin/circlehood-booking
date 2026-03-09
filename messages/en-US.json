@@ -407,7 +407,10 @@
     "cancelledPaymentTitle": "Payment cancelled",
     "cancelledPaymentDescription": "The payment was cancelled. Your booking has not been confirmed.",
     "cancelledRetryNote": "You can try again anytime.",
-    "tryAgainBooking": "Try again"
+    "tryAgainBooking": "Try again",
+    "pageNotFound": "Page not found",
+    "onlineBooking": "Online Booking",
+    "metaDescription": "Book {category} with {name} in {city}. {count, plural, one {# service available} other {# services available}}."
   },
   "whatsapp": {
     "usageTitle": "WhatsApp Usage (Today)",
