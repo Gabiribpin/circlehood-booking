@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { WorkingHours, BlockedDate, BlockedPeriod } from '@/types/database';
 
 interface ScheduleManagerProps {
@@ -35,6 +36,7 @@ export function ScheduleManager({
   const router = useRouter();
   const supabase = createClient();
   const t = useTranslations('schedule');
+  const { toast } = useToast();
 
   const DAY_NAMES = [
     t('day0'), t('day1'), t('day2'), t('day3'), t('day4'), t('day5'), t('day6'),
@@ -86,9 +88,16 @@ export function ScheduleManager({
       is_available: d.isAvailable,
     }));
 
-    await supabase.from('working_hours').insert(rows);
+    const { error } = await supabase.from('working_hours').insert(rows);
 
     setSavingHours(false);
+
+    if (error) {
+      toast({ title: t('errorSavingHours'), variant: 'destructive' });
+    } else {
+      toast({ title: t('savedHours') });
+    }
+
     router.refresh();
   }
 
@@ -97,6 +106,20 @@ export function ScheduleManager({
     setSavingBlock(true);
 
     const dateStr = selectedDate.toISOString().split('T')[0];
+
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from('blocked_dates')
+      .select('id')
+      .eq('professional_id', professionalId)
+      .eq('blocked_date', dateStr)
+      .maybeSingle();
+
+    if (existing) {
+      toast({ title: t('dateAlreadyBlocked'), variant: 'destructive' });
+      setSavingBlock(false);
+      return;
+    }
 
     await supabase.from('blocked_dates').insert({
       professional_id: professionalId,
