@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Mail, MailX, MailCheck, MessageSquare } from 'lucide-react';
+import { Loader2, RefreshCw, Mail, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 interface NotificationLog {
   id: string;
@@ -24,26 +23,38 @@ interface EmailNotificationsManagerProps {
   professionalId: string;
 }
 
-type Filter = 'all' | 'sent' | 'failed' | 'pending';
+type TimeFilter = 'today' | 'week' | 'failures';
 
 export function EmailNotificationsManager({ logs }: EmailNotificationsManagerProps) {
   const t = useTranslations('notificationsPage');
   const locale = useLocale();
   const [retrying, setRetrying] = useState<string | null>(null);
   const [localLogs, setLocalLogs] = useState<NotificationLog[]>(logs);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<TimeFilter>('today');
 
-  const total = localLogs.length;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const filteredLogs = useMemo(() => {
+    return localLogs.filter((l) => {
+      const date = new Date(l.created_at);
+      if (filter === 'today') return date >= todayStart;
+      if (filter === 'week') return date >= weekStart;
+      if (filter === 'failures') return l.status === 'failed';
+      return true;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localLogs, filter]);
+
   const sent = localLogs.filter((l) => l.status === 'sent' || l.status === 'delivered').length;
   const failed = localLogs.filter((l) => l.status === 'failed').length;
-  const pending = localLogs.filter((l) => l.status !== 'sent' && l.status !== 'delivered' && l.status !== 'failed').length;
-  const failureRate = total > 0 ? ((failed / total) * 100).toFixed(1) : '0.0';
-  const highFailureRate = parseFloat(failureRate) >= 30;
 
   const typeLabel = (type: string) => {
     const map: Record<string, string> = {
       booking_confirmation: t('typeConfirmation'),
       reminder: t('typeReminder'),
+      reminder_24h: t('typeReminder'),
       cancellation: t('typeCancellation'),
       loyalty_reward: t('typeLoyalty'),
       waitlist_available: t('typeWaitlist'),
@@ -51,12 +62,46 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
     return map[type] ?? type;
   };
 
-  const filteredLogs = localLogs.filter((l) => {
-    if (filter === 'sent') return l.status === 'sent' || l.status === 'delivered';
-    if (filter === 'failed') return l.status === 'failed';
-    if (filter === 'pending') return l.status !== 'sent' && l.status !== 'delivered' && l.status !== 'failed';
-    return true;
-  });
+  const channelLabel = (channel: string) =>
+    channel === 'whatsapp' ? 'WhatsApp' : 'Email';
+
+  function friendlyMessage(log: NotificationLog): string {
+    const channel = channelLabel(log.channel);
+    const type = typeLabel(log.type).toLowerCase();
+    const recipient = log.recipient;
+
+    if (log.status === 'failed') {
+      const reason = log.error_message
+        ? ` (${t('feedErrorReason', { reason: simplifyError(log.error_message) })})`
+        : '';
+      return t('feedFailed', { type, recipient, channel }) + reason;
+    }
+
+    return t('feedSent', { type, recipient, channel });
+  }
+
+  function simplifyError(err: string): string {
+    if (/invalid.*email|email.*invalid/i.test(err)) return t('errorInvalidEmail');
+    if (/bounce/i.test(err)) return t('errorBounced');
+    if (/timeout/i.test(err)) return t('errorTimeout');
+    if (/rate.?limit/i.test(err)) return t('errorRateLimit');
+    if (/not.*found|404/i.test(err)) return t('errorNotFound');
+    return err.length > 60 ? err.slice(0, 60) + '…' : err;
+  }
+
+  function relativeTime(dateStr: string): string {
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffH = Math.floor(diffMs / 3600000);
+    const diffD = Math.floor(diffMs / 86400000);
+
+    if (diffMin < 1) return t('timeJustNow');
+    if (diffMin < 60) return t('timeMinutesAgo', { count: diffMin });
+    if (diffH < 24) return t('timeHoursAgo', { count: diffH });
+    if (diffD === 1) return t('timeYesterday');
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  }
 
   async function handleRetry(log: NotificationLog) {
     if (!log.booking_id) return;
@@ -83,11 +128,10 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
     }
   }
 
-  const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'all', label: t('filterAll') },
-    { key: 'sent', label: t('filterSent') },
-    { key: 'failed', label: t('filterFailed') },
-    { key: 'pending', label: t('filterPending') },
+  const FILTERS: { key: TimeFilter; label: string }[] = [
+    { key: 'today', label: t('filterToday') },
+    { key: 'week', label: t('filterWeek') },
+    { key: 'failures', label: t('filterFailures') },
   ];
 
   return (
@@ -97,45 +141,19 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
         <p className="text-sm text-muted-foreground mt-1">{t('subtitle')}</p>
       </div>
 
-      {/* Alerta de taxa alta */}
-      {highFailureRate && failed > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <MailX className="h-4 w-4 shrink-0" />
-          <span>{t('highFailureAlert', { rate: failureRate })}</span>
-        </div>
-      )}
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">{t('statsTotal')}</p>
-            <p className="text-2xl font-bold">{total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">{t('statsSent')}</p>
-            <p className="text-2xl font-bold text-green-600">{sent}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">{t('statsFailed')}</p>
-            <p className="text-2xl font-bold text-destructive">{failed}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">{t('statsFailureRate')}</p>
-            <p className={`text-2xl font-bold ${highFailureRate ? 'text-destructive' : 'text-foreground'}`}>
-              {failureRate}%
-            </p>
-          </CardContent>
-        </Card>
+      {/* Summary */}
+      <div className="flex gap-4 text-sm">
+        <span className="text-muted-foreground">
+          {t('summaryDelivered', { count: sent })}
+        </span>
+        {failed > 0 && (
+          <span className="text-destructive font-medium">
+            {t('summaryFailed', { count: failed })}
+          </span>
+        )}
       </div>
 
-      {/* Filtros */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <Button
@@ -149,10 +167,10 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
         ))}
       </div>
 
-      {/* Lista */}
+      {/* Activity feed */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">{t('historyTitle')}</CardTitle>
+          <CardTitle className="text-base font-semibold">{t('feedTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {localLogs.length === 0 ? (
@@ -168,31 +186,27 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
           ) : (
             <div className="divide-y">
               {filteredLogs.map((log) => (
-                <div key={log.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={log.status} t={t} />
-                      <span className="text-xs text-muted-foreground">
-                        {typeLabel(log.type)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {log.channel === 'whatsapp' ? t('channelWhatsapp') : t('channelEmail')}
-                      </span>
-                    </div>
-                    <p className="truncate text-sm font-medium">{log.recipient}</p>
-                    {log.error_message && (
-                      <p className="text-xs text-destructive">{log.error_message}</p>
+                <div key={log.id} className="flex items-start gap-3 px-4 py-3">
+                  <div className="mt-0.5 shrink-0">
+                    {log.status === 'failed' ? (
+                      <XCircle className="h-5 w-5 text-destructive" />
+                    ) : log.status === 'sent' || log.status === 'delivered' ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-muted-foreground" />
                     )}
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(log.created_at).toLocaleString(locale)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm">{friendlyMessage(log)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {relativeTime(log.created_at)}
                     </p>
                   </div>
-
                   {log.status === 'failed' && log.booking_id && log.channel === 'email' && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-2 shrink-0 sm:mt-0"
+                      className="shrink-0"
                       onClick={() => handleRetry(log)}
                       disabled={retrying === log.id}
                     >
@@ -211,38 +225,5 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof useTranslations<'notificationsPage'>> }) {
-  if (status === 'sent') {
-    return (
-      <Badge variant="outline" className="border-green-500 text-green-600">
-        <MailCheck className="mr-1 h-3 w-3" />
-        {t('statusSent')}
-      </Badge>
-    );
-  }
-  if (status === 'delivered') {
-    return (
-      <Badge variant="outline" className="border-green-500 text-green-600">
-        <MailCheck className="mr-1 h-3 w-3" />
-        {t('statusDelivered')}
-      </Badge>
-    );
-  }
-  if (status === 'failed') {
-    return (
-      <Badge variant="outline" className="border-destructive text-destructive">
-        <MailX className="mr-1 h-3 w-3" />
-        {t('statusFailed')}
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="secondary">
-      <MessageSquare className="mr-1 h-3 w-3" />
-      {t('statusPending')}
-    </Badge>
   );
 }
