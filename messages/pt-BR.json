@@ -589,7 +589,10 @@
     "day5": "Sexta",
     "day6": "Sábado",
     "removeBlockedDate": "Remover data bloqueada",
-    "removeBlockedPeriod": "Remover período bloqueado"
+    "removeBlockedPeriod": "Remover período bloqueado",
+    "quickSetupTitle": "Configuração rápida",
+    "quickMonFri": "Seg–Sex, 9h–18h",
+    "quickMonSat": "Seg–Sáb, 9h–18h"
   },
   "support": {
     "title": "Central de Suporte",

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { WorkingHours, BlockedDate, BlockedPeriod } from '@/types/database';
 
@@ -71,6 +71,18 @@ export function ScheduleManager({
       prev.map((d, i) => (i === index ? { ...d, ...updates } : d))
     );
   }
+
+  function applyQuickSetup(activeDays: number[], start: string, end: string) {
+    setDays((prev) =>
+      prev.map((d, i) => ({
+        isAvailable: activeDays.includes(i),
+        startTime: activeDays.includes(i) ? start : d.startTime,
+        endTime: activeDays.includes(i) ? end : d.endTime,
+      }))
+    );
+  }
+
+  const hasAnyActive = days.some((d) => d.isAvailable);
 
   async function saveWorkingHours() {
     setSavingHours(true);
@@ -174,6 +186,30 @@ export function ScheduleManager({
         </TabsList>
 
         <TabsContent value="hours" className="mt-4">
+          {!hasAnyActive && (
+            <div className="mb-4 p-4 rounded-lg border border-dashed border-primary/40 bg-primary/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium">{t('quickSetupTitle')}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyQuickSetup([1, 2, 3, 4, 5], '09:00', '18:00')}
+                >
+                  {t('quickMonFri')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyQuickSetup([1, 2, 3, 4, 5, 6], '09:00', '18:00')}
+                >
+                  {t('quickMonSat')}
+                </Button>
+              </div>
+            </div>
+          )}
           <Card>
             <CardContent className="p-4 space-y-4">
               {days.map((day, i) => (
