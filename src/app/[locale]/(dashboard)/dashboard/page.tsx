@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ShareLinkCard } from '@/components/dashboard/share-link-card';
+
 import { AlertsWidget } from './components/alerts-widget';
 
 export default async function DashboardPage() {
@@ -476,11 +476,6 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Share link with QR code */}
-      <ShareLinkCard
-        slug={professional.slug}
-        businessName={professional.business_name}
-      />
     </div>
   );
 }
