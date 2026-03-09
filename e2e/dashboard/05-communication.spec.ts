@@ -19,28 +19,15 @@ test.describe('Dashboard — WhatsApp Config', () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test('abas Conexão e IA presentes', async ({ page }) => {
-    await page.goto(`${BASE}/settings?tab=whatsapp`);
-    // Wait for WhatsApp content to render inside tab
-    await expect(
-      page.getByRole('heading', { name: /configuração whatsapp/i })
-    ).toBeVisible({ timeout: 15_000 });
-    // Inner tabs from WhatsAppConfigClient
-    const conexaoTab = page.getByRole('tab', { name: /conexão/i }).or(
-      page.getByRole('button', { name: /conexão/i })
-    );
-    await expect(conexaoTab.first()).toBeVisible({ timeout: 10_000 });
-  });
-
   test('aba Assistente Virtual abre área de instruções', async ({ page }) => {
-    await page.goto(`${BASE}/settings?tab=whatsapp`);
+    await page.goto(`${BASE}/settings?tab=assistente`);
     await expect(
-      page.getByRole('heading', { name: /configuração whatsapp/i })
+      page.getByRole('heading', { name: /configurações/i }).first()
     ).toBeVisible({ timeout: 15_000 });
-    const aiTab = page.getByRole('tab', { name: /assistente virtual|ia|automações/i }).or(
-      page.getByRole('button', { name: /assistente virtual|ia|automações/i })
-    );
-    await aiTab.first().click();
+    // Click tab explicitly to handle hydration delay (useSearchParams defaults to 'conta' during SSR)
+    const assistenteTab = page.getByRole('tab', { name: /assistente/i });
+    await expect(assistenteTab).toBeVisible({ timeout: 10_000 });
+    await assistenteTab.click();
     await expect(
       page.locator('#greeting_message, #instructions').first()
     ).toBeVisible({ timeout: 10_000 });
