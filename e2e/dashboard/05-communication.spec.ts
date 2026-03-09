@@ -23,12 +23,12 @@ test.describe('Dashboard — WhatsApp Config', () => {
     await expect(conexaoTab.first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test('aba IA abre área de instruções', async ({ page }) => {
+  test('aba Assistente Virtual abre área de instruções', async ({ page }) => {
     await page.goto(`${BASE}/whatsapp-config`);
-    const iaTab = page.getByRole('tab', { name: /ia|automações/i }).or(
-      page.getByRole('button', { name: /ia|automações/i })
+    const aiTab = page.getByRole('tab', { name: /assistente virtual|ia|automações/i }).or(
+      page.getByRole('button', { name: /assistente virtual|ia|automações/i })
     );
-    await iaTab.first().click();
+    await aiTab.first().click();
     await expect(
       page.locator('#greeting_message, #instructions').first()
     ).toBeVisible({ timeout: 10_000 });

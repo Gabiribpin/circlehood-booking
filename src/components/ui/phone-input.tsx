@@ -7,6 +7,7 @@ import 'react-phone-number-input/style.css';
 import { cn } from '@/lib/utils';
 
 export interface PhoneInputProps {
+  id?: string;
   value?: string;
   onChange?: (value: string | undefined) => void;
   placeholder?: string;
@@ -17,7 +18,7 @@ export interface PhoneInputProps {
 }
 
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
-  ({ value, onChange, placeholder = 'Enter phone number', disabled, className, defaultCountry = 'BR', required }, ref) => {
+  ({ id, value, onChange, placeholder = 'Enter phone number', disabled, className, defaultCountry = 'BR', required }, ref) => {
     const [error, setError] = React.useState<string>('');
 
     const handleChange = (newValue: string | undefined) => {
@@ -45,6 +46,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
             className
           )}
           numberInputProps={{
+            id,
             className: 'outline-none bg-transparent border-none focus:ring-0',
           }}
         />
