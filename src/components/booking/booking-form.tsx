@@ -50,6 +50,7 @@ export function BookingForm({ data, onChange }: BookingFormProps) {
       <div className="space-y-2">
         <Label htmlFor="clientPhone">{t('phoneLabel')}</Label>
         <PhoneInput
+          id="clientPhone"
           value={data.clientPhone}
           onChange={(value) => update('clientPhone', value || '')}
           placeholder={t('phonePlaceholder')}
