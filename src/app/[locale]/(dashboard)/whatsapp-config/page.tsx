@@ -437,7 +437,7 @@ export default function WhatsAppConfigPage() {
               <Textarea
                 id="instructions"
                 rows={5}
-                placeholder={`Exemplo:\n- Seja sempre educado e use emojis\n- Mencione promoções quando relevante`}
+                placeholder={t('instructionsPlaceholder')}
                 value={aiSettings.instructions}
                 onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
               />
