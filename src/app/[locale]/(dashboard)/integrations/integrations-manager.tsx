@@ -65,21 +65,21 @@ export function IntegrationsManager({ professional, integrations }: Integrations
       description: t('emailMarketingDesc'),
       icon: Mail,
       color: 'purple',
-      canConnect: true,
+      canConnect: false,
     },
     google_maps: {
       name: 'Google Maps',
       description: t('googleMapsDesc'),
       icon: MapPin,
       color: 'red',
-      canConnect: true,
+      canConnect: false,
     },
     revolut: {
       name: 'Revolut Business',
       description: t('revolutDesc'),
       icon: CreditCard,
       color: 'gray',
-      canConnect: true,
+      canConnect: false,
     },
   };
 
@@ -176,7 +176,7 @@ export function IntegrationsManager({ professional, integrations }: Integrations
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{t('title')}</h1>
-        <p className="text-gray-600 mt-1">{t('subtitle')}</p>
+        <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -193,7 +193,7 @@ export function IntegrationsManager({ professional, integrations }: Integrations
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">{config.name}</h3>
-                    <p className="text-sm text-gray-600">{config.description}</p>
+                    <p className="text-sm text-muted-foreground">{config.description}</p>
                   </div>
                 </div>
 
@@ -221,7 +221,7 @@ export function IntegrationsManager({ professional, integrations }: Integrations
               </div>
 
               {integration?.last_sync_at && (
-                <p className="text-xs text-gray-500 mb-4">
+                <p className="text-xs text-muted-foreground mb-4">
                   {t('lastSync')}{' '}
                   {new Date(integration.last_sync_at).toLocaleString(locale)}
                 </p>
@@ -236,22 +236,28 @@ export function IntegrationsManager({ professional, integrations }: Integrations
               )}
 
               {!integration?.is_configured ? (
-                <Button
-                  onClick={() => handleConnect(type)}
-                  className="w-full"
-                  disabled={!config.canConnect || loading === type}
-                >
-                  {loading === type ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {t('connecting')}
-                    </>
-                  ) : config.canConnect ? (
-                    t('connect', { name: config.name })
-                  ) : (
-                    t('comingSoon')
-                  )}
-                </Button>
+                config.canConnect ? (
+                  <Button
+                    onClick={() => handleConnect(type)}
+                    className="w-full"
+                    disabled={loading === type}
+                  >
+                    {loading === type ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {t('connecting')}
+                      </>
+                    ) : (
+                      t('connect', { name: config.name })
+                    )}
+                  </Button>
+                ) : (
+                  <div className="w-full text-center py-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                      {t('comingSoon')}
+                    </span>
+                  </div>
+                )
               ) : (
                 <div className="flex gap-2">
                   {type === 'google_calendar' && (
@@ -299,7 +305,7 @@ export function IntegrationsManager({ professional, integrations }: Integrations
       {/* Instruções */}
       <Card className="mt-8 p-6 bg-blue-50">
         <h3 className="text-lg font-semibold mb-2">{t('howTitle')}</h3>
-        <div className="space-y-2 text-sm text-gray-700">
+        <div className="space-y-2 text-sm text-muted-foreground">
           <p>
             <strong>Google Calendar:</strong> {t('howGoogleCalendar')}
           </p>
