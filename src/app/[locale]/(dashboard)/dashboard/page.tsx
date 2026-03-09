@@ -291,122 +291,126 @@ export default async function DashboardPage() {
       {/* CRM Alerts */}
       <AlertsWidget />
 
-      {/* Stats */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionBookings')}</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <CalendarDays className="h-5 w-5 text-primary" />
+      {/* Stats — only show when there's data */}
+      {((todayBookings ?? 0) > 0 || (weekBookings ?? 0) > 0 || (monthBookings ?? 0) > 0 || (totalServices ?? 0) > 0) && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionBookings')}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <CalendarDays className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
+                      <p className="text-2xl font-bold">{todayBookings || 0}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
-                    <p className="text-2xl font-bold">{todayBookings || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <CalendarRange className="h-5 w-5 text-primary" />
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <CalendarRange className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
+                      <p className="text-2xl font-bold">{weekBookings || 0}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
-                    <p className="text-2xl font-bold">{weekBookings || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <TrendingUp className="h-5 w-5 text-primary" />
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
+                      <p className="text-2xl font-bold">{monthBookings || 0}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
-                    <p className="text-2xl font-bold">{monthBookings || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
+              <Card>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{t('statsServicesLabel')}</p>
+                      <p className="text-2xl font-bold">{totalServices || 0}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsServicesLabel')}</p>
-                    <p className="text-2xl font-bold">{totalServices || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
+
+          {(todayRevenueTotal > 0 || weekRevenueTotal > 0 || monthRevenueTotal > 0) && (
+            <div>
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionRevenue')}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {currencySymbol}{todayRevenueTotal.toFixed(0)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {currencySymbol}{weekRevenueTotal.toFixed(0)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
+                        <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {currencySymbol}{monthRevenueTotal.toFixed(0)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
         </div>
-
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t('statsSectionRevenue')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsTodayLabel')}</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {currencySymbol}{todayRevenueTotal.toFixed(0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsWeekLabel')}</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {currencySymbol}{weekRevenueTotal.toFixed(0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/20">
-                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{t('statsMonthLabel')}</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {currencySymbol}{monthRevenueTotal.toFixed(0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Subscription status badge */}
       <Card>

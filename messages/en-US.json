@@ -106,6 +106,7 @@
     "signupError": "Error creating account.",
     "signupFree": "Sign up free",
     "slugTaken": "This link is already taken.",
+    "slugHint": "This will be your public page address. You can change it later in settings.",
     "slugUnavailableError": "Choose an available link for your page.",
     "socialLoginError": "Error connecting with {provider}. Please try again.",
     "startCreatingAccount": "Start by creating your account",
@@ -347,7 +348,15 @@
     "demoService2": "Spa Pedicure",
     "demoService2Desc": "Relaxing pedicure with exfoliation, deep moisturizing and polish",
     "demoService3": "Gel Nails with Design",
-    "demoService3Desc": "Gel nail extensions with custom decoration and nail art"
+    "demoService3Desc": "Gel nail extensions with custom decoration and nail art",
+    "successTitle": "Booking confirmed!",
+    "successDescription": "Your payment was processed successfully and the booking has been confirmed.",
+    "successConfirmationNote": "You will receive a confirmation shortly via email and/or WhatsApp.",
+    "backToProfessional": "Back to professional's page",
+    "cancelledPaymentTitle": "Payment cancelled",
+    "cancelledPaymentDescription": "The payment was cancelled. Your booking has not been confirmed.",
+    "cancelledRetryNote": "You can try again anytime.",
+    "tryAgainBooking": "Try again"
   },
   "whatsapp": {
     "usageTitle": "WhatsApp Usage (Today)",
