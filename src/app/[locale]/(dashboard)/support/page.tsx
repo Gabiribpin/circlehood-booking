@@ -168,6 +168,7 @@ export default function SupportPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t('subtitle')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('slaHint')}</p>
         </div>
         <Button onClick={() => setShowNewTicket(true)}>
           <Plus className="h-4 w-4 mr-2" />

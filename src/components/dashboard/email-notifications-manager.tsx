@@ -176,7 +176,8 @@ export function EmailNotificationsManager({ logs }: EmailNotificationsManagerPro
           {localLogs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
               <Mail className="h-8 w-8" />
-              <p className="text-sm">{t('noLogs')}</p>
+              <p className="text-sm font-medium">{t('noLogs')}</p>
+              <p className="text-xs text-center max-w-xs">{t('noLogsHint')}</p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">

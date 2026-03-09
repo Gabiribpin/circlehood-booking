@@ -597,6 +597,7 @@
   "support": {
     "title": "Support Center",
     "subtitle": "Open tickets and track responses from our team",
+    "slaHint": "We respond within 24 business hours.",
     "newTicket": "New ticket",
     "loading": "Loading tickets...",
     "noTickets": "No open tickets yet.",
@@ -1415,7 +1416,8 @@
     "todayAt2": "Today at 02:00",
     "cronHistory": "Cron Job History",
     "processed": "{count} processed",
-    "notificationsHistory": "Notification History"
+    "notificationsHistory": "Notification History",
+    "noNotifications": "No notifications sent yet"
   },
   "notificationsPage": {
     "title": "Notifications",
@@ -1430,6 +1432,7 @@
     "feedFailed": "{type} not delivered to {recipient} ({channel})",
     "feedErrorReason": "{reason}",
     "noLogs": "No notifications in the last 30 days",
+    "noLogsHint": "When your clients receive confirmations or reminders, they will appear here.",
     "noLogsFiltered": "No notifications matching this filter",
     "retry": "Retry",
     "retryErrorMsg": "Error retrying",
