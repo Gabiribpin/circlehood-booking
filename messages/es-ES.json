@@ -817,7 +817,21 @@
     "importWhatsAppSuccess": "¡Importación de WhatsApp completada!",
     "importWhatsAppDesc": "{imported} contactos importados, {skipped} ya existían.",
     "editClient": "Editar cliente",
-    "deleteClient": "Eliminar cliente"
+    "deleteClient": "Eliminar cliente",
+    "daysAgo": "hace {count} días",
+    "weeksAgo": "hace {count} sem.",
+    "monthsAgo": "hace {count} meses",
+    "yearsAgo": "hace {count} año(s)",
+    "totalClients": "{count, plural, one {# cliente en total} other {# clientes en total}}",
+    "visitCount": "{count, plural, one {# visita} other {# visitas}}",
+    "bulkBotUpdated": "{count, plural, one {# contacto actualizado} other {# contactos actualizados}}",
+    "regionsLabel": "Regiones de Dublín",
+    "contactCount": "{count, plural, one {# Contacto} other {# Contactos}}",
+    "selectedCount": "{count, plural, one {# seleccionado} other {# seleccionados}}",
+    "selectContact": "Seleccionar {name}",
+    "botAriaLabel": "Bot {status} para {name}",
+    "botActive": "activo",
+    "botInactive": "inactivo"
   },
   "onboarding": {
     "title": "Configura tu cuenta",

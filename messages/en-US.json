@@ -817,7 +817,21 @@
     "importWhatsAppSuccess": "WhatsApp import complete!",
     "importWhatsAppDesc": "{imported} contacts imported, {skipped} already existed.",
     "editClient": "Edit client",
-    "deleteClient": "Delete client"
+    "deleteClient": "Delete client",
+    "daysAgo": "{count} days ago",
+    "weeksAgo": "{count} wk. ago",
+    "monthsAgo": "{count} mo. ago",
+    "yearsAgo": "{count} yr. ago",
+    "totalClients": "{count, plural, one {# client total} other {# clients total}}",
+    "visitCount": "{count, plural, one {# visit} other {# visits}}",
+    "bulkBotUpdated": "{count, plural, one {# contact updated} other {# contacts updated}}",
+    "regionsLabel": "Dublin Regions",
+    "contactCount": "{count, plural, one {# Contact} other {# Contacts}}",
+    "selectedCount": "{count, plural, one {# selected} other {# selected}}",
+    "selectContact": "Select {name}",
+    "botAriaLabel": "Bot {status} for {name}",
+    "botActive": "active",
+    "botInactive": "inactive"
   },
   "onboarding": {
     "title": "Set up your account",
