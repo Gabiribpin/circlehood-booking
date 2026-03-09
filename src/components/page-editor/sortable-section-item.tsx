@@ -2,6 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslations } from 'next-intl';
 import { GripVertical, Eye, EyeOff, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,7 @@ interface SortableSectionItemProps {
 }
 
 export function SortableSectionItem({ section, label, onToggle, onEdit }: SortableSectionItemProps) {
+  const t = useTranslations('pageEditor');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
@@ -49,11 +51,11 @@ export function SortableSectionItem({ section, label, onToggle, onEdit }: Sortab
             size="sm"
             variant="ghost"
             onClick={() => onToggle(section.id)}
-            title={section.is_visible ? 'Ocultar' : 'Mostrar'}
+            title={section.is_visible ? t('hideSection') : t('showSection')}
           >
             {section.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </Button>
-          <Button size="sm" variant="ghost" onClick={onEdit} title="Editar">
+          <Button size="sm" variant="ghost" onClick={onEdit} title={t('editSection')}>
             <Settings className="w-4 h-4" />
           </Button>
         </div>

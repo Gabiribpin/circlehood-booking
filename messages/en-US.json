@@ -1244,7 +1244,13 @@
     "sectionTypeGallery": "Gallery",
     "sectionTypeTestimonials": "Testimonials",
     "sectionTypeFaq": "Frequently Asked Questions",
-    "sectionTypeContact": "Contact"
+    "sectionTypeContact": "Contact",
+    "hideSection": "Hide",
+    "showSection": "Show",
+    "editSection": "Edit",
+    "translating": "Translating...",
+    "translated": "Translated!",
+    "translateAuto": "Auto Translate"
   },
   "nextSteps": {
     "title": "Congratulations! You're ready to receive clients!",
