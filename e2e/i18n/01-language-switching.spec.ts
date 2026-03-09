@@ -43,6 +43,33 @@ async function getH1(page: import('@playwright/test').Page, url: string): Promis
   return (await h1.textContent()) ?? '';
 }
 
+const LOCALE_LABELS: Record<string, RegExp> = {
+  'pt-BR': /Português/,
+  'en-US': /English/,
+  'es-ES': /Español/,
+};
+
+/**
+ * Select a locale via Radix UI Select (not native <select>).
+ * Clicks the trigger button (#locale), then clicks the matching option.
+ */
+async function selectLocaleRadix(page: import('@playwright/test').Page, value: string) {
+  const trigger = page.locator('#locale');
+  await trigger.waitFor({ state: 'visible', timeout: 20_000 });
+  await trigger.click();
+  // Radix Select renders options as [role="option"] in a portal
+  const label = LOCALE_LABELS[value];
+  await page.getByRole('option', { name: label }).click();
+}
+
+/**
+ * Assert the Radix Select trigger shows the expected locale text.
+ */
+async function expectLocaleSelected(page: import('@playwright/test').Page, value: string, timeout = 15_000) {
+  const label = LOCALE_LABELS[value] ?? new RegExp(value);
+  await expect(page.locator('#locale')).toContainText(label, { timeout });
+}
+
 // ─── Suite: Galeria ───────────────────────────────────────────────────────────
 
 test.describe('i18n — Galeria', () => {
@@ -218,9 +245,7 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     test.setTimeout(90_000);
 
     await page.goto(`${BASE}/settings`, { waitUntil: 'domcontentloaded' });
-    await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
-
-    await page.selectOption('select#locale', 'en-US');
+    await selectLocaleRadix(page, 'en-US');
     await page.getByRole('button', { name: 'Salvar Alterações' }).click();
 
     // Aguardar confirmação "Salvo!" → garante PATCH Supabase completou
@@ -256,7 +281,7 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Settings', { timeout: 20_000 });
     expect(page.url()).toMatch(/\/settings$/);
-    await expect(page.locator('select#locale')).toHaveValue('en-US', { timeout: 15_000 });
+    await expectLocaleSelected(page, 'en-US');
   });
 
   // ── 2. Navegar em EN-US → sem texto PT ────────────────────────────────────
@@ -285,21 +310,19 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     test.setTimeout(90_000);
 
     await page.goto(`${BASE}/en-US/settings`, { waitUntil: 'domcontentloaded' });
-    await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
-
-    await page.selectOption('select#locale', 'es-ES');
+    await selectLocaleRadix(page, 'es-ES');
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     // Aguardar redirect para /es-ES/settings (50s: PATCH Supabase + 1.5s timer + navegação)
     await page.waitForURL(`${BASE}/es-ES/settings`, { timeout: 50_000 });
 
-    // Aguardar replica Supabase propagar (evita select#locale mostrar valor antigo após reload)
+    // Aguardar replica Supabase propagar
     await page.waitForTimeout(2_000);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('h1').first()).toContainText('Configuración', { timeout: 20_000 });
     expect(page.url()).toContain('/es-ES/settings');
-    await expect(page.locator('select#locale')).toHaveValue('es-ES');
+    await expectLocaleSelected(page, 'es-ES');
   });
 
   // ── 4. Navegar em ES-ES → sem texto PT ────────────────────────────────────
@@ -334,9 +357,7 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     }
 
     await page.goto(`${BASE}/es-ES/settings`, { waitUntil: 'domcontentloaded' });
-    await page.locator('select#locale').waitFor({ state: 'visible', timeout: 20_000 });
-
-    await page.selectOption('select#locale', 'pt-BR');
+    await selectLocaleRadix(page, 'pt-BR');
     // Button text: try both ES and PT names (depends on current state)
     const saveBtn = page.getByRole('button', { name: /Guardar Cambios|Salvar Alterações|Save Changes/i });
     await saveBtn.click();
@@ -363,6 +384,6 @@ test.describe('i18n — Settings: salvar idioma + persistência', () => {
     await expect(page.locator('h1').first()).toContainText('Configurações', { timeout: 20_000 });
     expect(page.url()).not.toContain('/en-US/');
     expect(page.url()).not.toContain('/es-ES/');
-    await expect(page.locator('select#locale')).toHaveValue('pt-BR', { timeout: 15_000 });
+    await expectLocaleSelected(page, 'pt-BR');
   });
 });
