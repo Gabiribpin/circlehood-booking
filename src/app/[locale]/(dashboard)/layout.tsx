@@ -2,57 +2,13 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { MobileNav } from '@/components/dashboard/mobile-nav';
+import { Sidebar } from '@/components/dashboard/sidebar';
 import { CircleHoodLogoCompact } from '@/components/branding/logo';
 import { GuidedTour } from '@/components/onboarding/guided-tour';
 import { EmailVerificationBanner } from '@/components/dashboard/email-verification-banner';
 import { TrialExpirationBanner } from '@/components/dashboard/trial-expiration-banner';
 import { getTrialStatus } from '@/lib/trial-helpers';
 import { getTranslations } from 'next-intl/server';
-import {
-  LayoutDashboard,
-  Scissors,
-  CalendarDays,
-  Clock,
-  Palette,
-  Settings,
-  LogOut,
-  Users,
-  QrCode,
-  BarChart3,
-  ImageIcon,
-  MessageSquare,
-  Phone,
-  Bell,
-  LifeBuoy,
-} from 'lucide-react';
-
-// data-tour-id values for guided tour — keyed by nav href
-const TOUR_IDS: Partial<Record<string, string>> = {
-  '/services': 'services',
-  '/schedule': 'schedule',
-  '/whatsapp-config': 'whatsapp',
-  '/my-page-editor': 'my-page',
-};
-
-// Nav item definitions — labels injected at render time via t()
-const NAV_ITEM_DEFS = [
-  { href: '/dashboard', tKey: 'dashboard', icon: LayoutDashboard },
-  { href: '/services', tKey: 'services', icon: Scissors },
-  { href: '/bookings', tKey: 'bookings', icon: CalendarDays },
-  { href: '/schedule', tKey: 'schedule', icon: Clock },
-  { href: '/clients', tKey: 'clients', icon: Users },
-  { href: '/marketing', tKey: 'marketing', icon: QrCode },
-  { href: '/analytics', tKey: 'analytics', icon: BarChart3 },
-  { href: '/notifications', tKey: 'notifications', icon: Bell },
-  { href: '/whatsapp-config', tKey: 'whatsapp', icon: Phone },
-  { href: '/my-page-editor', tKey: 'myPage', icon: Palette },
-  { href: '/gallery', tKey: 'gallery', icon: ImageIcon },
-  { href: '/testimonials', tKey: 'testimonials', icon: MessageSquare },
-  { href: '/settings', tKey: 'settings', icon: Settings },
-  { href: '/support', tKey: 'support', icon: LifeBuoy },
-] as const;
-
-// Automações removida do nav intencionalmente (rota ainda existe)
 
 export default async function DashboardLayout({
   children,
@@ -117,70 +73,12 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col border-r bg-muted/30 h-screen sticky top-0">
-        <div className="p-4 pb-3 shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <CircleHoodLogoCompact size="sm" />
-            <span className="text-sm font-bold leading-tight">CircleHood<br /><span className="text-xs font-normal text-muted-foreground">Booking</span></span>
-          </Link>
-          {professional && (
-            <p className="text-xs text-muted-foreground mt-2 truncate pl-1">
-              {professional.business_name}
-            </p>
-          )}
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 space-y-1 py-1">
-          {NAV_ITEM_DEFS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-tour-id={TOUR_IDS[item.href]}
-              className="flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
-            >
-              <item.icon className="h-4 w-4" />
-              {t(item.tKey)}
-              {item.href === '/notifications' && failedCount > 0 && (
-                <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
-                  {failedCount > 99 ? '99+' : failedCount}
-                </span>
-              )}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="shrink-0 p-3 border-t">
-          {professional && (
-            <a
-              href={`/${professional.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t('viewPublicPage')} &rarr;
-            </a>
-          )}
-          {user.email && (
-            <p className="px-3 py-1 text-[11px] text-muted-foreground truncate" title={user.email}>
-              {user.email}
-            </p>
-          )}
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground w-full rounded-md hover:bg-accent transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              {t('logout')}
-            </button>
-          </form>
-          <div className="px-3 pt-2">
-            <p className="text-[10px] text-muted-foreground/50">
-              by CircleHood Tech
-            </p>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        professionalSlug={professional?.slug}
+        businessName={professional?.business_name}
+        userEmail={user.email}
+        failedNotificationsCount={failedCount}
+      />
 
       {/* Mobile header */}
       <div className="flex-1 flex flex-col">

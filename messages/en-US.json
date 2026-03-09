@@ -23,6 +23,11 @@
     "backToLogin": "Back to login"
   },
   "nav": {
+    "groupMain": "Main",
+    "groupPage": "My Page",
+    "groupCommunication": "Communication",
+    "groupGrowth": "Growth",
+    "groupAccount": "Account",
     "dashboard": "Dashboard",
     "services": "Services",
     "bookings": "Bookings",
