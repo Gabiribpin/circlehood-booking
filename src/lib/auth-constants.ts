@@ -1,19 +1,6 @@
-export const COUNTRIES: { code: string; label: string }[] = [
-  { code: 'IE', label: 'Irlanda' },
-  { code: 'PT', label: 'Portugal' },
-  { code: 'BR', label: 'Brasil' },
-  { code: 'GB', label: 'Reino Unido' },
-  { code: 'US', label: 'Estados Unidos' },
-  { code: 'ES', label: 'Espanha' },
-  { code: 'FR', label: 'França' },
-  { code: 'DE', label: 'Alemanha' },
-  { code: 'IT', label: 'Itália' },
-  { code: 'AU', label: 'Austrália' },
-  { code: 'CA', label: 'Canadá' },
-  { code: 'MX', label: 'México' },
-  { code: 'AR', label: 'Argentina' },
-  { code: 'CO', label: 'Colômbia' },
-];
+export const COUNTRY_CODES = [
+  'IE', 'PT', 'BR', 'GB', 'US', 'ES', 'FR', 'DE', 'IT', 'AU', 'CA', 'MX', 'AR', 'CO',
+] as const;
 
 export const CURRENCY_BY_COUNTRY: Record<string, string> = {
   IE: 'eur', PT: 'eur', ES: 'eur', FR: 'eur', DE: 'eur', IT: 'eur',
@@ -21,22 +8,49 @@ export const CURRENCY_BY_COUNTRY: Record<string, string> = {
   AR: 'ars', CO: 'cop',
 };
 
-export const CATEGORIES = [
-  'Barbeiro',
-  'Cabeleireiro(a)',
-  'Coach / Consultor',
-  'Cleaner',
-  'Dog Groomer / Pet',
-  'Esteticista',
-  'Fisioterapeuta',
-  'Fotógrafo',
-  'Instrutor de Yoga/Pilates',
-  'Makeup Artist',
-  'Massagista',
-  'Nail Tech',
-  'Nutricionista',
-  'Personal Trainer',
-  'Professor / Tutor',
-  'Psicólogo / Terapeuta',
-  'Outro',
-];
+export const CATEGORY_KEYS = [
+  'barber',
+  'hairdresser',
+  'coach',
+  'cleaner',
+  'dogGroomer',
+  'esthetician',
+  'physiotherapist',
+  'photographer',
+  'yogaInstructor',
+  'makeupArtist',
+  'massageTherapist',
+  'nailTech',
+  'nutritionist',
+  'personalTrainer',
+  'teacher',
+  'psychologist',
+  'other',
+] as const;
+
+// Backward compatibility — map old PT-BR DB values to new keys
+export const LEGACY_CATEGORY_MAP: Record<string, string> = {
+  'Barbeiro': 'barber',
+  'Cabeleireiro(a)': 'hairdresser',
+  'Coach / Consultor': 'coach',
+  'Cleaner': 'cleaner',
+  'Dog Groomer / Pet': 'dogGroomer',
+  'Esteticista': 'esthetician',
+  'Fisioterapeuta': 'physiotherapist',
+  'Fotógrafo': 'photographer',
+  'Instrutor de Yoga/Pilates': 'yogaInstructor',
+  'Makeup Artist': 'makeupArtist',
+  'Massagista': 'massageTherapist',
+  'Nail Tech': 'nailTech',
+  'Nutricionista': 'nutritionist',
+  'Personal Trainer': 'personalTrainer',
+  'Professor / Tutor': 'teacher',
+  'Psicólogo / Terapeuta': 'psychologist',
+  'Outro': 'other',
+};
+
+/** @deprecated Use COUNTRY_CODES + i18n instead */
+export const COUNTRIES = COUNTRY_CODES.map((code) => ({ code, label: code }));
+
+/** @deprecated Use CATEGORY_KEYS + i18n instead */
+export const CATEGORIES = CATEGORY_KEYS as unknown as string[];

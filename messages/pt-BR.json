@@ -153,7 +153,42 @@
     "resetPasswordRequestNew": "Solicitar Novo Link",
     "resetPasswordMinLength": "A senha deve ter no mínimo 6 caracteres.",
     "resetPasswordMismatch": "As senhas não coincidem.",
-    "resetPasswordError": "Erro ao redefinir senha. Tente novamente."
+    "resetPasswordError": "Erro ao redefinir senha. Tente novamente.",
+    "categories": {
+      "barber": "Barbeiro",
+      "hairdresser": "Cabeleireiro(a)",
+      "coach": "Coach / Consultor",
+      "cleaner": "Cleaner",
+      "dogGroomer": "Dog Groomer / Pet",
+      "esthetician": "Esteticista",
+      "physiotherapist": "Fisioterapeuta",
+      "photographer": "Fotógrafo",
+      "yogaInstructor": "Instrutor de Yoga/Pilates",
+      "makeupArtist": "Makeup Artist",
+      "massageTherapist": "Massagista",
+      "nailTech": "Nail Tech",
+      "nutritionist": "Nutricionista",
+      "personalTrainer": "Personal Trainer",
+      "teacher": "Professor / Tutor",
+      "psychologist": "Psicólogo / Terapeuta",
+      "other": "Outro"
+    },
+    "countries": {
+      "IE": "Irlanda",
+      "PT": "Portugal",
+      "BR": "Brasil",
+      "GB": "Reino Unido",
+      "US": "Estados Unidos",
+      "ES": "Espanha",
+      "FR": "França",
+      "DE": "Alemanha",
+      "IT": "Itália",
+      "AU": "Austrália",
+      "CA": "Canadá",
+      "MX": "México",
+      "AR": "Argentina",
+      "CO": "Colômbia"
+    }
   },
   "dashboard": {
     "welcome": "Bem-vindo, {name}!",

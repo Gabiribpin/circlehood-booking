@@ -25,7 +25,7 @@ import {
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
-import { COUNTRIES, CATEGORIES, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
+import { COUNTRY_CODES, CATEGORY_KEYS, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
 import { useTranslations } from 'next-intl';
 
 export default function RegisterPage() {
@@ -327,9 +327,9 @@ export default function RegisterPage() {
                     <SelectValue placeholder={t('selectCategory')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                    {CATEGORY_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {t(`categories.${key}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -349,9 +349,9 @@ export default function RegisterPage() {
                     <SelectValue placeholder={t('selectCountry')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTRIES.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>
-                        {c.label}
+                    {COUNTRY_CODES.map((code) => (
+                      <SelectItem key={code} value={code}>
+                        {t(`countries.${code}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>

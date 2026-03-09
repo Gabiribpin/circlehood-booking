@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { CircleHoodLogoFull } from '@/components/branding/logo';
-import { COUNTRIES, CATEGORIES, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
+import { COUNTRY_CODES, CATEGORY_KEYS, CURRENCY_BY_COUNTRY } from '@/lib/auth-constants';
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -259,9 +259,9 @@ export default function CompleteProfilePage() {
                   <SelectValue placeholder={t('selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  {CATEGORY_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {t(`categories.${key}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -281,9 +281,9 @@ export default function CompleteProfilePage() {
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.label}
+                  {COUNTRY_CODES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {t(`countries.${code}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
