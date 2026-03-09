@@ -24,6 +24,9 @@
   },
   "nav": {
     "groupMain": "Main",
+    "groupDaily": "Daily",
+    "groupBusiness": "My Business",
+    "groupTools": "Tools",
     "groupPage": "My Page",
     "groupCommunication": "Communication",
     "groupGrowth": "Growth",

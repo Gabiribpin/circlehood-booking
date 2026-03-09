@@ -13,7 +13,6 @@ import {
   UserCheck,
   QrCode,
   BarChart3,
-  ImageIcon,
   MessageSquare,
   Settings,
   LogOut,
@@ -47,19 +46,34 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
   const MAIN_ITEMS = [
     { href: '/dashboard' as const, label: t('dashboard'), icon: LayoutDashboard },
     { href: '/bookings' as const, label: t('bookings'), icon: CalendarDays },
-    { href: '/my-page-editor' as const, label: t('myPage'), icon: Palette },
+    { href: '/clients' as const, label: t('clients'), icon: UserCheck },
     { href: '/services' as const, label: t('services'), icon: Scissors },
   ];
 
-  const MENU_ITEMS = [
-    { href: '/schedule' as const, label: t('schedule'), icon: Clock },
-    { href: '/clients' as const, label: t('clients'), icon: UserCheck },
-    { href: '/marketing' as const, label: t('marketing'), icon: QrCode },
-    { href: '/analytics' as const, label: t('analytics'), icon: BarChart3 },
-    { href: '/gallery' as const, label: t('gallery'), icon: ImageIcon },
-    { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
-    { href: '/settings' as const, label: t('settings'), icon: Settings },
-    { href: '/support' as const, label: t('support'), icon: LifeBuoy },
+  const MENU_GROUPS = [
+    {
+      label: t('groupBusiness'),
+      items: [
+        { href: '/schedule' as const, label: t('schedule'), icon: Clock },
+        { href: '/clients' as const, label: t('clients'), icon: UserCheck },
+        { href: '/my-page-editor' as const, label: t('myPage'), icon: Palette },
+      ],
+    },
+    {
+      label: t('groupTools'),
+      items: [
+        { href: '/settings?tab=whatsapp' as const, label: t('whatsapp'), icon: MessageSquare },
+        { href: '/marketing' as const, label: t('marketing'), icon: QrCode },
+        { href: '/analytics' as const, label: t('analytics'), icon: BarChart3 },
+      ],
+    },
+    {
+      label: t('groupAccount'),
+      items: [
+        { href: '/settings' as const, label: t('settings'), icon: Settings },
+        { href: '/support' as const, label: t('support'), icon: LifeBuoy },
+      ],
+    },
   ];
 
   return (
@@ -97,23 +111,32 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
             <SheetHeader className="shrink-0">
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
-            {/* Scrollable menu items */}
-            <div className="flex-1 overflow-y-auto py-2 space-y-1">
-              {MENU_ITEMS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors"
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="text-sm">{item.label}</span>
-                  {item.href === '/settings' && failedNotificationsCount > 0 && (
-                    <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
-                      {failedNotificationsCount > 99 ? '99+' : failedNotificationsCount}
-                    </span>
-                  )}
-                </Link>
+            {/* Scrollable grouped menu items */}
+            <div className="flex-1 overflow-y-auto py-2 space-y-3">
+              {MENU_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-sm">{item.label}</span>
+                        {item.href === '/settings' && failedNotificationsCount > 0 && (
+                          <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                            {failedNotificationsCount > 99 ? '99+' : failedNotificationsCount}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             {/* Fixed bottom: public page + logout — always visible */}
