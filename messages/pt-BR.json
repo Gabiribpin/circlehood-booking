@@ -1462,10 +1462,20 @@
     "pricingFreeSubtitle": "14 dias sem compromisso",
     "pricingFreeTitle": "Teste Grátis",
     "pricingHeading": "Simples e acessível",
+    "pricingProAfterTrial": "Cobrado após os 14 dias de teste grátis",
     "pricingProCta": "Começar 14 dias grátis",
     "pricingProPeriod": "mês",
     "pricingProSubtitle": "Tudo ilimitado",
     "pricingRecommended": "Recomendado",
-    "pricingSubtitle": "Comece grátis, assine quando estiver pronto."
+    "pricingSubtitle": "Comece grátis, assine quando estiver pronto.",
+    "testimonialsHeading": "O que dizem nossos profissionais",
+    "testimonial1Name": "Ana Silva",
+    "testimonial1Role": "Cabeleireira — Dublin",
+    "testimonial1Text": "Montei minha página em 10 minutos e no mesmo dia já recebi 3 agendamentos. Não preciso mais ficar respondendo mensagem por mensagem.",
+    "testimonial2Name": "Carlos Mendes",
+    "testimonial2Role": "Personal Trainer — Lisboa",
+    "testimonial2Text": "Meus clientes adoram poder agendar direto pelo link. O WhatsApp integrado facilita demais a comunicação.",
+    "footerTerms": "Termos de Uso",
+    "footerPrivacy": "Privacidade"
   }
 }
