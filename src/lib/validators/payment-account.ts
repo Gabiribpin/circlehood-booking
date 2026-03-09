@@ -22,8 +22,7 @@ function validatePIX(key: string): boolean {
   // CNPJ (14 dígitos)
   if (digits.length === 14) return true;
 
-  // Dados bancários: agência/conta (mínimo 5 chars)
-  return k.length >= 5;
+  return false;
 }
 
 /** Valida routing number + account number (US) — básico */

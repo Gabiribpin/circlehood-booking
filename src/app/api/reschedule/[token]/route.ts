@@ -26,7 +26,7 @@ export async function GET(
           service_id,
           professional_id,
           services (name, price, duration_minutes),
-          professionals (business_name, slug, city, address, phone)
+          professionals (business_name, slug)
         )
       `
       )

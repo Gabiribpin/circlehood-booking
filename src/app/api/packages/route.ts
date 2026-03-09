@@ -8,16 +8,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const professionalId = searchParams.get('professionalId');
 
+  if (!professionalId) {
+    return NextResponse.json({ error: 'professionalId is required' }, { status: 400 });
+  }
+
   try {
-    let query = supabase
+    const query = supabase
       .from('service_packages')
       .select('*')
       .eq('is_active', true)
+      .eq('professional_id', professionalId)
       .order('sort_order', { ascending: true });
-
-    if (professionalId) {
-      query = query.eq('professional_id', professionalId);
-    }
 
     const { data: packages, error } = await query;
 

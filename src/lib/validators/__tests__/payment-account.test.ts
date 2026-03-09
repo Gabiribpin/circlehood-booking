@@ -116,8 +116,8 @@ describe('validatePaymentAccount — PIX Brasil (BR)', () => {
     expect(validatePaymentAccount('123e4567-e89b-12d3-a456-426614174000', 'BR').valid).toBe(true);
   });
 
-  it('aceita dados bancários genéricos (>=5 chars)', () => {
-    expect(validatePaymentAccount('0001/12345', 'BR').valid).toBe(true);
+  it('rejeita dados bancários genéricos que não são PIX válido', () => {
+    expect(validatePaymentAccount('0001/12345', 'BR').valid).toBe(false);
   });
 
   it('rejeita chave PIX vazia', () => {

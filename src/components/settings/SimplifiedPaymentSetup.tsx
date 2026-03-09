@@ -99,7 +99,8 @@ export function SimplifiedPaymentSetup({
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
-    if (year < 1900 || year > 2008) return 'Ano deve ser entre 1900 e 2008';
+    const maxYear = new Date().getFullYear() - 18;
+    if (year < 1900 || year > maxYear) return `Ano deve ser entre 1900 e ${maxYear}`;
     if (month < 1 || month > 12) return 'Mês inválido (01–12)';
     if (day < 1 || day > 31) return 'Dia inválido (01–31)';
     // Verifica se a data existe de fato (ex: 31/02 é inválido)
