@@ -4,7 +4,8 @@ import { BookingSection } from '@/components/booking/booking-section';
 import { TrialBanner } from '@/components/public-page/trial-banner';
 import { SectionRenderer } from '@/components/public-page/section-renderer';
 import { SectionTestimonials } from '@/components/public-page/section-testimonials';
-import { MapPin } from 'lucide-react';
+import { MapPin, MessageCircle, Instagram, Phone } from 'lucide-react';
+import { Hero } from '@/components/public-page/hero';
 import type { Professional, Service } from '@/types/database';
 import type { PageSection } from '@/lib/page-sections/types';
 import type { Metadata } from 'next';
@@ -202,12 +203,46 @@ export default async function PublicProfilePage({ params }: PageProps) {
   if (!sections || sections.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-lg mx-auto pb-8">
-          {/* Fallback para layout padrão - componentes antigos */}
-          <div className="text-center py-12 px-4">
-            <h1 className="text-3xl font-bold mb-4">{professional.business_name}</h1>
-            {professional.bio && <p className="text-gray-600 mb-6">{professional.bio}</p>}
-          </div>
+        <div className="max-w-2xl mx-auto pb-8">
+          {/* Fallback — Hero (cover, avatar, badge) + contact buttons */}
+          <Hero professional={professional} />
+
+          {/* Contact buttons */}
+          {(professional.whatsapp || professional.instagram || professional.phone) && (
+            <div className="flex flex-wrap gap-3 px-4 sm:px-6 mt-4">
+              {professional.whatsapp && (
+                <a
+                  href={`https://wa.me/${professional.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              )}
+              {professional.instagram && (
+                <a
+                  href={`https://instagram.com/${professional.instagram.replace(/^@/, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+                >
+                  <Instagram className="h-4 w-4" />
+                  Instagram
+                </a>
+              )}
+              {professional.phone && (
+                <a
+                  href={`tel:${professional.phone}`}
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+                >
+                  <Phone className="h-4 w-4" />
+                  {professional.phone}
+                </a>
+              )}
+            </div>
+          )}
           {pageUnavailable && <TrialBanner reason={unavailableReason} />}
           {!pageUnavailable && (
             <>
