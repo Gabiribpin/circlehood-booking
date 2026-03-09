@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { useTranslations } from 'next-intl';
 
 interface BookingFormData {
@@ -48,12 +49,11 @@ export function BookingForm({ data, onChange }: BookingFormProps) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="clientPhone">{t('phoneLabel')}</Label>
-        <Input
-          id="clientPhone"
-          type="tel"
+        <PhoneInput
           value={data.clientPhone}
-          onChange={(e) => update('clientPhone', e.target.value)}
+          onChange={(value) => update('clientPhone', value || '')}
           placeholder={t('phonePlaceholder')}
+          defaultCountry="IE"
           required
         />
         <p className="text-xs text-muted-foreground">
