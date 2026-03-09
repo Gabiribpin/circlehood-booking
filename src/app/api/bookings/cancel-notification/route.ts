@@ -13,7 +13,12 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await serverSupabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { bookingId, cancellationReason } = await request.json();
+    const body = await request.json();
+    const bookingId = body.bookingId;
+    // Sanitize cancellationReason to prevent HTML injection in emails
+    const cancellationReason = typeof body.cancellationReason === 'string'
+      ? body.cancellationReason.replace(/[<>&"']/g, '').slice(0, 500)
+      : undefined;
     if (!bookingId) return NextResponse.json({ error: 'bookingId required' }, { status: 400 });
 
     // 2. Admin client para ler whatsapp_config (service role)

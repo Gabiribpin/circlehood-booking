@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { isEventProcessed, markEventProcessed } from '@/lib/webhooks/event-dedup';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -35,6 +36,11 @@ export async function POST(request: NextRequest) {
   if (eventAge > EVENT_MAX_AGE_SECONDS) {
     logger.warn('[stripe/webhook] rejected stale event', { id: event.id, age: eventAge });
     return NextResponse.json({ error: 'Event too old' }, { status: 400 });
+  }
+
+  // Dedup: skip if event already processed (Stripe retries)
+  if (await isEventProcessed(event.id)) {
+    return NextResponse.json({ received: true, deduplicated: true });
   }
 
   const supabase = createAdminClient();
@@ -113,5 +119,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 
+  await markEventProcessed(event.id);
   return NextResponse.json({ received: true });
 }

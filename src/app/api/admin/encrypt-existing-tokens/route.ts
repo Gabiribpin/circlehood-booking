@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { encryptToken, isEncrypted } from '@/lib/integrations/token-encryption';
+import { timingSafeEqual } from 'crypto';
 
 // One-time endpoint to encrypt existing plaintext OAuth tokens in the DB.
 // Protected: only runs if SETUP_SECRET matches.
@@ -9,7 +10,8 @@ import { encryptToken, isEncrypted } from '@/lib/integrations/token-encryption';
 export async function POST(request: Request) {
   const { secret } = await request.json();
 
-  if (secret !== process.env.SETUP_SECRET) {
+  const expected = process.env.SETUP_SECRET ?? '';
+  if (!secret || !expected || !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

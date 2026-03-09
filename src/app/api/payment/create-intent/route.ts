@@ -37,6 +37,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Rate limit by professional_id (prevent abuse targeting a specific professional)
+  if (await isRateLimited(`rl:payment-intent:pro:${professional_id}`, 20, 60)) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde um momento.' },
+      { status: 429 }
+    );
+  }
+
   // Validate UUID format to prevent injection
   if (!UUID_REGEX.test(professional_id) || !UUID_REGEX.test(service_id)) {
     return NextResponse.json(

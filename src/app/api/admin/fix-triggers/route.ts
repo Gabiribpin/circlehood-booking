@@ -1,12 +1,14 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 
 // Rota temporária: aplica fix do trigger via pg directo
 // Usa a variável de ambiente DATABASE_URL se disponível, senão usa supabase admin
 export async function POST(request: Request) {
   try {
   const { secret } = await request.json().catch(() => ({ secret: null }));
-  if (!process.env.SETUP_SECRET || secret !== process.env.SETUP_SECRET) {
+  const expected = process.env.SETUP_SECRET ?? '';
+  if (!secret || !expected || !timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

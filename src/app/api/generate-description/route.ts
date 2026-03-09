@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { isRateLimited } from '@/lib/rate-limit';
 
 const anthropic = new Anthropic();
 
@@ -9,6 +10,10 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  if (await isRateLimited(`rl:gen-desc:${user.id}`, 10, 60)) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 });
   }
 
   const { serviceName, businessName, category } = await request.json();

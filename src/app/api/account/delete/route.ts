@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { z } from 'zod';
 
 const CONFIRMATION_WORDS: Record<string, string> = {
   'pt-BR': 'EXCLUIR',
@@ -21,10 +22,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { confirmation, locale } = await request.json();
+    const deleteSchema = z.object({
+      confirmation: z.string().min(1),
+      locale: z.string().optional(),
+    });
+    const parsed = deleteSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
+    }
+    const { confirmation, locale } = parsed.data;
 
     const expectedWord = CONFIRMATION_WORDS[locale as string] ?? CONFIRMATION_WORDS['pt-BR'];
-    if (!confirmation || confirmation.trim().toUpperCase() !== expectedWord) {
+    if (confirmation.trim().toUpperCase() !== expectedWord) {
       return NextResponse.json(
         { error: `Type "${expectedWord}" to confirm deletion` },
         { status: 400 }
