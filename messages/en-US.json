@@ -535,7 +535,12 @@
     "errorSlugTaken": "This slug is already in use. Choose another.",
     "errorSave": "Error saving. Please try again.",
     "successActivated": "Subscription activated! Thank you for subscribing to CircleHood Pro.",
-    "checkoutCancelled": "Checkout cancelled. You can subscribe at any time."
+    "checkoutCancelled": "Checkout cancelled. You can subscribe at any time.",
+    "tabAccount": "Account",
+    "tabSubscription": "Subscription",
+    "tabPayments": "Payments",
+    "tabWhatsapp": "WhatsApp",
+    "tabNotifications": "Notifications"
   },
   "schedule": {
     "title": "Schedule",
@@ -606,7 +611,8 @@
     "errorLoad": "Error loading tickets",
     "errorOpen": "Error opening ticket",
     "errorReply": "Error sending reply",
-    "sendReply": "Send reply"
+    "sendReply": "Send reply",
+    "slaNote": "Average response time: up to 24 hours on business days"
   },
   "gallery": {
     "title": "Photo Gallery",

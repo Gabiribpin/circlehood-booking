@@ -51,7 +51,7 @@ export default async function CampaignsPage() {
           </p>
 
           <Button asChild variant="outline" className="border-yellow-400 text-yellow-800 hover:bg-yellow-100 dark:text-yellow-200">
-            <Link href="/whatsapp-config">{t('configureBot')}</Link>
+            <Link href="/settings?tab=whatsapp">{t('configureBot')}</Link>
           </Button>
         </CardContent>
       </Card>

@@ -535,7 +535,12 @@
     "errorSlugTaken": "Este slug ya está en uso. Elige otro.",
     "errorSave": "Error al guardar. Inténtalo de nuevo.",
     "successActivated": "¡Suscripción activada! Gracias por suscribirte a CircleHood Pro.",
-    "checkoutCancelled": "Pago cancelado. Puedes suscribirte en cualquier momento."
+    "checkoutCancelled": "Pago cancelado. Puedes suscribirte en cualquier momento.",
+    "tabAccount": "Cuenta",
+    "tabSubscription": "Suscripción",
+    "tabPayments": "Pagos",
+    "tabWhatsapp": "WhatsApp",
+    "tabNotifications": "Notificaciones"
   },
   "schedule": {
     "title": "Horarios",
@@ -606,7 +611,8 @@
     "errorLoad": "Error al cargar tickets",
     "errorOpen": "Error al abrir ticket",
     "errorReply": "Error al enviar respuesta",
-    "sendReply": "Enviar respuesta"
+    "sendReply": "Enviar respuesta",
+    "slaNote": "Tiempo promedio de respuesta: hasta 24 horas en días hábiles"
   },
   "gallery": {
     "title": "Galería de Fotos",

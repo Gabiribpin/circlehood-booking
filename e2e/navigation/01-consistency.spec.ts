@@ -36,7 +36,6 @@ test.describe('Sidebar — Desktop', () => {
       { href: '/bookings',       heading: 'Agendamentos'                },
       { href: '/schedule',       heading: 'Horários'                    },
       { href: '/settings',       heading: 'Configurações'               },
-      { href: '/whatsapp-config',heading: /Configuração WhatsApp/i      },
       { href: '/my-page-editor',  heading: /Minha Página Pública/i       },
     ];
 
@@ -53,7 +52,7 @@ test.describe('Sidebar — Desktop', () => {
   });
 
   test('logo CircleHood retorna para /dashboard a partir de qualquer página', async ({ page }) => {
-    for (const url of ['/services', '/bookings', '/settings', '/whatsapp-config']) {
+    for (const url of ['/services', '/bookings', '/settings']) {
       await page.goto(`${BASE}${url}`);
       // aside > Link href pode ter locale prefix (e.g. /pt-BR/dashboard)
       await page.locator('aside a[href$="/dashboard"]').first().click();
@@ -192,7 +191,6 @@ test.describe('Mobile Menu (bottom nav + Sheet)', () => {
 
     // MENU_ITEMS em MobileNav.tsx — href pode ter locale prefix
     await expect(sheet.locator('a[href$="/settings"]')).toBeVisible();
-    await expect(sheet.locator('a[href$="/whatsapp-config"]')).toBeVisible();
     await expect(sheet.locator('a[href$="/analytics"]')).toBeVisible();
   });
 

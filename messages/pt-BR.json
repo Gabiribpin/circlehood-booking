@@ -535,7 +535,12 @@
     "errorSlugTaken": "Este slug já está em uso. Escolha outro.",
     "errorSave": "Erro ao salvar. Tente novamente.",
     "successActivated": "Assinatura ativada com sucesso! Obrigado por assinar o CircleHood Pro.",
-    "checkoutCancelled": "Checkout cancelado. Você pode assinar a qualquer momento."
+    "checkoutCancelled": "Checkout cancelado. Você pode assinar a qualquer momento.",
+    "tabAccount": "Conta",
+    "tabSubscription": "Assinatura",
+    "tabPayments": "Pagamentos",
+    "tabWhatsapp": "WhatsApp",
+    "tabNotifications": "Notificações"
   },
   "schedule": {
     "title": "Horários",
@@ -606,7 +611,8 @@
     "errorLoad": "Erro ao carregar chamados",
     "errorOpen": "Erro ao abrir chamado",
     "errorReply": "Erro ao enviar resposta",
-    "sendReply": "Enviar resposta"
+    "sendReply": "Enviar resposta",
+    "slaNote": "Tempo médio de resposta: até 24 horas em dias úteis"
   },
   "gallery": {
     "title": "Galeria de Fotos",

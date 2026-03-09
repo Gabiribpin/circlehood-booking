@@ -17,9 +17,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
-  Phone,
   LifeBuoy,
-  Bell,
 } from 'lucide-react';
 import {
   Sheet,
@@ -60,8 +58,6 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
     { href: '/analytics' as const, label: t('analytics'), icon: BarChart3 },
     { href: '/gallery' as const, label: t('gallery'), icon: ImageIcon },
     { href: '/testimonials' as const, label: t('testimonials'), icon: MessageSquare },
-    { href: '/notifications' as const, label: t('notifications'), icon: Bell },
-    { href: '/whatsapp-config' as const, label: t('whatsapp'), icon: Phone },
     { href: '/settings' as const, label: t('settings'), icon: Settings },
     { href: '/support' as const, label: t('support'), icon: LifeBuoy },
   ];
@@ -112,7 +108,7 @@ export function MobileNav({ professionalSlug, failedNotificationsCount = 0 }: Mo
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="text-sm">{item.label}</span>
-                  {item.href === '/notifications' && failedNotificationsCount > 0 && (
+                  {item.href === '/settings' && failedNotificationsCount > 0 && (
                     <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
                       {failedNotificationsCount > 99 ? '99+' : failedNotificationsCount}
                     </span>

@@ -36,9 +36,9 @@ const STEP_DEFS: StepDef[] = [
   { id: 'account',  tKey: 'Account',  icon: <Shield className="h-5 w-5" />,       href: null,                required: false },
   { id: 'services', tKey: 'Services', icon: <Scissors className="h-5 w-5" />,     href: '/services',         required: true },
   { id: 'schedule', tKey: 'Schedule', icon: <Clock className="h-5 w-5" />,        href: '/schedule',         required: true },
-  { id: 'whatsapp', tKey: 'Whatsapp', icon: <MessageSquare className="h-5 w-5" />,href: '/whatsapp-config',  required: true },
-  { id: 'botname',  tKey: 'Botname',  icon: <Bot className="h-5 w-5" />,          href: '/whatsapp-config?tab=ai',  required: false },
-  { id: 'payment',  tKey: 'Payment',  icon: <CreditCard className="h-5 w-5" />,   href: '/settings/payment', required: false },
+  { id: 'whatsapp', tKey: 'Whatsapp', icon: <MessageSquare className="h-5 w-5" />,href: '/settings?tab=whatsapp',  required: true },
+  { id: 'botname',  tKey: 'Botname',  icon: <Bot className="h-5 w-5" />,          href: '/settings?tab=whatsapp',  required: false },
+  { id: 'payment',  tKey: 'Payment',  icon: <CreditCard className="h-5 w-5" />,   href: '/settings?tab=pagamentos', required: false },
   { id: 'profile',  tKey: 'Profile',  icon: <Palette className="h-5 w-5" />,      href: '/my-page-editor',   required: false },
 ];
 
@@ -219,7 +219,7 @@ export default function OnboardingPage() {
       {/* ── Confetti ───────────────────────────────────────────────────────── */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-[120] overflow-hidden" aria-hidden="true">
-          {Array.from({ length: 80 }).map((_, i) => (
+          {Array.from({ length: 30 }).map((_, i) => (
             <span
               key={i}
               className="absolute animate-confetti"
@@ -412,7 +412,7 @@ export default function OnboardingPage() {
                       {/* Action button */}
                       {!done && unlocked && step.href && (
                         <Button size="sm" className="mt-3 h-9 text-xs gap-1.5 shadow-sm" asChild>
-                          <a href={step.href} target="_blank" rel="noopener noreferrer">
+                          <a href={step.href}>
                             {stepT('Action')}
                             <ChevronRight className="h-3.5 w-3.5" />
                           </a>

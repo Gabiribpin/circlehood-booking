@@ -13,8 +13,6 @@ import {
   Users,
   QrCode,
   BarChart3,
-  Bell,
-  Phone,
   Palette,
   ImageIcon,
   MessageSquare,
@@ -27,7 +25,7 @@ import {
 const TOUR_IDS: Partial<Record<string, string>> = {
   '/services': 'services',
   '/schedule': 'schedule',
-  '/whatsapp-config': 'whatsapp',
+  '/settings?tab=whatsapp': 'whatsapp',
   '/my-page-editor': 'my-page',
 };
 
@@ -48,13 +46,6 @@ const NAV_GROUPS = [
       { href: '/my-page-editor', tKey: 'myPage' as const, icon: Palette },
       { href: '/gallery', tKey: 'gallery' as const, icon: ImageIcon },
       { href: '/testimonials', tKey: 'testimonials' as const, icon: MessageSquare },
-    ],
-  },
-  {
-    tKey: 'groupCommunication' as const,
-    items: [
-      { href: '/whatsapp-config', tKey: 'whatsapp' as const, icon: Phone },
-      { href: '/notifications', tKey: 'notifications' as const, icon: Bell },
     ],
   },
   {
@@ -135,7 +126,7 @@ export function Sidebar({
                   >
                     <item.icon className={cn('h-4 w-4', active && 'text-primary')} />
                     {t(item.tKey)}
-                    {item.href === '/notifications' && failedNotificationsCount > 0 && (
+                    {item.href === '/settings' && failedNotificationsCount > 0 && (
                       <span className="ml-auto text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
                         {failedNotificationsCount > 99 ? '99+' : failedNotificationsCount}
                       </span>

@@ -99,7 +99,7 @@ export function TrialExpirationBanner({ daysRemaining, trialEndsAt }: TrialExpir
             asChild
             className={`mt-2 h-7 text-xs ${styles.btn}`}
           >
-            <Link href="/settings/payment">
+            <Link href="/settings?tab=pagamentos">
               Assinar Plano Pro
             </Link>
           </Button>

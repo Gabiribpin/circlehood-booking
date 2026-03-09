@@ -14,12 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Banknote, ChevronRight, Globe, Trash2, Download } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2, CreditCard, ExternalLink, AlertTriangle, Save, Check, Globe, Trash2, Download } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from '@/navigation';
 import type { Professional } from '@/types/database';
-import type { PlanPrice } from '@/lib/pricing';
+
 
 const LOCALE_OPTIONS = [
   { value: 'pt-BR', label: '🇧🇷 Português (Brasil)' },
@@ -27,7 +26,7 @@ const LOCALE_OPTIONS = [
   { value: 'es-ES', label: '🇪🇸 Español' },
 ];
 
-type SettingsProfessional = Pick<Professional, 'business_name' | 'slug' | 'subscription_status' | 'trial_ends_at' | 'stripe_customer_id'> & {
+type SettingsProfessional = Pick<Professional, 'business_name' | 'slug'> & {
   locale?: string | null;
   account_number?: string | null;
   created_at: string;
@@ -35,29 +34,17 @@ type SettingsProfessional = Pick<Professional, 'business_name' | 'slug' | 'subsc
 
 interface SettingsManagerProps {
   professional: SettingsProfessional;
-  trialDaysLeft: number;
-  trialExpired: boolean;
-  success?: boolean;
-  cancelled?: boolean;
-  planPrice: PlanPrice;
   host: string;
 }
 
 export function SettingsManager({
   professional,
-  trialDaysLeft,
-  trialExpired,
-  success,
-  cancelled,
-  planPrice,
   host,
 }: SettingsManagerProps) {
   const t = useTranslations('settings');
   const tAccount = useTranslations('account');
   const locale = useLocale();
   const router = useRouter();
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
-  const [loadingPortal, setLoadingPortal] = useState(false);
 
   // Editable account fields
   const [businessName, setBusinessName] = useState(professional.business_name);
@@ -187,205 +174,8 @@ export function SettingsManager({
     }
   }
 
-  async function handleCheckout() {
-    setLoadingCheckout(true);
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-      setLoadingCheckout(false);
-    }
-  }
-
-  async function handlePortal() {
-    setLoadingPortal(true);
-    try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-      setLoadingPortal(false);
-    }
-  }
-
-  const isActive = professional.subscription_status === 'active';
-  const isTrial = professional.subscription_status === 'trial';
-
-  function getSubscriptionStatusLabel() {
-    if (isActive) return t('statusProActive');
-    if (isTrial && !trialExpired) return t('statusTrialActive', { days: trialDaysLeft });
-    if (isTrial && trialExpired) return t('statusTrialExpired');
-    if (professional.subscription_status === 'cancelled') return t('statusCancelled');
-    return t('statusExpired');
-  }
-
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-
-      {success && (
-        <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
-          <CardContent className="p-4 flex items-center gap-3">
-            <CreditCard className="h-5 w-5 text-green-600" />
-            <p className="text-sm text-green-700 dark:text-green-400">
-              {t('successActivated')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {cancelled && (
-        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            <p className="text-sm text-yellow-700 dark:text-yellow-400">
-              {t('checkoutCancelled')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Subscription Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('subscriptionTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t('statusLabel')}</span>
-            <Badge
-              variant={
-                isActive
-                  ? 'default'
-                  : isTrial && !trialExpired
-                    ? 'secondary'
-                    : 'destructive'
-              }
-            >
-              {getSubscriptionStatusLabel()}
-            </Badge>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{t('planLabel')}</span>
-            <span className="text-sm font-medium">
-              {isActive ? t('planPro') : t('planFree')}
-            </span>
-          </div>
-
-          {isTrial && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{t('trialEndsAt')}</span>
-              <span className="text-sm">
-                {new Date(professional.trial_ends_at).toLocaleDateString(locale)}
-              </span>
-            </div>
-          )}
-
-          {professional.stripe_customer_id && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{t('stripeId')}</span>
-              <span className="text-xs font-mono text-muted-foreground">
-                {professional.stripe_customer_id.slice(0, 18)}...
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Trial Expired Warning */}
-      {trialExpired && !isActive && (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <p className="text-sm font-medium text-destructive">
-                {t('trialExpiredTitle')}
-              </p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {t('trialExpiredDesc')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Action Buttons */}
-      <Card>
-        <CardContent className="p-6 space-y-3">
-          {!isActive ? (
-            <>
-              <div className="text-center mb-4">
-                <p className="text-2xl font-bold">
-                  {planPrice.symbol}{planPrice.amount}<span className="text-sm font-normal text-muted-foreground">/mês</span>
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {t('priceDesc')}
-                </p>
-              </div>
-              <Button
-                onClick={handleCheckout}
-                disabled={loadingCheckout}
-                className="w-full gap-2"
-                size="lg"
-              >
-                {loadingCheckout ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CreditCard className="h-4 w-4" />
-                )}
-                {t('subscribePro')}
-              </Button>
-            </>
-          ) : (
-            <Button
-              onClick={handlePortal}
-              disabled={loadingPortal}
-              variant="outline"
-              className="w-full gap-2"
-            >
-              {loadingPortal ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ExternalLink className="h-4 w-4" />
-              )}
-              {t('manageSubscription')}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagamentos do cliente (sinal/depósito) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('paymentsTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/settings/payment"
-            className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Banknote className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{t('setupDeposit')}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t('setupDepositDesc')}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-        </CardContent>
-      </Card>
-
       {/* Account Info — Editable */}
       <Card>
         <CardHeader>
@@ -582,6 +372,197 @@ export function SettingsManager({
                 </Button>
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ── Subscription Section (extracted for unified settings tab) ── */
+
+interface SubscriptionSectionProps {
+  professional: Pick<Professional, 'subscription_status' | 'trial_ends_at' | 'stripe_customer_id'>;
+  trialDaysLeft: number;
+  trialExpired: boolean;
+  success?: boolean;
+  cancelled?: boolean;
+  planPrice: { symbol: string; amount: number };
+}
+
+export function SubscriptionSection({
+  professional,
+  trialDaysLeft,
+  trialExpired,
+  success,
+  cancelled,
+  planPrice,
+}: SubscriptionSectionProps) {
+  const t = useTranslations('settings');
+  const locale = useLocale();
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+
+  const isActive = professional.subscription_status === 'active';
+  const isTrial = professional.subscription_status === 'trial';
+
+  function getSubscriptionStatusLabel() {
+    if (isActive) return t('statusProActive');
+    if (isTrial && !trialExpired) return t('statusTrialActive', { days: trialDaysLeft });
+    if (isTrial && trialExpired) return t('statusTrialExpired');
+    if (professional.subscription_status === 'cancelled') return t('statusCancelled');
+    return t('statusExpired');
+  }
+
+  async function handleCheckout() {
+    setLoadingCheckout(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setLoadingCheckout(false);
+    }
+  }
+
+  async function handlePortal() {
+    setLoadingPortal(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      setLoadingPortal(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {success && (
+        <Card className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-green-600" />
+            <p className="text-sm text-green-700 dark:text-green-400">
+              {t('successActivated')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {cancelled && (
+        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">
+              {t('checkoutCancelled')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t('subscriptionTitle')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t('statusLabel')}</span>
+            <Badge
+              variant={
+                isActive
+                  ? 'default'
+                  : isTrial && !trialExpired
+                    ? 'secondary'
+                    : 'destructive'
+              }
+            >
+              {getSubscriptionStatusLabel()}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t('planLabel')}</span>
+            <span className="text-sm font-medium">
+              {isActive ? t('planPro') : t('planFree')}
+            </span>
+          </div>
+
+          {isTrial && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('trialEndsAt')}</span>
+              <span className="text-sm">
+                {new Date(professional.trial_ends_at).toLocaleDateString(locale)}
+              </span>
+            </div>
+          )}
+
+          {professional.stripe_customer_id && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('stripeId')}</span>
+              <span className="text-xs font-mono text-muted-foreground">
+                {professional.stripe_customer_id.slice(0, 18)}...
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {trialExpired && !isActive && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm font-medium text-destructive">
+                {t('trialExpiredTitle')}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('trialExpiredDesc')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent className="p-6 space-y-3">
+          {!isActive ? (
+            <>
+              <div className="text-center mb-4">
+                <p className="text-2xl font-bold">
+                  {planPrice.symbol}{planPrice.amount}<span className="text-sm font-normal text-muted-foreground">/mês</span>
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t('priceDesc')}
+                </p>
+              </div>
+              <Button
+                onClick={handleCheckout}
+                disabled={loadingCheckout}
+                className="w-full gap-2"
+                size="lg"
+              >
+                {loadingCheckout ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {t('subscribePro')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={handlePortal}
+              disabled={loadingPortal}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              {loadingPortal ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="h-4 w-4" />
+              )}
+              {t('manageSubscription')}
+            </Button>
           )}
         </CardContent>
       </Card>

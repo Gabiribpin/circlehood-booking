@@ -680,7 +680,7 @@ function ManageView() {
             <MessageCircle className="h-4 w-4 shrink-0" />
             <span>
               {t('configureWhatsApp')}{' '}
-              <a href="/whatsapp-config" className="text-primary underline hover:no-underline">
+              <a href="/settings?tab=whatsapp" className="text-primary underline hover:no-underline">
                 WhatsApp Bot →
               </a>
             </span>
