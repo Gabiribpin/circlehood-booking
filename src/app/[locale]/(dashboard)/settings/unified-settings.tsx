@@ -5,14 +5,14 @@ import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SettingsManager } from '@/components/dashboard/settings-manager';
 import { SubscriptionSection } from '@/components/dashboard/settings-manager';
-import { WhatsAppConfigClient } from '@/app/[locale]/(dashboard)/whatsapp-config/whatsapp-config-client';
+import { WhatsAppConfigClient, AiAssistantSection } from '@/app/[locale]/(dashboard)/whatsapp-config/whatsapp-config-client';
 import { EmailNotificationsManager } from '@/components/dashboard/email-notifications-manager';
 import { SimplifiedPaymentSetup } from '@/components/settings/SimplifiedPaymentSetup';
 import { PaymentSettings } from '@/components/dashboard/payment-settings';
 import type { PlanPrice } from '@/lib/pricing';
 import type { Professional } from '@/types/database';
 
-const VALID_TABS = ['conta', 'assinatura', 'pagamentos', 'whatsapp', 'notificacoes'] as const;
+const VALID_TABS = ['conta', 'assinatura', 'pagamentos', 'whatsapp', 'assistente', 'notificacoes'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 interface UnifiedSettingsProps {
@@ -41,6 +41,9 @@ interface UnifiedSettingsProps {
     phone: string;
     instanceName: string;
     isActive: boolean;
+  };
+  // AI Assistant tab
+  aiInitialConfig: {
     instructions: string;
     greetingMessage: string;
     businessName: string;
@@ -70,6 +73,7 @@ export function UnifiedSettings({
   planPrice,
   host,
   whatsappInitialConfig,
+  aiInitialConfig,
   stripeConnected,
   notificationLogs,
 }: UnifiedSettingsProps) {
@@ -97,6 +101,7 @@ export function UnifiedSettings({
           <TabsTrigger value="assinatura">{t('tabSubscription')}</TabsTrigger>
           <TabsTrigger value="pagamentos">{t('tabPayments')}</TabsTrigger>
           <TabsTrigger value="whatsapp">{t('tabWhatsapp')}</TabsTrigger>
+          <TabsTrigger value="assistente">{t('tabAssistant')}</TabsTrigger>
           <TabsTrigger value="notificacoes">{t('tabNotifications')}</TabsTrigger>
         </TabsList>
 
@@ -137,6 +142,10 @@ export function UnifiedSettings({
 
         <TabsContent value="whatsapp">
           <WhatsAppConfigClient initialConfig={whatsappInitialConfig} />
+        </TabsContent>
+
+        <TabsContent value="assistente">
+          <AiAssistantSection initialConfig={aiInitialConfig} />
         </TabsContent>
 
         <TabsContent value="notificacoes">

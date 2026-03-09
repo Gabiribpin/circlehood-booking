@@ -97,6 +97,8 @@ export default async function SettingsPage({ searchParams }: PageProps) {
         phone: whatsappConfig?.business_phone ?? '',
         instanceName: whatsappConfig?.evolution_instance ?? '',
         isActive: whatsappConfig?.is_active ?? false,
+      }}
+      aiInitialConfig={{
         instructions: aiData?.instructions ?? '',
         greetingMessage: bcData?.greeting_message ?? '',
         businessName: professional.business_name ?? '',

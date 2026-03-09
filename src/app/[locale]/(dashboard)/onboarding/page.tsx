@@ -37,7 +37,7 @@ const STEP_DEFS: StepDef[] = [
   { id: 'services', tKey: 'Services', icon: <Scissors className="h-5 w-5" />,     href: '/services',         required: true },
   { id: 'schedule', tKey: 'Schedule', icon: <Clock className="h-5 w-5" />,        href: '/schedule',         required: true },
   { id: 'whatsapp', tKey: 'Whatsapp', icon: <MessageSquare className="h-5 w-5" />,href: '/settings?tab=whatsapp',  required: true },
-  { id: 'botname',  tKey: 'Botname',  icon: <Bot className="h-5 w-5" />,          href: '/settings?tab=whatsapp',  required: false },
+  { id: 'botname',  tKey: 'Botname',  icon: <Bot className="h-5 w-5" />,          href: '/settings?tab=assistente',  required: false },
   { id: 'payment',  tKey: 'Payment',  icon: <CreditCard className="h-5 w-5" />,   href: '/settings?tab=pagamentos', required: false },
   { id: 'profile',  tKey: 'Profile',  icon: <Palette className="h-5 w-5" />,      href: '/my-page-editor',   required: false },
 ];

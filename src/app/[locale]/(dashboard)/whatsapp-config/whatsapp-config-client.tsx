@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -9,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { BotConfigPanel } from '@/components/dashboard/bot-config-panel';
 import { QrCode, Smartphone } from 'lucide-react';
@@ -21,16 +19,11 @@ interface WhatsAppConfigClientProps {
     phone: string;
     instanceName: string;
     isActive: boolean;
-    instructions: string;
-    greetingMessage: string;
-    businessName: string;
   };
 }
 
 export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProps) {
   const t = useTranslations('whatsapp');
-  const searchParams = useSearchParams();
-  const defaultTab = searchParams.get('tab') === 'ai' ? 'ai' : 'setup';
 
   // Evolution state
   const [evolutionPhone, setEvolutionPhone] = useState(initialConfig.phone);
@@ -46,23 +39,7 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
   const connectionStatusRef = useRef<ConnectionStatus>(initialConfig.isActive ? 'connected' : 'idle');
   const qrCodeRef = useRef<string | null>(null);
 
-  // AI / bot state
-  const greetingWasEmpty = !initialConfig.greetingMessage;
-  const [greetingMessage, setGreetingMessage] = useState(
-    initialConfig.greetingMessage ||
-      (initialConfig.businessName
-        ? `Olá, seja bem-vindo(a) ao ${initialConfig.businessName}! Como posso ajudar?`
-        : '')
-  );
-  const [greetingEdited, setGreetingEdited] = useState(false);
-  const [aiSettings, setAiSettings] = useState({
-    languages: ['pt', 'en'],
-    instructions: initialConfig.instructions,
-  });
-
-  const [savingAi, setSavingAi] = useState(false);
   const [evoMessage, setEvoMessage] = useState<string | null>(null);
-  const [aiMessage, setAiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -166,61 +143,12 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
     setPairingCode(null);
   }
 
-  // ── Salvar configurações de IA ──
-  async function handleSaveAI() {
-    setSavingAi(true);
-    setAiMessage(null);
-
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      setAiMessage({ type: 'error', text: t('notAuthenticated') });
-      setSavingAi(false);
-      return;
-    }
-
-    await supabase
-      .from('bot_config')
-      .upsert(
-        { user_id: user.id, greeting_message: greetingMessage || null, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      );
-
-    const upserts = aiSettings.languages.map((lang) => ({
-      user_id: user.id,
-      language: lang,
-      instructions: aiSettings.instructions,
-      updated_at: new Date().toISOString(),
-    }));
-
-    const { error } = await supabase
-      .from('ai_instructions')
-      .upsert(upserts, { onConflict: 'user_id,language' });
-
-    if (error) {
-      setAiMessage({ type: 'error', text: t('saveAiError', { message: error.message }) });
-    } else {
-      setAiMessage({ type: 'success', text: t('saveAiSuccess') });
-      setTimeout(() => setAiMessage(null), 5000);
-    }
-    setSavingAi(false);
-  }
-
   return (
     <div className="container max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-2">{t('configTitle')}</h1>
       <p className="text-muted-foreground mb-6">{t('configSubtitle')}</p>
 
-      <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="setup">{t('tabConnection')}</TabsTrigger>
-          <TabsTrigger value="ai">{t('tabAI')}</TabsTrigger>
-        </TabsList>
-
-        {/* ─── Tab 1: Conexão ─── */}
-        <TabsContent value="setup">
-          <Card className="p-6 space-y-5">
+      <Card className="p-6 space-y-5">
 
             {/* Badge — conexão ativa */}
             {connectionStatus === 'connected' && (
@@ -269,11 +197,11 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
 
             {/* Pairing Code */}
             {connectionStatus === 'pairing' && pairingCode && (
-              <div className="p-5 bg-blue-50 border-2 border-blue-200 rounded-xl text-center space-y-4">
-                <Smartphone className="h-8 w-8 text-blue-600 mx-auto" />
+              <div className="p-5 bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl text-center space-y-4">
+                <Smartphone className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto" />
                 <p className="font-semibold">{t('pairingTitle')}</p>
-                <div className="bg-white border-2 border-blue-300 rounded-xl py-4 px-6 inline-block">
-                  <p className="text-3xl font-mono font-bold tracking-[0.3em] text-blue-700 select-all">
+                <div className="bg-white dark:bg-blue-950/50 border-2 border-blue-300 dark:border-blue-700 rounded-xl py-4 px-6 inline-block">
+                  <p className="text-3xl font-mono font-bold tracking-[0.3em] text-blue-700 dark:text-blue-300 select-all">
                     {pairingCode}
                   </p>
                 </div>
@@ -316,7 +244,7 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
 
             {/* Erro */}
             {connectionStatus === 'error' && evoMessage && (
-              <div className="p-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-200">
+              <div className="p-3 rounded-lg text-sm bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
                 {evoMessage}
               </div>
             )}
@@ -350,10 +278,10 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
                   <Button
                     onClick={() => handleConnect('pairing')}
                     variant="outline"
-                    className="w-full h-auto py-3 border-blue-200 hover:bg-blue-50"
+                    className="w-full h-auto py-3 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                   >
                     <div className="flex flex-col items-center gap-1">
-                      <Smartphone className="h-5 w-5 text-blue-600" />
+                      <Smartphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       <span className="text-sm font-semibold">{t('connectPairing')}</span>
                       <span className="text-[10px] text-muted-foreground font-normal">{t('connectPairingHint')}</span>
                     </div>
@@ -361,67 +289,136 @@ export function WhatsAppConfigClient({ initialConfig }: WhatsAppConfigClientProp
                 </div>
               </div>
             )}
-          </Card>
-        </TabsContent>
+      </Card>
+    </div>
+  );
+}
 
-        {/* ─── Tab 2: IA & Automações ─── */}
-        <TabsContent value="ai">
-          <Card className="p-6 space-y-6">
-            <h2 className="text-xl font-semibold">{t('aiTitle')}</h2>
+/* ── AI Assistant Section (separated for unified settings tab) ── */
 
-            <div>
-              <Label htmlFor="greeting_message">{t('greetingLabel')}</Label>
-              <Textarea
-                id="greeting_message"
-                rows={2}
-                placeholder={t('greetingPlaceholder')}
-                value={greetingMessage}
-                onChange={(e) => {
-                  setGreetingMessage(e.target.value);
-                  setGreetingEdited(true);
-                }}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {greetingWasEmpty && !greetingEdited ? t('greetingDefault') : t('greetingHint')}
-              </p>
-            </div>
+interface AiAssistantSectionProps {
+  initialConfig: {
+    instructions: string;
+    greetingMessage: string;
+    businessName: string;
+  };
+}
 
-            <div>
-              <Label htmlFor="instructions">
-                {t('instructionsLabel')}
-                <span className="ml-2 text-xs text-yellow-600">
-                  {t('instructionsWarning')}
-                </span>
-              </Label>
-              <Textarea
-                id="instructions"
-                rows={5}
-                placeholder={t('instructionsPlaceholder')}
-                value={aiSettings.instructions}
-                onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">{t('instructionsHint')}</p>
-            </div>
+export function AiAssistantSection({ initialConfig }: AiAssistantSectionProps) {
+  const t = useTranslations('whatsapp');
 
-            {aiMessage && (
-              <div className={`p-3 rounded-lg text-sm ${
-                aiMessage.type === 'success'
-                  ? 'bg-green-50 text-green-800 border border-green-200'
-                  : 'bg-red-50 text-red-800 border border-red-200'
-              }`}>
-                {aiMessage.text}
-              </div>
-            )}
+  const greetingWasEmpty = !initialConfig.greetingMessage;
+  const [greetingMessage, setGreetingMessage] = useState(
+    initialConfig.greetingMessage ||
+      (initialConfig.businessName
+        ? `Olá, seja bem-vindo(a) ao ${initialConfig.businessName}! Como posso ajudar?`
+        : '')
+  );
+  const [greetingEdited, setGreetingEdited] = useState(false);
+  const [aiSettings, setAiSettings] = useState({
+    languages: ['pt', 'en'],
+    instructions: initialConfig.instructions,
+  });
 
-            <Button className="w-full" variant="outline" onClick={handleSaveAI} disabled={savingAi}>
-              {savingAi ? t('saving') : t('saveAiBtn')}
-            </Button>
+  const [savingAi, setSavingAi] = useState(false);
+  const [aiMessage, setAiMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-            {/* Configuração avançada do bot */}
-            <BotConfigPanel />
-          </Card>
-        </TabsContent>
-      </Tabs>
+  async function handleSaveAI() {
+    setSavingAi(true);
+    setAiMessage(null);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAiMessage({ type: 'error', text: t('notAuthenticated') });
+      setSavingAi(false);
+      return;
+    }
+
+    await supabase
+      .from('bot_config')
+      .upsert(
+        { user_id: user.id, greeting_message: greetingMessage || null, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+
+    const upserts = aiSettings.languages.map((lang) => ({
+      user_id: user.id,
+      language: lang,
+      instructions: aiSettings.instructions,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from('ai_instructions')
+      .upsert(upserts, { onConflict: 'user_id,language' });
+
+    if (error) {
+      setAiMessage({ type: 'error', text: t('saveAiError', { message: error.message }) });
+    } else {
+      setAiMessage({ type: 'success', text: t('saveAiSuccess') });
+      setTimeout(() => setAiMessage(null), 5000);
+    }
+    setSavingAi(false);
+  }
+
+  return (
+    <div className="container max-w-4xl mx-auto p-6">
+      <h2 className="text-xl font-semibold mb-4">{t('aiTitle')}</h2>
+
+      <Card className="p-6 space-y-6">
+        <div>
+          <Label htmlFor="greeting_message">{t('greetingLabel')}</Label>
+          <Textarea
+            id="greeting_message"
+            rows={2}
+            placeholder={t('greetingPlaceholder')}
+            value={greetingMessage}
+            onChange={(e) => {
+              setGreetingMessage(e.target.value);
+              setGreetingEdited(true);
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            {greetingWasEmpty && !greetingEdited ? t('greetingDefault') : t('greetingHint')}
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="instructions">
+            {t('instructionsLabel')}
+            <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400">
+              {t('instructionsWarning')}
+            </span>
+          </Label>
+          <Textarea
+            id="instructions"
+            rows={5}
+            placeholder={t('instructionsPlaceholder')}
+            value={aiSettings.instructions}
+            onChange={(e) => setAiSettings({ ...aiSettings, instructions: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground mt-1">{t('instructionsHint')}</p>
+        </div>
+
+        {aiMessage && (
+          <div className={`p-3 rounded-lg text-sm ${
+            aiMessage.type === 'success'
+              ? 'bg-green-50 dark:bg-green-950/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
+          }`}>
+            {aiMessage.text}
+          </div>
+        )}
+
+        <Button className="w-full" variant="outline" onClick={handleSaveAI} disabled={savingAi}>
+          {savingAi ? t('saving') : t('saveAiBtn')}
+        </Button>
+
+        {/* Configuração avançada do bot */}
+        <BotConfigPanel />
+      </Card>
     </div>
   );
 }
