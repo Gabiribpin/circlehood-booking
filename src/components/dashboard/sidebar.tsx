@@ -14,7 +14,6 @@ import {
   QrCode,
   BarChart3,
   Palette,
-  ImageIcon,
   MessageSquare,
   Settings,
   LifeBuoy,
@@ -31,26 +30,25 @@ const TOUR_IDS: Partial<Record<string, string>> = {
 
 const NAV_GROUPS = [
   {
-    tKey: 'groupMain' as const,
+    tKey: 'groupDaily' as const,
     items: [
       { href: '/dashboard', tKey: 'dashboard' as const, icon: LayoutDashboard },
       { href: '/bookings', tKey: 'bookings' as const, icon: CalendarDays },
-      { href: '/services', tKey: 'services' as const, icon: Scissors },
-      { href: '/schedule', tKey: 'schedule' as const, icon: Clock },
       { href: '/clients', tKey: 'clients' as const, icon: Users },
     ],
   },
   {
-    tKey: 'groupPage' as const,
+    tKey: 'groupBusiness' as const,
     items: [
+      { href: '/services', tKey: 'services' as const, icon: Scissors },
+      { href: '/schedule', tKey: 'schedule' as const, icon: Clock },
       { href: '/my-page-editor', tKey: 'myPage' as const, icon: Palette },
-      { href: '/gallery', tKey: 'gallery' as const, icon: ImageIcon },
-      { href: '/testimonials', tKey: 'testimonials' as const, icon: MessageSquare },
     ],
   },
   {
-    tKey: 'groupGrowth' as const,
+    tKey: 'groupTools' as const,
     items: [
+      { href: '/settings?tab=whatsapp', tKey: 'whatsapp' as const, icon: MessageSquare },
       { href: '/marketing', tKey: 'marketing' as const, icon: QrCode },
       { href: '/analytics', tKey: 'analytics' as const, icon: BarChart3 },
     ],
