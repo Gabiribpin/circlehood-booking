@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isRateLimited } from '@/lib/rate-limit';
+import { z } from 'zod';
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  slug: z.string().min(1),
+  businessName: z.string().min(1),
+  category: z.string().optional(),
+  bio: z.string().optional(),
+  phone: z.string().optional(),
+  whatsapp: z.string().optional(),
+  instagram: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
+  currency: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -11,17 +27,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
-  const { email, password, slug, businessName, category, bio, phone, whatsapp, instagram, city, country, currency } = body;
 
-  if (!email || !password || !slug || !businessName) {
-    return NextResponse.json({ error: 'Campos obrigatórios faltando.' }, { status: 400 });
+  const parsed = registerSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
+
+  const { email, password, slug, businessName, category, bio, phone, whatsapp, instagram, city, country, currency } = parsed.data;
 
   const supabase = createAdminClient();
 
@@ -63,5 +81,5 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ success: true, userId: authData.user.id });
+  return NextResponse.json({ success: true });
 }

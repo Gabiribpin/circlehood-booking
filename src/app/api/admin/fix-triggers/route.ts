@@ -109,14 +109,11 @@ $$ LANGUAGE plpgsql;
   return NextResponse.json({
     success: false,
     error: `Management API requer PAT (não service_role): ${mgmtRes.status}`,
-    fix_sql: fixSQL,
     instructions: [
       `1. Abrir: https://supabase.com/dashboard/project/${projectRef}/sql/new`,
-      '2. Colar o conteúdo de fix_sql acima',
-      '3. Clicar Run',
-      '4. Voltar e re-executar o script de teste',
+      '2. Aplicar a migration de fix-triggers manualmente',
+      '3. Voltar e re-executar o script de teste',
     ],
-    mgmt_response: mgmtError.substring(0, 200),
   }, { status: 503 });
   } catch (err) {
     logger.error('[admin/fix-triggers]', err);
