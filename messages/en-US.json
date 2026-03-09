@@ -1462,10 +1462,20 @@
     "pricingFreeSubtitle": "14 days no commitment",
     "pricingFreeTitle": "Free Trial",
     "pricingHeading": "Simple and affordable",
+    "pricingProAfterTrial": "Charged after the 14-day free trial",
     "pricingProCta": "Start 14-day free trial",
     "pricingProPeriod": "month",
     "pricingProSubtitle": "Everything unlimited",
     "pricingRecommended": "Recommended",
-    "pricingSubtitle": "Start free, subscribe when you're ready."
+    "pricingSubtitle": "Start free, subscribe when you're ready.",
+    "testimonialsHeading": "What our professionals say",
+    "testimonial1Name": "Ana Silva",
+    "testimonial1Role": "Hairdresser — Dublin",
+    "testimonial1Text": "I set up my page in 10 minutes and got 3 bookings the same day. No more replying to messages one by one.",
+    "testimonial2Name": "Carlos Mendes",
+    "testimonial2Role": "Personal Trainer — Lisbon",
+    "testimonial2Text": "My clients love being able to book directly through the link. The integrated WhatsApp makes communication so much easier.",
+    "footerTerms": "Terms of Service",
+    "footerPrivacy": "Privacy"
   }
 }

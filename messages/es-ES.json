@@ -1462,10 +1462,20 @@
     "pricingFreeSubtitle": "14 días sin compromiso",
     "pricingFreeTitle": "Prueba Gratis",
     "pricingHeading": "Simple y accesible",
+    "pricingProAfterTrial": "Cobrado después de los 14 días de prueba gratis",
     "pricingProCta": "Comenzar 14 días gratis",
     "pricingProPeriod": "mes",
     "pricingProSubtitle": "Todo ilimitado",
     "pricingRecommended": "Recomendado",
-    "pricingSubtitle": "Empieza gratis, suscríbete cuando estés listo."
+    "pricingSubtitle": "Empieza gratis, suscríbete cuando estés listo.",
+    "testimonialsHeading": "Lo que dicen nuestros profesionales",
+    "testimonial1Name": "Ana Silva",
+    "testimonial1Role": "Peluquera — Dublín",
+    "testimonial1Text": "Monté mi página en 10 minutos y el mismo día recibí 3 reservas. Ya no necesito responder mensajes uno por uno.",
+    "testimonial2Name": "Carlos Mendes",
+    "testimonial2Role": "Entrenador Personal — Lisboa",
+    "testimonial2Text": "A mis clientes les encanta poder reservar directamente por el enlace. El WhatsApp integrado facilita mucho la comunicación.",
+    "footerTerms": "Términos de Uso",
+    "footerPrivacy": "Privacidad"
   }
 }
