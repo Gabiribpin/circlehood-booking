@@ -28,7 +28,7 @@ export default async function DashboardPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, business_name, slug, bio, currency, subscription_status, trial_ends_at, onboarding_completed, phone')
     .eq('user_id', user.id)
     .single();
 

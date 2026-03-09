@@ -12,7 +12,7 @@ export default async function BookingsPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, currency')
     .eq('user_id', user.id)
     .single();
 

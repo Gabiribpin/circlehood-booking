@@ -13,7 +13,7 @@ export default async function MarketingPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, slug, business_name')
     .eq('user_id', user.id)
     .single();
 

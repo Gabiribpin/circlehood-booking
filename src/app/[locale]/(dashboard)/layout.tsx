@@ -28,7 +28,7 @@ export default async function DashboardLayout({
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, slug, business_name, email_verified, subscription_status, stripe_customer_id, onboarding_completed, deleted_at, deletion_scheduled_for')
     .eq('user_id', user.id)
     .single();
 

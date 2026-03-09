@@ -16,7 +16,7 @@ export default async function PaymentSettingsPage() {
 
   const { data: professional } = await supabase
     .from('professionals')
-    .select('*')
+    .select('id, payment_method, manual_payment_key, payment_country, require_deposit, deposit_type, deposit_value, currency')
     .eq('user_id', user.id)
     .single();
 
