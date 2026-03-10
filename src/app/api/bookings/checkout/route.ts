@@ -166,7 +166,17 @@ export async function POST(request: NextRequest) {
   }
   const applicationFeeCents = Math.round(depositCents * APPLICATION_FEE_PERCENT);
 
-  // ─── 9. Check double-booking ─────────────────────────────────────────────
+  // ─── 9a. Expire stale pending_payment bookings (>30min) before conflict check ─
+  const paymentCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  await supabase
+    .from('bookings')
+    .update({ status: 'expired' })
+    .eq('professional_id', professional_id)
+    .eq('booking_date', booking_date)
+    .eq('status', 'pending_payment')
+    .lt('created_at', paymentCutoff);
+
+  // ─── 9b. Check double-booking ─────────────────────────────────────────────
   const { data: conflicts } = await supabase
     .from('bookings')
     .select('id')
