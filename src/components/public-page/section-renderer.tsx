@@ -1,4 +1,4 @@
-import { PageSection } from '@/lib/page-sections/types';
+import type { PageSection, AboutData, ServicesData, GalleryData, TestimonialsData, FAQData } from '@/lib/page-sections/types';
 import { Hero } from './hero';
 import { SectionAbout } from './section-about';
 import { ServicesList } from './services-list';
@@ -34,14 +34,14 @@ export function SectionRenderer({
       return <Hero professional={professional} />;
 
     case 'about':
-      return <SectionAbout data={section.data as any} theme={section.theme} />;
+      return <SectionAbout data={section.data as AboutData} theme={section.theme} />;
 
     case 'services':
       if (!services || services.length === 0) return null;
       return (
         <div className="py-8">
           <h2 className="text-2xl font-bold mb-6 text-center px-4">
-            {(section.data as any).heading || t('myServices')}
+            {(section.data as ServicesData).heading || t('myServices')}
           </h2>
           <ServicesList services={services} currency={currency || 'EUR'} />
         </div>
@@ -50,7 +50,7 @@ export function SectionRenderer({
     case 'gallery':
       return (
         <SectionGallery
-          data={section.data as any}
+          data={section.data as GalleryData}
           professionalId={professional.id}
           theme={section.theme}
         />
@@ -59,14 +59,14 @@ export function SectionRenderer({
     case 'testimonials':
       return (
         <SectionTestimonials
-          data={section.data as any}
+          data={section.data as TestimonialsData}
           professionalId={professional.id}
           theme={section.theme}
         />
       );
 
     case 'faq':
-      return <SectionFAQ data={section.data as any} theme={section.theme} />;
+      return <SectionFAQ data={section.data as FAQData} theme={section.theme} />;
 
     case 'contact':
       return <ContactFooter professional={professional} />;
