@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { isRateLimited } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -43,6 +44,10 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+  if (await isRateLimited(`rl:support-tickets:${user.id}`, 5, 3600)) {
+    return NextResponse.json({ error: 'Too many tickets' }, { status: 429 });
+  }
 
   const { data: professional } = await supabase
     .from('professionals')

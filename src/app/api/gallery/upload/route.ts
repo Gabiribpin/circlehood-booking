@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { isRateLimited } from '@/lib/rate-limit';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -53,6 +54,10 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (await isRateLimited(`rl:gallery-upload:${user.id}`, 30, 60)) {
+    return NextResponse.json({ error: 'Too many uploads' }, { status: 429 });
   }
 
   // Get professional_id
