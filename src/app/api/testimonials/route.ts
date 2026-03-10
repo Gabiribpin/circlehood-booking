@@ -113,6 +113,16 @@ export async function POST(request: NextRequest) {
 
   // ── Fluxo público (professional_id no body → visitante enviando depoimento) ──
   if (bodyProfessionalId) {
+    // Honeypot: if the hidden field is filled, it's a bot — silently accept
+    if (body.website || body.url || body.company) {
+      return NextResponse.json({ testimonial: { id: 'ok' } }, { status: 201 });
+    }
+
+    // Timing check: submissions faster than 3 seconds are likely bots
+    if (typeof body._t === 'number' && Date.now() - body._t < 3000) {
+      return NextResponse.json({ testimonial: { id: 'ok' } }, { status: 201 });
+    }
+
     // Validate UUID format
     if (!z.string().uuid().safeParse(bodyProfessionalId).success) {
       return NextResponse.json({ error: 'Invalid professional ID' }, { status: 400 });

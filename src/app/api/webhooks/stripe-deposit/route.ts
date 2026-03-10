@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, deduplicated: true });
   }
 
-  // ─── Timestamp validation: reject events older than 5 minutes (replay attack) ─
-  const EVENT_MAX_AGE_SECONDS = 300; // 5 minutes
+  // ─── Timestamp validation: reject stale events (replay attack protection) ─
+  const EVENT_MAX_AGE_SECONDS = parseInt(process.env.STRIPE_EVENT_MAX_AGE_SECONDS ?? '300', 10);
   const eventAge = Math.floor(Date.now() / 1000) - event.created;
   if (eventAge > EVENT_MAX_AGE_SECONDS) {
     logger.warn('[Webhook] rejected stale event', { id: event.id, age: eventAge });
