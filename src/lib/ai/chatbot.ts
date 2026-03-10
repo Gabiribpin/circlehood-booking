@@ -1394,7 +1394,7 @@ PROIBIDO ao rejeitar data/horário:
 
     // 3. Buscar info do negócio (professional + services + working_hours + botConfig + ai_instructions)
     const [
-      { data: professional },
+      { data: professional, error: profError },
       { data: botConfig },
       { data: aiInstructions },
     ] = await Promise.all([
@@ -1416,6 +1416,11 @@ PROIBIDO ao rejeitar data/horário:
         .limit(1)
         .maybeSingle(),
     ]);
+
+    if (profError || !professional) {
+      logger.error('[chatbot] professional not found for user:', businessId, profError);
+      return null as any;
+    }
 
     const [{ data: services }, { data: workingHours }] = await Promise.all([
       this.supabase

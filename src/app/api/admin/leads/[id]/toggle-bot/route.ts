@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateAdminToken } from '@/lib/admin/session';
+import { z } from 'zod';
+
+const toggleBotSchema = z.object({
+  conversationId: z.string().uuid(),
+  botActive: z.boolean(),
+});
 
 export async function POST(
   request: NextRequest,
@@ -16,11 +22,11 @@ export async function POST(
 
   const { id: leadId } = await params;
   const body = await request.json();
-  const { conversationId, botActive } = body;
-
-  if (!conversationId || typeof botActive !== 'boolean') {
-    return NextResponse.json({ error: 'conversationId e botActive são obrigatórios' }, { status: 400 });
+  const parsed = toggleBotSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid input', issues: parsed.error.issues }, { status: 400 });
   }
+  const { conversationId, botActive } = parsed.data;
 
   const adminClient = createAdminClient();
 

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateAdminToken } from '@/lib/admin/session';
+import { z } from 'zod';
+
+const restoreSchema = z.object({
+  professional_id: z.string().uuid(),
+});
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -9,10 +14,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { professional_id } = await request.json();
-  if (!professional_id) {
-    return NextResponse.json({ error: 'professional_id required' }, { status: 400 });
+  const body = await request.json();
+  const parsed = restoreSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid professional_id' }, { status: 400 });
   }
+  const { professional_id } = parsed.data;
 
   const supabase = createAdminClient();
 
