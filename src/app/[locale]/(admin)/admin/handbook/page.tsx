@@ -102,7 +102,7 @@ const sections = [
     color: 'hover:border-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-950/20',
     iconColor: 'text-violet-500',
     previews: [
-      'Test mode: pk_test_51T5XUK...',
+      'Test mode: pk_test_••••••••••••',
       'CircleHood Pro: €25/mês + 14 dias trial',
       'Webhooks & Quick Links',
     ],

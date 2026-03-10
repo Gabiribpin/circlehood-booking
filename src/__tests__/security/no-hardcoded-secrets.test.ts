@@ -20,6 +20,9 @@ const FORBIDDEN_PATTERNS = [
     label: 'Redis hostname',
   },
   { pattern: /re_iebgvquj/, label: 'Resend API key prefix' },
+  { pattern: /pk_test_51[A-Za-z0-9]{10,}/, label: 'Stripe publishable key (real)' },
+  { pattern: /sk_test_51[A-Za-z0-9]{10,}/, label: 'Stripe secret key (real)' },
+  { pattern: /whsec_[A-Za-z0-9]{20,}/, label: 'Stripe webhook secret (real)' },
 ];
 
 function readFileContent(filePath: string): string {
