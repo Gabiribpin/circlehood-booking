@@ -1,11 +1,11 @@
 import { logger } from '@/lib/logger';
+import { isRateLimited } from '@/lib/rate-limit';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/auth/resend-verification
  * Resends the Supabase Auth confirmation email for the currently logged-in user.
- * Rate-limited by Supabase Auth (max 1 resend per 60s per email by default).
  */
 export async function POST() {
   try {
@@ -16,6 +16,10 @@ export async function POST() {
 
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+
+    if (await isRateLimited(`rl:resend-verification:${user.id}`, 3, 3600)) {
+      return NextResponse.json({ error: 'Too many attempts' }, { status: 429 });
     }
 
     if (user.email_confirmed_at) {
