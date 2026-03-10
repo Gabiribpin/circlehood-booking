@@ -236,6 +236,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // ─── Signature validation (Evolution API apikey header) ─────────────
+    if (!process.env.SALES_WEBHOOK_SECRET) {
+      logger.error('[sales-bot/webhook] SALES_WEBHOOK_SECRET not configured — rejecting request');
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
     const { validateEvolutionWebhook } = await import('@/lib/webhooks/signature');
     const apikeyHeader = request.headers.get('apikey');
     if (!validateEvolutionWebhook(apikeyHeader, process.env.SALES_WEBHOOK_SECRET)) {
