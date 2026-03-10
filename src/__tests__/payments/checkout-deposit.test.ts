@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { calculateDeposit, toCents } from '@/lib/payment/calculate-deposit';
 
 describe('calculateDeposit', () => {
@@ -54,5 +56,34 @@ describe('application_fee 5%', () => {
 
     expect(depositCents).toBe(100); // €1 em centavos
     expect(applicationFee).toBe(5); // 5 centavos (5% de €1)
+  });
+});
+
+describe('checkout endpoint expires stale pending_payment before conflict check (issue #492)', () => {
+  const checkoutSource = readFileSync(
+    resolve('src/app/api/bookings/checkout/route.ts'),
+    'utf-8',
+  );
+  const bookingsSource = readFileSync(
+    resolve('src/app/api/bookings/route.ts'),
+    'utf-8',
+  );
+
+  it('checkout has pending_payment expiration before conflict check', () => {
+    const expirationIdx = checkoutSource.indexOf("'expired'");
+    const conflictIdx = checkoutSource.indexOf('Check double-booking');
+    expect(expirationIdx).toBeGreaterThan(-1);
+    expect(conflictIdx).toBeGreaterThan(-1);
+    expect(expirationIdx).toBeLessThan(conflictIdx);
+  });
+
+  it('checkout uses 30-minute cutoff like bookings route', () => {
+    expect(checkoutSource).toContain('30 * 60 * 1000');
+    expect(bookingsSource).toContain('30 * 60 * 1000');
+  });
+
+  it('checkout filters by pending_payment status and created_at', () => {
+    expect(checkoutSource).toContain("'pending_payment'");
+    expect(checkoutSource).toContain('paymentCutoff');
   });
 });

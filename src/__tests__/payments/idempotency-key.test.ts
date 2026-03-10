@@ -107,7 +107,13 @@ function mockSupabase(overrides: Record<string, unknown> = {}) {
           }),
         }),
         update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                lt: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          }),
         }),
       };
     }
