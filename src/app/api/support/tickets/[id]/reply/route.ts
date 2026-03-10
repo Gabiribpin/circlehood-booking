@@ -3,11 +3,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateSupportResponse } from '@/lib/ai/support-bot';
+import { z } from 'zod';
+
+const MAX_BODY_SIZE = 1_048_576; // 1 MB
+
+const replySchema = z.object({
+  message: z.string().min(1, 'Mensagem obrigatória').max(10000),
+});
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10);
+  if (contentLength > MAX_BODY_SIZE) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
+
   const { id } = await params;
 
   const supabase = await createClient();
@@ -16,10 +28,12 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const { message } = await request.json();
-  if (!message?.trim()) {
-    return NextResponse.json({ error: 'Mensagem obrigatória' }, { status: 400 });
+  const body = await request.json();
+  const parsed = replySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
+  const { message } = parsed.data;
 
   // Verify ticket ownership via RLS (only the owner can select it)
   const { data: ticket } = await supabase
