@@ -69,12 +69,12 @@ describe('validateEvolutionWebhook implementation', () => {
     expect(sigSource).toContain('timingSafeEqual');
   });
 
-  it('skips validation when secret is not configured', () => {
+  it('rejects when secret is not configured', () => {
     const sigSource = readFileSync(
       resolve('src/lib/webhooks/signature.ts'),
       'utf-8'
     );
-    expect(sigSource).toContain('if (!secret) return true');
+    expect(sigSource).toContain('if (!secret) return false');
   });
 
   it('rejects when apikey header is missing', () => {

@@ -56,8 +56,10 @@ export async function POST(request: NextRequest) {
   // ── Validação de assinatura do webhook ──
   const apikeyHeader = request.headers.get('apikey');
   if (!process.env.WHATSAPP_WEBHOOK_SECRET) {
-    logger.warn('[whatsapp/webhook] WHATSAPP_WEBHOOK_SECRET not configured — skipping apikey validation');
-  } else if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
+    logger.error('[whatsapp/webhook] WHATSAPP_WEBHOOK_SECRET not configured — rejecting request');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
+  if (!validateEvolutionWebhook(apikeyHeader, process.env.WHATSAPP_WEBHOOK_SECRET)) {
     logger.warn('[whatsapp/webhook] Invalid or missing apikey header');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
