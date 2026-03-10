@@ -14,6 +14,7 @@ function getFromEmail() {
 
 function buildVerificationEmailHtml(businessName: string, verifyUrl: string): string {
   const escaped = businessName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const safeUrl = verifyUrl.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;border:1px solid #eee;border-radius:8px;overflow:hidden;">
       <div style="background:#000;padding:16px 24px;border-radius:8px 8px 0 0;text-align:center;">
@@ -29,7 +30,7 @@ function buildVerificationEmailHtml(businessName: string, verifyUrl: string): st
           <strong>${escaped}</strong> no CircleHood Booking.
         </p>
         <div style="text-align:center;margin-bottom:20px;">
-          <a href="${verifyUrl}"
+          <a href="${safeUrl}"
              style="display:inline-block;background:#000;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">
             ✅ Confirmar Email
           </a>
@@ -38,7 +39,7 @@ function buildVerificationEmailHtml(businessName: string, verifyUrl: string): st
           Link válido por <strong>24 horas</strong>. Se não criou uma conta, pode ignorar este email.
         </p>
         <p style="color:#bbb;font-size:11px;word-break:break-all;margin:0;">
-          Ou copie: <a href="${verifyUrl}" style="color:#888;">${verifyUrl}</a>
+          Ou copie: <a href="${safeUrl}" style="color:#888;">${safeUrl}</a>
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;text-align:center;">
           <p style="color:#999;font-size:11px;margin:0;">by <strong>CircleHood Tech</strong> · Plataforma de agendamento</p>
