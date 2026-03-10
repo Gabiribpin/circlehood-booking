@@ -14,7 +14,7 @@ interface SectionGalleryProps {
 
 export function SectionGallery({ data, professionalId, theme = 'default' }: SectionGalleryProps) {
   const t = useTranslations('public');
-  const [images, setImages] = useState<any[]>([]);
+  const [images, setImages] = useState<{ id: string; image_url: string; title?: string; description?: string; is_before_after?: boolean; before_image_url?: string; after_image_url?: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
@@ -108,7 +108,7 @@ export function SectionGallery({ data, professionalId, theme = 'default' }: Sect
                 <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow group">
                   <img
                     src={image.image_url}
-                    alt={image.title || ''}
+                    alt={image.title || 'Gallery image'}
                     className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   {(image.title || image.description) && (

@@ -61,6 +61,12 @@ export function BeforeAfterSlider({ beforeImage, afterImage, title, beforeLabel 
       {/* Slider Control */}
       <div
         className="absolute inset-0 cursor-ew-resize"
+        role="slider"
+        aria-label={title || 'Before and after comparison'}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(sliderPosition)}
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
@@ -68,6 +74,22 @@ export function BeforeAfterSlider({ beforeImage, afterImage, title, beforeLabel 
         onTouchStart={handleMouseDown}
         onTouchEnd={handleMouseUp}
         onTouchMove={handleTouchMove}
+        onKeyDown={(e) => {
+          const step = e.shiftKey ? 10 : 2;
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSliderPosition((prev) => Math.max(0, prev - step));
+          } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSliderPosition((prev) => Math.min(100, prev + step));
+          } else if (e.key === 'Home') {
+            e.preventDefault();
+            setSliderPosition(0);
+          } else if (e.key === 'End') {
+            e.preventDefault();
+            setSliderPosition(100);
+          }
+        }}
       >
         {/* Slider Line */}
         <div

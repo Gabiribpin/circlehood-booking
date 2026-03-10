@@ -24,7 +24,7 @@ export function SectionFAQ({ data, theme = 'default' }: SectionFAQProps) {
         <div className="space-y-4">
           {data.items.map((item, index) => (
             <div
-              key={index}
+              key={`faq-${item.question.slice(0, 40)}`}
               className="bg-white rounded-lg shadow-sm overflow-hidden"
             >
               <button

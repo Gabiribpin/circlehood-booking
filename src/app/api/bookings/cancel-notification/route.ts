@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       if (wc.provider === 'evolution' && wc.evolution_api_url && wc.evolution_instance) {
         const normalized = normalizePhoneForWhatsApp(booking.client_phone);
         const evoUrl = `${wc.evolution_api_url}/message/sendText/${wc.evolution_instance}`;
-        logger.info('[cancel-notification] WhatsApp attempt:', { raw: booking.client_phone, normalized, url: evoUrl, hasApiKey: !!wc.evolution_api_key });
+        logger.info('[cancel-notification] WhatsApp attempt:', { phoneLength: booking.client_phone.length, normalized: normalized.slice(0, 4) + '***', url: evoUrl, hasApiKey: !!wc.evolution_api_key });
         const res = await fetch(evoUrl, {
           method: 'POST',
           headers: { apikey: decryptToken(wc.evolution_api_key), 'Content-Type': 'application/json' },

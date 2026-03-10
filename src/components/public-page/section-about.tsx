@@ -49,9 +49,9 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
           <div className="mb-6">
             <h3 className="text-xl font-semibold mb-3">{t('specialties')}</h3>
             <div className="flex flex-wrap gap-2">
-              {data.specialties.map((specialty, index) => (
+              {data.specialties.map((specialty) => (
                 <span
-                  key={index}
+                  key={specialty}
                   className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium"
                 >
                   {specialty}
@@ -68,9 +68,9 @@ export function SectionAbout({ data, theme = 'default' }: SectionAboutProps) {
               {t('certifications')}
             </h3>
             <div className="space-y-3">
-              {data.certifications.map((cert, index) => (
+              {data.certifications.map((cert) => (
                 <div
-                  key={index}
+                  key={`${cert.name}-${cert.institution}-${cert.year}`}
                   className="border-l-4 border-purple-500 pl-4 py-2"
                 >
                   <p className="font-semibold">{cert.name}</p>

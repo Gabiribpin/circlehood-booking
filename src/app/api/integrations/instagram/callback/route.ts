@@ -96,10 +96,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?success=instagram_connected`
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Instagram OAuth error:', error)
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?error=${encodeURIComponent(error.message)}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/integrations?error=instagram_connection_failed`
     )
   }
 }

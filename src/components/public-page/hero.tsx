@@ -23,7 +23,7 @@ export function Hero({ professional }: HeroProps) {
         {professional.cover_image_url && (
           <Image
             src={professional.cover_image_url}
-            alt=""
+            alt={`${professional.business_name} cover`}
             fill
             priority
             sizes="100vw"

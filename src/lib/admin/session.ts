@@ -1,16 +1,24 @@
 import { createHmac, randomUUID } from 'crypto';
 import Redis from 'ioredis';
 import { parseRedisUrl } from '@/lib/redis/parse-url';
+import { logger } from '@/lib/logger';
 
 const SESSION_EXPIRY_HOURS = 8;
 const SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 60 * 60;
+
+let warnedPasswordFallback = false;
 
 /**
  * Returns the HMAC signing secret for admin session tokens.
  * Prefers ADMIN_SESSION_SECRET (dedicated); falls back to ADMIN_PASSWORD.
  */
 function getSigningSecret(): string | undefined {
-  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  if (secret && !process.env.ADMIN_SESSION_SECRET && !warnedPasswordFallback) {
+    logger.warn('[admin/session] Using password fallback for session signing — set ADMIN_SESSION_SECRET for better security');
+    warnedPasswordFallback = true;
+  }
+  return secret;
 }
 
 // ─── Redis / In-Memory Session Store ─────────────────────────────────────────
