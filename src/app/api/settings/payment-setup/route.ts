@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateIBAN } from '@/lib/validators/iban';
-import { encryptToken } from '@/lib/integrations/token-encryption';
+import { encryptToken, getCurrentKeyVersion } from '@/lib/integrations/token-encryption';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         payment_city: city.trim(),
         payment_postal_code: postal_code.trim(),
         payment_country: (country || 'IE').toUpperCase(),
+        encryption_key_version: getCurrentKeyVersion(),
         stripe_onboarding_status: 'pending',
       })
       .eq('id', professional.id);
