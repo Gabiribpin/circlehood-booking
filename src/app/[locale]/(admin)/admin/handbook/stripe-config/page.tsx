@@ -74,22 +74,22 @@ export default function StripeConfigPage() {
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Publishable Key</p>
             <CopyButton
-              text="pk_test_51T5XUKEmjP1NvLIH83P12xYb41ltX7HmHmUYAY0k4U9aAPoaOh7zk5K0QExOIBVAHpjvCUa5MkEc4jEQdbkNqZvV000s8lR5rA"
-              label="pk_test_51T5XUKEmjP1NvLIH...s8lR5rA"
+              text="Ver no Stripe Dashboard → Developers → API Keys → Publishable key"
+              label="pk_test_••••••••••••"
             />
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Secret Key</p>
             <CopyButton
               text="Ver no Vercel → Environment Variables → STRIPE_SECRET_KEY"
-              label="sk_test_51T5XUK••••••••••••"
+              label="sk_test_••••••••••••"
             />
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Price ID</p>
             <CopyButton
-              text="price_1T5pwAEmjP1NvLIHyas4qi4C"
-              label="price_1T5pwAEmjP1NvLIHyas4qi4C"
+              text="Ver no Stripe Dashboard → Products → CircleHood Booking Pro → Price ID"
+              label="price_••••••••••••"
             />
           </div>
 
@@ -183,8 +183,8 @@ export default function StripeConfigPage() {
               <div>
                 <p className="text-[10px] text-muted-foreground mb-1">Webhook Secret</p>
                 <CopyButton
-                  text="whsec_sPdecIl0PqkmIEJAYt7pWnTkipJpsEry"
-                  label="whsec_sPdecIl0PqkmIEJAYt7pWnTkipJpsEry"
+                  text="Ver no Stripe Dashboard → Developers → Webhooks → Signing secret"
+                  label="whsec_••••••••••••"
                 />
               </div>
               <div>
@@ -250,11 +250,11 @@ export default function StripeConfigPage() {
           <div className="space-y-2 pt-2">
             <div>
               <p className="text-[10px] text-muted-foreground mb-1">Product ID</p>
-              <CopyButton text="prod_U3fBFdqSjeNj7j" label="prod_U3fBFdqSjeNj7j" />
+              <CopyButton text="Ver no Stripe Dashboard → Products → CircleHood Booking Pro" label="prod_••••••••••••" />
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground mb-1">Price ID</p>
-              <CopyButton text="price_1T5pwAEmjP1NvLIHyas4qi4C" label="price_1T5pwAEmjP1NvLIHyas4qi4C" />
+              <CopyButton text="Ver no Vercel → Environment Variables → STRIPE_PRICE_ID" label="price_••••••••••••" />
             </div>
           </div>
         </CardContent>
