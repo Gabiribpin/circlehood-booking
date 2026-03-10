@@ -114,6 +114,12 @@ function mockSupabase(overrides: Record<string, unknown> = {}) {
     if (table === 'payments') {
       return {
         insert: vi.fn().mockResolvedValue({ error: null }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
       };
     }
     return {};

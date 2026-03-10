@@ -12,7 +12,7 @@ export async function GET() {
   const { data: professional, error } = await supabase
     .from('professionals')
     .select(
-      'require_deposit, deposit_type, deposit_value, stripe_account_id, stripe_onboarding_completed'
+      'require_deposit, deposit_type, deposit_value, stripe_onboarding_completed'
     )
     .eq('user_id', user.id)
     .single();

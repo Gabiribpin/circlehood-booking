@@ -6,6 +6,7 @@ import { calculateDeposit, toCents } from '@/lib/payment/calculate-deposit';
 import { bookingSchema, sanitizeString } from '@/lib/validation/booking-schema';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://booking.circlehood-tech.com';
+const APPLICATION_FEE_PERCENT = parseFloat(process.env.STRIPE_APPLICATION_FEE_PERCENT ?? '5') / 100;
 
 export async function POST(request: NextRequest) {
   // ─── 1. Parse + validação Zod ────────────────────────────────────────
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
   if (depositCents <= 0) {
     return NextResponse.json({ error: 'Valor do sinal inválido.' }, { status: 400 });
   }
-  const applicationFeeCents = Math.round(depositCents * 0.05);
+  const applicationFeeCents = Math.round(depositCents * APPLICATION_FEE_PERCENT);
 
   // ─── 9. Check double-booking ─────────────────────────────────────────────
   const { data: conflicts } = await supabase
@@ -216,6 +217,22 @@ export async function POST(request: NextRequest) {
 
   const currencyCode = (prof.currency as string)?.toLowerCase() || 'eur';
 
+  // ─── 10b. INSERT payment record immediately after booking (minimize inconsistency window)
+  const { error: paymentError } = await supabase.from('payments').insert({
+    professional_id,
+    booking_id: booking.id,
+    amount: depositAmount,
+    currency: currencyCode,
+    status: 'pending',
+    stripe_checkout_session_id: null,
+  });
+
+  if (paymentError) {
+    logger.error('[bookings/checkout] payment insert failed — rolling back booking', paymentError);
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+    return NextResponse.json({ error: 'Erro ao registrar pagamento. Tente novamente.' }, { status: 500 });
+  }
+
   // Idempotency key baseada no booking.id: retry-safe (mesmo booking = mesma session)
   const idempotencyKey = `cs:${booking.id}`;
 
@@ -255,26 +272,17 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     logger.error('[bookings/checkout] Stripe session creation failed', err);
-    // Rollback: cancelar booking para liberar o slot
+    // Rollback: cancelar booking + payment para liberar o slot
+    await supabase.from('payments').delete().eq('booking_id', booking.id);
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
     return NextResponse.json({ error: 'Falha ao criar sessão de pagamento. Tente novamente.' }, { status: 502 });
   }
 
-  // ─── 12. INSERT payment ──────────────────────────────────────────────────
-  const { error: paymentError } = await supabase.from('payments').insert({
-    professional_id,
-    booking_id: booking.id,
-    amount: depositAmount,
-    currency: currencyCode,
-    status: 'pending',
-    stripe_checkout_session_id: session.id,
-  });
-
-  if (paymentError) {
-    logger.error('[bookings/checkout] payment insert failed — rolling back booking', paymentError);
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
-    return NextResponse.json({ error: 'Erro ao registrar pagamento. Tente novamente.' }, { status: 500 });
-  }
+  // ─── 12. Update payment with Stripe session ID ─────────────────────────
+  await supabase
+    .from('payments')
+    .update({ stripe_checkout_session_id: session.id })
+    .eq('booking_id', booking.id);
 
   return NextResponse.json({ session_url: session.url });
 }
