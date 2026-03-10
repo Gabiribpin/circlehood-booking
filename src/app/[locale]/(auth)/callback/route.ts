@@ -14,7 +14,7 @@ function sanitizeNext(next: string | null): string {
   if (!next.startsWith('/') || next.startsWith('//')) return fallback;
 
   // Bloquear schemes embutidos (javascript:, data:, etc.)
-  if (/^\/.*:/i.test(next) && !next.startsWith('/')) return fallback;
+  if (/^\/.*:/i.test(next)) return fallback;
 
   return next;
 }
