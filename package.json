@@ -26,7 +26,9 @@
     "test:payment": "playwright test e2e/payment/04-payment-flow.spec.ts",
     "test:no-payment": "playwright test e2e/payment/03-booking-no-payment.spec.ts",
     "test:settings": "playwright test e2e/payment/02-payment-settings.spec.ts",
-    "test:deposit": "playwright test e2e/payment/"
+    "test:deposit": "playwright test e2e/payment/",
+    "audit": "npm audit --omit=dev",
+    "audit:fix": "npm audit fix --omit=dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",

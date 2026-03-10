@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   const supabase = await createClient();
@@ -73,6 +74,13 @@ export async function PUT(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: 'Erro ao salvar configurações' }, { status: 500 });
   }
+
+  logger.info('[settings/payment] payment config updated', {
+    user_id: user.id,
+    require_deposit: require_deposit ?? false,
+    deposit_type: require_deposit ? deposit_type : null,
+    deposit_value: require_deposit ? deposit_value : null,
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -23,8 +23,9 @@ describe('Stripe webhook timestamp validation (issue #150)', () => {
     expect(source).toContain('EVENT_MAX_AGE_SECONDS');
   });
 
-  it('max age is 300 seconds (5 minutes)', () => {
-    expect(source).toContain('EVENT_MAX_AGE_SECONDS = 300');
+  it('max age defaults to 300 seconds (5 minutes)', () => {
+    expect(source).toContain("'300'");
+    expect(source).toContain('STRIPE_EVENT_MAX_AGE_SECONDS');
   });
 
   it('calculates event age from current time', () => {
