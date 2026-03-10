@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     case 'account.updated': {
       const account = event.data.object as Stripe.Account;
 
-      await supabase
+      const { data: updated } = await supabase
         .from('stripe_connect_accounts')
         .update({
           charges_enabled: account.charges_enabled,
@@ -57,7 +57,12 @@ export async function POST(request: NextRequest) {
           onboarding_complete: account.details_submitted,
           updated_at: new Date().toISOString(),
         })
-        .eq('stripe_account_id', account.id);
+        .eq('stripe_account_id', account.id)
+        .select('id');
+
+      if (!updated || updated.length === 0) {
+        logger.warn('[stripe-connect/webhook] account.updated for unknown account_id:', account.id);
+      }
 
       await supabase
         .from('professionals')
